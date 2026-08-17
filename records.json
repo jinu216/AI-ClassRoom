@@ -1,0 +1,54 @@
+{
+  "page1": {
+    "heading1": "jinufr",
+    "text1": "Founded in 1984, Pope Pius School has provided holistic education for over four decades.",
+    "heading2": "Campus Infrastructure",
+    "text2": "Equipped with modern robotics labs and digital smart classrooms.",
+    "headingColor": "#3e1fc8",
+    "textColor": "#212d40",
+    "fontSize": "12px"
+  },
+  "faculty": [
+    {
+      "id": "T01",
+      "name": "Dr. Sarah Jenkins",
+      "subject": "Physics",
+      "email": "s.jenkins@popepius.edu"
+    }
+  ],
+  "notices": [
+    {
+      "id": "N01",
+      "title": "Independence Day Cultural Auditions",
+      "priority": "High",
+      "date": "2026-08-10"
+    }
+  ],
+  "fees": {
+    "term": "Term 2",
+    "amount": "$1,550",
+    "dueDate": "2026-09-15"
+  },
+  "students": {
+    "101": {
+      "rollNumber": "101",
+      "name": "Alexander Vance",
+      "class": "Class 10-A",
+      "attendance": {
+        "present": 114,
+        "total": 120,
+        "percentage": "95%"
+      },
+      "academics": [
+        {
+          "subject": "Mathematics",
+          "score": "92/100"
+        },
+        {
+          "subject": "Physics",
+          "score": "88/100"
+        }
+      ]
+    }
+  }
+}
