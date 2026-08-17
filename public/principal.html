@@ -722,6 +722,81 @@
     .status-online{color:#34d399;background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.25)}
     .status-offline{color:#fca5a5;background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.22)}
 
+    /* ================================================================
+       MOBILE / TABLET RESPONSIVE SHELL
+       Off-canvas navigation, touch-friendly controls and fluid content.
+       ================================================================ */
+    .mobile-menu-btn,.mobile-nav-close{display:none;border:1px solid var(--hairline-strong);background:var(--panel-soft);color:var(--brass-bright);border-radius:9px;width:42px;height:42px;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex:0 0 42px}
+    .mobile-nav-close{margin-left:auto}
+    .mobile-nav-backdrop{display:none;position:fixed;inset:0;background:rgba(2,7,13,.7);backdrop-filter:blur(3px);z-index:990}
+    .mobile-nav-backdrop.show{display:block}
+    @media (max-width:980px){
+      body{display:block;overflow:hidden;min-height:100dvh}
+      .sidebar{position:fixed!important;left:0;top:0;bottom:0;width:min(84vw,310px)!important;height:100dvh;z-index:1000;padding:18px 14px;display:flex!important;flex-direction:column!important;align-items:stretch!important;overflow:hidden!important;transform:translateX(-105%);transition:transform .24s ease;box-shadow:24px 0 60px rgba(0,0,0,.48)}
+      .sidebar.mobile-open{transform:translateX(0)}
+      .sidebar .brand{border-right:0!important;border-bottom:1px solid var(--hairline)!important;margin:0 0 12px!important;padding:2px 4px 16px!important;flex:0 0 auto}
+      .sidebar .nav-list{display:block!important;overflow-y:auto;overscroll-behavior:contain;padding:2px 0 16px;flex:1 1 auto}
+      .sidebar .nav-item{min-height:46px;margin-bottom:4px;padding:12px 13px}
+      .sidebar .sidebar-footer{display:flex;margin-top:8px;flex:0 0 auto}
+      .mobile-nav-close,.mobile-menu-btn{display:inline-flex}
+      .main-content{width:100%;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+      .topbar{height:62px;min-height:62px;padding:0 14px;gap:10px}
+      .topbar h2{font-size:17px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .status-badge{max-width:44vw;padding:7px 10px;font-size:10px;white-space:nowrap;overflow:hidden}
+      .status-badge span{overflow:hidden;text-overflow:ellipsis}
+      .content-container{max-width:none;padding:20px 14px 52px;overflow-x:hidden}
+      .section-header{align-items:flex-start!important;flex-direction:column!important;gap:12px!important}
+      .section-header>button{align-self:stretch;justify-content:center}
+      .dashboard-layout,.leave-intel-columns,.attendance-folders{grid-template-columns:1fr!important}
+      .form-row-grid,.form-row-triple,.form-grid,.form-grid-3,.form-grid-2,[style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"],[style*="grid-template-columns:repeat(2"],[style*="grid-template-columns: repeat(2"]{grid-template-columns:1fr!important}
+      #healthServiceGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      .approval-banner,.actions-bar,.academic-step-footer,.roster-control-bar{align-items:stretch;flex-direction:column;gap:10px}
+      .card-top-row{flex-direction:column}
+      .card-actions{width:100%;flex-wrap:wrap}
+      .saved-timetable-grid{grid-template-columns:1fr}
+      .login-overlay{padding:12px;align-items:flex-start;overflow-y:auto}
+      .login-card{padding:24px 18px;margin:auto 0;max-height:calc(100dvh - 24px);overflow-y:auto}
+      .tab-content table{display:block;max-width:100%;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+      .timetable-grid-wrapper,.leave-table-wrap,.table-scroll{max-width:100%;-webkit-overflow-scrolling:touch}
+      input,select,textarea{font-size:16px!important}
+      button,.nav-item,summary,label[for]{touch-action:manipulation}
+    }
+    @media (max-width:620px){
+      .content-container{padding:16px 10px 44px}
+      .topbar{padding:0 10px}
+      .topbar h2{font-size:15px}
+      .status-badge{max-width:38vw}
+      .dashboard-hero{padding:19px 16px;border-radius:12px}
+      .dashboard-hero h1{font-size:24px}
+      .editor-card,.dashboard-panel{padding:15px!important;border-radius:10px}
+      #dashboardTab>.dashboard-grid,#healthServiceGrid,.dashboard-grid,.leave-intel-grid{grid-template-columns:1fr!important}
+      .quick-actions{grid-template-columns:1fr}
+      .weekday-selector{grid-template-columns:repeat(2,1fr)}
+      .academic-workflow-nav{grid-template-columns:1fr!important}
+      .academic-step-button{min-height:54px}
+      .dash-row,.executive-action{align-items:flex-start;flex-direction:column;gap:7px}
+      .dash-row>span:last-child{align-self:flex-start}
+      .leave-request-top{flex-direction:column}
+      .leave-actions{flex-wrap:wrap}
+      .roster-header{align-items:flex-start;flex-direction:column;gap:8px}
+      .meta-list{flex-direction:column;gap:7px}
+      .meta-item{width:100%;overflow-wrap:anywhere}
+      .camera-preview-box{max-width:100%;height:auto;aspect-ratio:16/10}
+      .wizard-steps{gap:12px;overflow-x:auto;justify-content:flex-start;padding-bottom:12px}
+      .step-item{min-width:max-content}
+      .btn-primary,.btn-secondary,.btn-success{min-height:44px;justify-content:center}
+      .calculation-badge{overflow-wrap:anywhere}
+    }
+    @media (max-width:420px){
+      .status-badge span{display:none}
+      .status-badge{width:34px;height:34px;padding:0;justify-content:center}
+      .mobile-menu-btn{width:40px;height:40px;flex-basis:40px}
+      .section-title{font-size:21px}
+      .section-help{font-size:12.5px}
+      .editor-card{margin-bottom:18px}
+      .card-actions .btn-edit,.card-actions .btn-delete{flex:1;justify-content:center;min-height:40px}
+    }
+
   </style>
 </head>
 <body>
@@ -777,7 +852,7 @@
   <!-- ====================================================================
        4. SIDEBAR NAVIGATION
        ==================================================================== -->
-  <aside class="sidebar">
+  <aside id="principalSidebar" class="sidebar">
     <div class="brand">
       <svg class="brand-crest" viewBox="0 0 60 60" fill="none">
         <circle cx="30" cy="30" r="27" stroke="#c9a24b" stroke-width="1.5" opacity="0.8"/>
@@ -787,6 +862,7 @@
         <div class="brand-name">Pope Pius</div>
         <div class="brand-eyebrow">Principal Console</div>
       </div>
+      <button type="button" class="mobile-nav-close" aria-label="Close navigation" onclick="toggleMobileNavigation(false)"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
     <ul class="nav-list">
@@ -805,12 +881,14 @@
 
     <div class="sidebar-footer"><i class="fa-solid fa-lock"></i> Principal Authorization Only</div>
   </aside>
+  <div id="mobileNavBackdrop" class="mobile-nav-backdrop" onclick="toggleMobileNavigation(false)" aria-hidden="true"></div>
 
   <!-- ====================================================================
        5. MAIN WORKSPACE
        ==================================================================== -->
   <main class="main-content">
     <header class="topbar">
+      <button type="button" class="mobile-menu-btn" aria-label="Open navigation" aria-controls="principalSidebar" aria-expanded="false" onclick="toggleMobileNavigation()"><i class="fa-solid fa-bars"></i></button>
       <h2>Institutional Control Panel</h2>
       <div class="status-badge">
         <div class="status-dot"></div>
@@ -2689,7 +2767,19 @@
       if (tabId === 'principalMailboxTab') markPrincipalMailboxRead();
       if (tabId === 'healthTab') runSystemHealthChecks();
       if (tabId === 'settingsTab') populateSelectiveDeleteClasses();
+      if (window.matchMedia('(max-width:980px)').matches) toggleMobileNavigation(false);
     }
+
+    function toggleMobileNavigation(force){
+      const sidebar=document.getElementById('principalSidebar'),backdrop=document.getElementById('mobileNavBackdrop'),button=document.querySelector('.mobile-menu-btn');
+      if(!sidebar||!backdrop)return;
+      const open=typeof force==='boolean'?force:!sidebar.classList.contains('mobile-open');
+      sidebar.classList.toggle('mobile-open',open);backdrop.classList.toggle('show',open);backdrop.setAttribute('aria-hidden',String(!open));
+      if(button)button.setAttribute('aria-expanded',String(open));
+      if(open)setTimeout(()=>sidebar.querySelector('.nav-item.active')?.focus?.(),50);
+    }
+    document.addEventListener('keydown',event=>{if(event.key==='Escape')toggleMobileNavigation(false)});
+    window.addEventListener('resize',()=>{if(!window.matchMedia('(max-width:980px)').matches)toggleMobileNavigation(false)});
 
     const HEALTH_LABELS={browser:'Browser & HTTPS',github:'GitHub Deployment',render:'Render Server',websocket:'Live WebSocket',supabaseDatabase:'Supabase Database',supabaseStorage:'Supabase Storage'};
     const HEALTH_ICONS={browser:'fa-globe',github:'fa-code-branch',render:'fa-server',websocket:'fa-arrows-rotate',supabaseDatabase:'fa-database',supabaseStorage:'fa-box-archive'};
