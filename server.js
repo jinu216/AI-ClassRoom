@@ -2,6 +2,15 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = (supabaseUrl && supabaseKey) 
+  ? createClient(supabaseUrl, supabaseKey) 
+  : null;
 
 const app = express();
 const server = http.createServer(app);
@@ -9,12 +18,13 @@ const wss = new WebSocket.Server({ server });
 
 // Serve the public folder through both URL styles used by the project.
 const publicDir = path.join(__dirname, 'public');
+app.use(express.json());
 app.use('/public', express.static(publicDir));
 app.use(express.static(publicDir));
 app.get('/', (req, res) => res.redirect('/public/principal.html'));
 
 // ====================================================================
-// 1. IN-MEMORY STATE STORE
+// 1. IN-MEMORY STATE STORE & SUPABASE SYNC HELPERS
 // ====================================================================
 let page1Data = {
   heading1: "Our History & Legacy",
@@ -23,33 +33,8 @@ let page1Data = {
   text2: "Equipped with modern laboratories, digital classrooms, and extensive sports facilities."
 };
 
-let facultyData = [
-  {
-    id: 101,
-    name: "Dr. Sarah Jenkins",
-    qualification: "Ph.D. in Applied Physics",
-    specialization: "Quantum Physics & Thermodynamics",
-    experience: "12",
-    yearJoined: "2018",
-    photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80",
-    bio: "Senior Lecturer with over a decade of research experience in quantum systems and curriculum development."
-  },
-  {
-    id: 102,
-    name: "Prof. Alan Vance",
-    qualification: "M.Sc. Computer Science",
-    specialization: "Artificial Intelligence & Embedded Systems",
-    experience: "8",
-    yearJoined: "2021",
-    photo: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80",
-    bio: "Dedicated instructor focusing on hands-on practical robotics, IoT, and software development."
-  }
-];
-
-let noticesData = [
-  { id: 'N1', title: 'Mid-Term Examinations Schedule Released', priority: 'High', date: '2026-08-01' }
-];
-
+let facultyData = [];
+let noticesData = [];
 let feeData = {
   term: 'Term 2 - 2026',
   amount: '$1,550',
@@ -57,7 +42,6 @@ let feeData = {
 };
 
 // Shared Principal / Faculty Portal state.
-// Prototype note: this state resets when the Node process restarts.
 let portalStaff = [];
 let profileVerificationRequests = [];
 let portalStudents = [];
@@ -70,6 +54,20 @@ let portionProgress = [];
 let attendanceSettings = { schoolName:'Pope Pius Academy', latitude:'', longitude:'', radiusMeters:150, gpsAccuracyMeters:100, checkInTime:'08:00', checkOutTime:'16:00', graceMinutes:10, minimumFullDayMinutes:420, halfDayMinutes:240, locationRequired:true };
 let attendanceRecords = [];
 let leaveRecords = [];
+
+// Load initial data from Supabase if connected
+async function loadDataFromSupabase() {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.from('faculty').select('*');
+    if (!error && data) {
+      facultyData = data;
+    }
+  } catch (err) {
+    console.error('Error loading data from Supabase:', err);
+  }
+}
+loadDataFromSupabase();
 
 function upsertById(list, item) {
   if (!item || !item.id) return;
@@ -108,30 +106,6 @@ function applyStudentToRoster(profile) {
   else portalStudents.push(profile);
 }
 
-// Mock student database for lookup tab
-const studentDatabase = {
-  "101": {
-    name: "Alex Johnson",
-    class: "Grade 10-A",
-    attendance: { present: 88, total: 92, percentage: "95.6%" },
-    academics: [
-      { subject: "Mathematics", score: "92/100" },
-      { subject: "Physics", score: "88/100" },
-      { subject: "Computer Science", score: "96/100" }
-    ]
-  },
-  "102": {
-    name: "Maria Garcia",
-    class: "Grade 10-B",
-    attendance: { present: 82, total: 92, percentage: "89.1%" },
-    academics: [
-      { subject: "Mathematics", score: "78/100" },
-      { subject: "Physics", score: "84/100" },
-      { subject: "Computer Science", score: "90/100" }
-    ]
-  }
-};
-
 // Helper: Broadcast payload to all connected clients
 function broadcast(data) {
   const json = JSON.stringify(data);
@@ -160,34 +134,31 @@ wss.on('connection', (ws) => {
       profileVerificationRequests,
       attendanceSettings,
       attendanceRecords,
-      leaveRecords
-      ,portalStudents
-      ,studentProfileRequests
-      ,studentLeaveRecords
-      ,studentMailbox
-      ,classTeacherAssignments
-      ,timetableFolders
-      ,portionProgress
+      leaveRecords,
+      portalStudents,
+      studentProfileRequests,
+      studentLeaveRecords,
+      studentMailbox,
+      classTeacherAssignments,
+      timetableFolders,
+      portionProgress
     }
   }));
 
   // Handle incoming messages from Principal or Student portals
-  ws.on('message', (message) => {
+  ws.on('message', async (message) => {
     try {
       const data = JSON.parse(message);
       console.log('Received Event:', data.type);
 
       switch (data.type) {
-        // Principal Portal publishes the complete staff roster.
         case 'SYNC_PORTAL_STAFF':
           if (!Array.isArray(data.payload)) break;
-          // Prevent Principal/server feedback loops by ignoring an identical roster.
           if (JSON.stringify(data.payload) === JSON.stringify(portalStaff)) break;
           portalStaff = data.payload;
           broadcast({ type: 'PORTAL_STAFF_UPDATED', payload: portalStaff });
           break;
 
-        // Principal publishes the complete student roster used for portal login.
         case 'SYNC_PORTAL_STUDENTS':
           if (!Array.isArray(data.payload)) break;
           if (JSON.stringify(data.payload) === JSON.stringify(portalStudents)) break;
@@ -270,7 +241,6 @@ wss.on('connection', (ws) => {
           broadcast({ type:'STUDENT_LEAVE_UPDATED', payload:data.payload });
           break;
 
-        // Restore locally retained verification records after a server restart.
         case 'SYNC_PROFILE_VERIFICATIONS':
           if (Array.isArray(data.payload)) data.payload.forEach(upsertVerification);
           broadcast({ type: 'PROFILE_VERIFICATIONS_SYNCED', payload: profileVerificationRequests });
@@ -304,7 +274,6 @@ wss.on('connection', (ws) => {
           broadcast({ type:'LEAVE_RECORD_UPDATED', payload:data.payload });
           break;
 
-        // Faculty login lookup using the mobile registered by the Principal.
         case 'FACULTY_LOGIN_LOOKUP': {
           const normalized = String(data.mobile || '').replace(/[\s()-]/g, '').trim();
           const member = portalStaff.find(s =>
@@ -320,13 +289,11 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        // A new request can originate from either portal.
         case 'PROFILE_VERIFICATION_CREATE':
           upsertVerification(data.payload);
           broadcast({ type: 'PROFILE_VERIFICATION_CREATED', payload: data.payload });
           break;
 
-        // Principal approves or rejects a faculty-originated request.
         case 'PROFILE_VERIFICATION_DECISION':
           upsertVerification(data.payload);
           if (data.payload?.appliedProfile) applyProfileToRoster(data.payload.appliedProfile);
@@ -334,7 +301,6 @@ wss.on('connection', (ws) => {
           broadcast({ type: 'PORTAL_STAFF_UPDATED', payload: portalStaff });
           break;
 
-        // Faculty confirms a Principal edit or asks for a correction.
         case 'PRINCIPAL_PROFILE_CONFIRMED':
         case 'PROFILE_VERIFICATION_UPDATE':
           upsertVerification(data.payload);
@@ -343,55 +309,44 @@ wss.on('connection', (ws) => {
           broadcast({ type: 'PORTAL_STAFF_UPDATED', payload: portalStaff });
           break;
 
-        // Page 1 Overview Update (Preserved)
         case 'UPDATE_PAGE_1':
           page1Data = data.payload;
           broadcast({ type: 'PAGE_1_UPDATED', payload: page1Data });
           break;
 
-        // Faculty Updates: Add Single New Faculty Member
         case 'ADD_FACULTY':
           const newMember = {
-            id: Date.now(), // Generate unique ID
+            id: Date.now(),
             ...data.payload
           };
           facultyData.push(newMember);
+          if (supabase) {
+            await supabase.from('faculty').insert([newMember]);
+          }
           broadcast({ type: 'FACULTY_UPDATE', payload: facultyData });
           break;
 
-        // Faculty Updates: Replace entire roster or update existing array
         case 'UPDATE_FACULTY':
           facultyData = data.payload;
           broadcast({ type: 'FACULTY_UPDATE', payload: facultyData });
           break;
 
-        // Faculty Updates: Delete Faculty Member by ID
         case 'DELETE_FACULTY':
           facultyData = facultyData.filter(f => f.id !== data.payload.id);
+          if (supabase) {
+            await supabase.from('faculty').delete().eq('id', data.payload.id);
+          }
           broadcast({ type: 'FACULTY_UPDATE', payload: facultyData });
           break;
 
-        // Notices Updates (Preserved)
         case 'ADD_NOTICE':
           noticesData.unshift(data.payload);
           broadcast({ type: 'NOTICE_ADDED', payload: noticesData });
           break;
 
-        // Fees Structure Updates (Preserved)
         case 'UPDATE_FEES':
           feeData = data.payload;
           broadcast({ type: 'FEES_UPDATED', payload: feeData });
-          break;
-
-        // Student Search Request (Preserved)
-        case 'LOOKUP_STUDENT':
-          const roll = data.rollNumber;
-          const record = studentDatabase[roll];
-          ws.send(JSON.stringify({
-            type: 'STUDENT_RECORD_RESULT',
-            found: !!record,
-            payload: record || null
-          }));
           break;
 
         default:
