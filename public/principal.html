@@ -628,6 +628,28 @@
     @media (max-width:1050px) { .academic-workflow-nav { grid-template-columns:repeat(2,1fr); } .academic-workflow-shell { position:static; } }
     @media (max-width:620px) { .academic-workflow-nav { grid-template-columns:1fr; } .academic-workflow-summary { align-items:flex-start; flex-direction:column; } }
 
+    /* Guided Faculty and Student workspaces */
+    .people-overview { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:18px 0 14px; }
+    .people-stat { position:relative; overflow:hidden; padding:15px; border:1px solid var(--hairline); border-radius:12px; background:linear-gradient(145deg,var(--panel),var(--panel-soft)); box-shadow:0 10px 24px rgba(0,0,0,.12); }
+    .people-stat::before { content:""; position:absolute; inset:0 auto 0 0; width:3px; background:linear-gradient(var(--brass),transparent); }
+    .people-stat span { display:block; color:var(--text-faint); font-size:9px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.07em; }
+    .people-stat strong { display:block; margin-top:6px; color:var(--text-primary); font-family:'Fraunces',serif; font-size:23px; }
+    .people-workflow { position:sticky; top:0; z-index:17; margin-bottom:20px; padding:12px; border:1px solid var(--hairline-strong); border-radius:14px; background:rgba(8,19,31,.96); backdrop-filter:blur(14px); box-shadow:0 14px 34px rgba(0,0,0,.24); }
+    .people-workflow-nav { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+    .people-step { display:flex; align-items:center; gap:9px; min-height:54px; padding:10px; text-align:left; color:var(--text-muted); background:var(--panel-soft); border:1px solid var(--hairline); border-radius:10px; transition:.18s ease; }
+    .people-step:hover { color:var(--text-primary); border-color:var(--brass-dim); transform:translateY(-1px); }
+    .people-step.active { color:var(--brass-bright); border-color:var(--brass); background:linear-gradient(135deg,rgba(201,162,75,.19),rgba(201,162,75,.06)); box-shadow:inset 0 0 0 1px rgba(201,162,75,.1); }
+    .people-step i { width:28px; height:28px; flex:0 0 28px; display:grid; place-items:center; border-radius:8px; background:rgba(201,162,75,.1); }
+    .people-step strong,.people-step small { display:block; }.people-step strong { font-size:11px; }.people-step small { margin-top:2px; color:var(--text-faint); font-size:9px; line-height:1.25; }
+    .people-workflow-note { display:flex; justify-content:space-between; gap:12px; margin-top:10px; padding-top:10px; border-top:1px solid var(--hairline); color:var(--text-muted); font-size:11px; }
+    #staffTab .editor-card,#studentsTab .editor-card { border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,.15); }
+    #staffTab .editor-card.people-panel-hidden,#studentsTab .editor-card.people-panel-hidden { display:none!important; }
+    #staffTab .editor-card.people-panel-active,#studentsTab .editor-card.people-panel-active { animation:academicStepIn .2s ease; }
+    #staffTab .form-group input,#staffTab .form-group select,#staffTab .form-group textarea,#studentsTab .form-group input,#studentsTab .form-group select,#studentsTab .form-group textarea { min-height:44px; border-radius:9px; background:#0a1928; transition:.15s ease; }
+    #staffTab .form-group input:focus,#staffTab .form-group select:focus,#staffTab .form-group textarea:focus,#studentsTab .form-group input:focus,#studentsTab .form-group select:focus,#studentsTab .form-group textarea:focus { outline:none; border-color:var(--brass); box-shadow:0 0 0 3px rgba(201,162,75,.11); }
+    @media(max-width:1100px){.people-workflow-nav{grid-template-columns:repeat(3,1fr)}.people-overview{grid-template-columns:repeat(2,1fr)}.people-workflow{position:static}}
+    @media(max-width:620px){.people-workflow-nav{display:flex;overflow:auto}.people-step{flex:0 0 165px}.people-overview{grid-template-columns:1fr 1fr}.people-workflow-note{flex-direction:column}.people-stat{padding:12px}.people-stat strong{font-size:19px}}
+
     .hidden { display: none !important; }
 
     /* Authority login overlay: visible by default, hidden after successful login. */
@@ -1060,7 +1082,9 @@
       <div id="staffTab" class="tab-content">
         <p class="section-eyebrow">Page 01 — Human Resources</p>
         <h3 class="section-title">Teaching & Non Teaching Directory</h3>
-        <p class="section-help">Comprehensive HR command center configured in exact sequence: Add active personnel, configure dynamic custom headings, run custom Excel ERP imports, search the staff directory, and export master data.</p>
+        <p class="section-help">Register staff, control portal access, prepare Excel fields and maintain the official faculty directory through the guided steps below.</p>
+        <div class="people-overview" aria-label="Faculty summary"><div class="people-stat"><span>Total staff</span><strong id="staffWorkspaceTotal">0</strong></div><div class="people-stat"><span>Teaching faculty</span><strong id="staffWorkspaceTeaching">0</strong></div><div class="people-stat"><span>Non-teaching</span><strong id="staffWorkspaceNonTeaching">0</strong></div><div class="people-stat"><span>Portal enabled</span><strong id="staffWorkspacePortal">0</strong></div></div>
+        <div class="people-workflow"><div class="people-workflow-nav"><button class="people-step active" onclick="showPeopleStep('staffTab',0,this)"><i class="fa-solid fa-user-plus"></i><span><strong>Profile</strong><small>Add or edit staff</small></span></button><button class="people-step" onclick="showPeopleStep('staffTab',1,this)"><i class="fa-solid fa-sliders"></i><span><strong>Custom Fields</strong><small>Configure headings</small></span></button><button class="people-step" onclick="showPeopleStep('staffTab',2,this)"><i class="fa-solid fa-file-excel"></i><span><strong>Excel Import</strong><small>Upload ERP records</small></span></button><button class="people-step" onclick="showPeopleStep('staffTab',3,this)"><i class="fa-solid fa-users"></i><span><strong>Directory</strong><small>Search and manage</small></span></button><button class="people-step" onclick="showPeopleStep('staffTab',4,this)"><i class="fa-solid fa-download"></i><span><strong>Export</strong><small>Download master data</small></span></button></div><div class="people-workflow-note"><span id="staffWorkspaceHint"><i class="fa-solid fa-circle-info"></i> Start by creating or reviewing a staff profile.</span><span class="badge-tag">Faculty workspace</span></div></div>
 
         <!-- MODULE 1: ADD NEW STAFF MEMBER -->
         <div class="editor-card">
@@ -1281,7 +1305,9 @@
       <div id="studentsTab" class="tab-content">
         <p class="section-eyebrow">Page 02 — Student Affairs</p>
         <h3 class="section-title">Student Directory & Profiles</h3>
-        <p class="section-help">Comprehensive student command center configured in exact sequence: Register students with full profile fields (Name, Father's Name, DOB, Address, Gmail, Phone Number, Class, Joined Year). Divisions are generated automatically on Page 03 according to the configured Kerala Government student-strength rules, configure dynamic student custom headings, import from Excel, search profiles, and export master data.</p>
+        <p class="section-help">Register students, control portal access, import school records and maintain the official directory through the guided steps below. Divisions remain automatically managed from Academic Schedule.</p>
+        <div class="people-overview" aria-label="Student summary"><div class="people-stat"><span>Total students</span><strong id="studentWorkspaceTotal">0</strong></div><div class="people-stat"><span>Classes represented</span><strong id="studentWorkspaceClasses">0</strong></div><div class="people-stat"><span>Portal enabled</span><strong id="studentWorkspacePortal">0</strong></div><div class="people-stat"><span>Profiles with photo</span><strong id="studentWorkspacePhotos">0</strong></div></div>
+        <div class="people-workflow"><div class="people-workflow-nav"><button class="people-step active" onclick="showPeopleStep('studentsTab',0,this)"><i class="fa-solid fa-user-plus"></i><span><strong>Profile</strong><small>Add or edit student</small></span></button><button class="people-step" onclick="showPeopleStep('studentsTab',1,this)"><i class="fa-solid fa-sliders"></i><span><strong>Custom Fields</strong><small>Configure headings</small></span></button><button class="people-step" onclick="showPeopleStep('studentsTab',2,this)"><i class="fa-solid fa-file-excel"></i><span><strong>Excel Import</strong><small>Upload student records</small></span></button><button class="people-step" onclick="showPeopleStep('studentsTab',3,this)"><i class="fa-solid fa-users"></i><span><strong>Directory</strong><small>Search and manage</small></span></button><button class="people-step" onclick="showPeopleStep('studentsTab',4,this)"><i class="fa-solid fa-download"></i><span><strong>Export</strong><small>Download master data</small></span></button></div><div class="people-workflow-note"><span id="studentWorkspaceHint"><i class="fa-solid fa-circle-info"></i> Start by creating or reviewing a student profile.</span><span class="badge-tag">Student workspace</span></div></div>
 
         <!-- MODULE 1: ADD / EDIT STUDENT PROFILE -->
         <div class="editor-card">
@@ -2752,6 +2778,11 @@
       renderExecutiveDashboard();
     }
 
+    const PEOPLE_STEP_HINTS={staffTab:['Enter identity, employment, subjects and secure portal access.','Add only the extra columns required by your school ERP.','Import multiple staff records using the configured Excel headings.','Search, review, edit or remove registered staff.','Download a complete backup of faculty records.'],studentsTab:['Enter identity, guardian, class and secure portal access.','Add extra student fields such as house, route or scholarship.','Import multiple student records from Excel.','Search, review, edit or remove registered students.','Download a complete backup of student records.']};
+    function showPeopleStep(tabId,index,button,scroll=true){const tab=document.getElementById(tabId);if(!tab)return;const cards=[...tab.querySelectorAll(':scope > .editor-card')];cards.forEach((card,i)=>{card.classList.toggle('people-panel-hidden',i!==index);card.classList.toggle('people-panel-active',i===index)});tab.querySelectorAll('.people-step').forEach((btn,i)=>btn.classList.toggle('active',i===index));const hint=document.getElementById(tabId==='staffTab'?'staffWorkspaceHint':'studentWorkspaceHint');if(hint)hint.innerHTML='<i class="fa-solid fa-circle-info"></i> '+(PEOPLE_STEP_HINTS[tabId]?.[index]||'');if(scroll&&cards[index])cards[index].scrollIntoView({behavior:'smooth',block:'start'});refreshPeopleWorkspaceStats()}
+    function initializePeopleWorkspace(tabId){const tab=document.getElementById(tabId);if(!tab||tab.dataset.workspaceReady)return;tab.dataset.workspaceReady='true';showPeopleStep(tabId,0,tab.querySelector('.people-step'),false)}
+    function refreshPeopleWorkspaceStats(){const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};const staff=Array.isArray(staffStore)?staffStore:[],students=Array.isArray(studentStore)?studentStore:[];set('staffWorkspaceTotal',staff.length);set('staffWorkspaceTeaching',staff.filter(x=>String(x.category||'').toLowerCase()==='teaching').length);set('staffWorkspaceNonTeaching',staff.filter(x=>String(x.category||'').toLowerCase()!=='teaching').length);set('staffWorkspacePortal',staff.filter(x=>x.portalAccess!==false&&x.portalMobile).length);set('studentWorkspaceTotal',students.length);set('studentWorkspaceClasses',new Set(students.map(x=>String(x.grade||x.className||x.class||'').trim()).filter(Boolean)).size);set('studentWorkspacePortal',students.filter(x=>x.portalAccess!==false&&x.portalMobile).length);set('studentWorkspacePhotos',students.filter(x=>x.photoUrl||x.photoDataUrl||x.photo).length)}
+
     function switchTab(tabId, navBtn) {
       if(currentAccessProfile&&!permissionFor(tabId).view){alert('Your access profile does not permit this page.');return;}
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -2762,6 +2793,7 @@
       if (tabId === 'academicsTab') {
         initializeAcademicsPage();
       }
+      if (tabId === 'staffTab' || tabId === 'studentsTab') { initializePeopleWorkspace(tabId); refreshPeopleWorkspaceStats(); }
       if (tabId === 'attendanceTab') { mountAttendancePage(); renderFacultyAttendanceCenter(); }
       if (tabId === 'cameraTab') renderCameraControlCenter();
       if (tabId === 'principalMailboxTab') markPrincipalMailboxRead();
@@ -3320,6 +3352,7 @@
     function editStudent(rollId) {
       const s = studentStore.find(item => item.rollId === rollId);
       if (!s) return;
+      showPeopleStep('studentsTab',0,null,false);
 
       document.getElementById('editingStudentRollId').value = s.rollId;
       document.getElementById('studentRollId').value = s.rollId;
@@ -3794,6 +3827,7 @@
     function editStaff(empId) {
       const s = staffStore.find(item => item.empId === empId);
       if (!s) return;
+      showPeopleStep('staffTab',0,null,false);
 
       document.getElementById('editingStaffEmpId').value = s.empId;
       document.getElementById('staffEmpId').value = s.empId;
