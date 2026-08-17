@@ -799,6 +799,7 @@
       <li class="nav-item" onclick="switchTab('financeTab', this)"><i class="fa-solid fa-vault"></i> Financial Ledgers</li>
       <li class="nav-item" onclick="switchTab('noticesTab', this)"><i class="fa-solid fa-bullhorn"></i> Circulars & Alerts <span id="navPendingLeaveBadge" style="display:none;margin-left:auto;min-width:20px;padding:2px 6px;border-radius:999px;background:rgba(239,68,68,.16);color:#fca5a5;font-size:9px;text-align:center;"></span></li>
       <li class="nav-item" onclick="switchTab('principalMailboxTab', this)"><i class="fa-solid fa-inbox"></i> Mailbox <span id="principalMailboxBadge" style="display:none;margin-left:auto;min-width:20px;padding:2px 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:9px;text-align:center;"></span></li>
+      <li class="nav-item" onclick="switchTab('healthTab', this)"><i class="fa-solid fa-heart-pulse"></i> System Health</li>
       <li class="nav-item" onclick="switchTab('settingsTab', this)"><i class="fa-solid fa-gears"></i> System Settings</li>
     </ul>
 
@@ -1939,6 +1940,29 @@
       <!-- ====================================================================
            PAGE 08: SYSTEM SETTINGS & CONFIGURATIONS
            ==================================================================== -->
+      <div id="healthTab" class="tab-content">
+        <div class="section-header">
+          <div><div class="dashboard-kicker">Cloud Operations</div><h1>System Health & Cloud Services</h1><p>Verify the browser, GitHub deployment, Render server, live WebSocket connection, Supabase database and private file storage from one page.</p></div>
+          <button type="button" class="btn-primary" onclick="runSystemHealthChecks()"><i class="fa-solid fa-rotate"></i> Run All Tests</button>
+        </div>
+        <div id="healthSummary" class="editor-card" data-no-collapse style="border-color:rgba(201,162,75,.35)">
+          <div style="display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap"><div><h4 style="font-family:'Fraunces',serif;color:var(--brass-bright);margin-bottom:5px"><i class="fa-solid fa-stethoscope"></i> Overall Readiness</h4><p id="healthSummaryText" class="section-help" style="margin:0">Open this page and select Run All Tests.</p></div><div id="healthScore" style="font:700 28px 'JetBrains Mono',monospace;color:var(--text-muted)">—</div></div>
+          <div style="height:7px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-top:14px"><div id="healthScoreBar" style="height:100%;width:0;background:var(--brass);transition:width .35s ease"></div></div>
+          <div id="healthLastChecked" style="font-size:10px;color:var(--text-faint);margin-top:9px">Not checked yet</div>
+        </div>
+        <div id="healthServiceGrid" class="dashboard-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:14px"></div>
+        <div class="editor-card" data-no-collapse style="margin-top:14px">
+          <h4 style="font-family:'Fraunces',serif;color:var(--brass-bright)"><i class="fa-solid fa-screwdriver-wrench"></i> Recommendations & Corrective Actions</h4>
+          <p class="section-help">Only failed or incomplete services are listed here. Credentials are checked on the server and are never displayed.</p>
+          <div id="healthRecommendations"><div class="leave-empty">Run the tests to receive recommendations.</div></div>
+        </div>
+        <div class="editor-card" data-no-collapse style="margin-top:14px">
+          <h4 style="font-family:'Fraunces',serif;color:var(--brass-bright)"><i class="fa-solid fa-circle-info"></i> Deployment Information</h4>
+          <div id="healthDeploymentInfo" class="meta-list"><div class="leave-empty">Deployment information will appear after testing.</div></div>
+          <div class="leave-filter-note"><i class="fa-solid fa-shield-halved"></i> This diagnostic performs read-only checks. Supabase secret keys are never returned to the browser.</div>
+        </div>
+      </div>
+
       <div id="settingsTab" class="tab-content">
         <p class="section-eyebrow">Page 08 — System Administration</p>
         <h3 class="section-title">Console Configurations & Security Logs</h3>
@@ -2198,7 +2222,7 @@
     let cameraConfigurationsStore=JSON.parse(localStorage.getItem(CAMERA_CONFIG_KEY)||'[]');
     let cameraScheduleStore={scanStart:'08:00',scanEnd:'10:15',missedScan:'10:20',recountMinutes:15,defaultMode:'Classroom Privacy Mode',eventClips:true,privacyEnabled:true,...JSON.parse(localStorage.getItem(CAMERA_SCHEDULE_KEY)||'{}')};
     const ACCESS_PROFILES_KEY='pius_access_profiles', PORTAL_USERS_KEY='pius_portal_users';
-    const ACCESS_DEFINITION={dashboardTab:{label:'Dashboard',containers:{executive:'Executive Summary',search:'Faculty / Student Search',actions:'Action Required',operations:'Operational Overview',readiness:'Academic Readiness',quick:'Quick Actions'}},staffTab:{label:'Faculty & Staff',containers:{profiles:'Add / Edit Profiles',custom:'Custom Fields',import:'Excel Import',directory:'Staff Directory',export:'Export'}},studentsTab:{label:'Student Records',containers:{profiles:'Add / Edit Profiles',custom:'Custom Fields',import:'Excel Import',directory:'Student Directory',export:'Export'}},academicsTab:{label:'Academic Schedule',containers:{overview:'Academic Overview',calendar:'Calendar & Working Days',subjects:'Subject Configuration',classes:'Class / Division Management',timetable:'Timetable Engine'}},attendanceTab:{label:'Attendance & Leave',containers:{summary:'Attendance Summary',gps:'GPS Rules',manual:'Manual Correction',calendar:'Attendance Calendar',register:'Live Register',balances:'Leave Balances'}},cameraTab:{label:'Camera Controls',containers:{summary:'Camera Summary',register:'Register Camera',schedule:'Scan Schedule',grid:'Camera Grid',events:'AI Events & Health'}},financeTab:{label:'Financial Ledgers',containers:{entry:'Add Ledger Entry',history:'Ledger History'}},noticesTab:{label:'Circulars & Alerts',containers:{publish:'Publish Circular',history:'Circular History'}},principalMailboxTab:{label:'Mailbox & Approvals',containers:{mailbox:'Mailbox Messages'}},settingsTab:{label:'System Settings',containers:{console:'Console Configuration',users:'Authorized Users',history:'Login History',audit:'Audit Log'}}};
+    const ACCESS_DEFINITION={dashboardTab:{label:'Dashboard',containers:{executive:'Executive Summary',search:'Faculty / Student Search',actions:'Action Required',operations:'Operational Overview',readiness:'Academic Readiness',quick:'Quick Actions'}},staffTab:{label:'Faculty & Staff',containers:{profiles:'Add / Edit Profiles',custom:'Custom Fields',import:'Excel Import',directory:'Staff Directory',export:'Export'}},studentsTab:{label:'Student Records',containers:{profiles:'Add / Edit Profiles',custom:'Custom Fields',import:'Excel Import',directory:'Student Directory',export:'Export'}},academicsTab:{label:'Academic Schedule',containers:{overview:'Academic Overview',calendar:'Calendar & Working Days',subjects:'Subject Configuration',classes:'Class / Division Management',timetable:'Timetable Engine'}},attendanceTab:{label:'Attendance & Leave',containers:{summary:'Attendance Summary',gps:'GPS Rules',manual:'Manual Correction',calendar:'Attendance Calendar',register:'Live Register',balances:'Leave Balances'}},cameraTab:{label:'Camera Controls',containers:{summary:'Camera Summary',register:'Register Camera',schedule:'Scan Schedule',grid:'Camera Grid',events:'AI Events & Health'}},financeTab:{label:'Financial Ledgers',containers:{entry:'Add Ledger Entry',history:'Ledger History'}},noticesTab:{label:'Circulars & Alerts',containers:{publish:'Publish Circular',history:'Circular History'}},principalMailboxTab:{label:'Mailbox & Approvals',containers:{mailbox:'Mailbox Messages'}},healthTab:{label:'System Health',containers:{status:'Cloud Service Status',recommendations:'Corrective Recommendations',deployment:'Deployment Information'}},settingsTab:{label:'System Settings',containers:{console:'Console Configuration',users:'Authorized Users',history:'Login History',audit:'Audit Log'}}};
     function fullAccessPermissions(){const pages={};Object.entries(ACCESS_DEFINITION).forEach(([id,d])=>{pages[id]={view:true,edit:true,containers:{}};Object.keys(d.containers).forEach(k=>pages[id].containers[k]={view:true,edit:true})});return pages}
     function principalStarterPermissions(){const pages={};Object.entries(ACCESS_DEFINITION).forEach(([id,d])=>{pages[id]={view:false,edit:false,containers:{}};Object.keys(d.containers).forEach(k=>pages[id].containers[k]={view:false,edit:false})});pages.dashboardTab.view=true;pages.dashboardTab.containers.search={view:true,edit:false};pages.noticesTab.view=true;pages.noticesTab.containers.history={view:true,edit:false};return pages}
     let accessProfilesStore=JSON.parse(localStorage.getItem(ACCESS_PROFILES_KEY)||'null')||[{id:'main-admin',name:'Main Admin',description:'Protected full system access',protected:true,pages:fullAccessPermissions()},{id:'principal-view',name:'Principal View',description:'Starter view-only profile; Main Admin can customize it',protected:false,pages:principalStarterPermissions()}];
@@ -2663,7 +2687,31 @@
       if (tabId === 'attendanceTab') { mountAttendancePage(); renderFacultyAttendanceCenter(); }
       if (tabId === 'cameraTab') renderCameraControlCenter();
       if (tabId === 'principalMailboxTab') markPrincipalMailboxRead();
+      if (tabId === 'healthTab') runSystemHealthChecks();
       if (tabId === 'settingsTab') populateSelectiveDeleteClasses();
+    }
+
+    const HEALTH_LABELS={browser:'Browser & HTTPS',github:'GitHub Deployment',render:'Render Server',websocket:'Live WebSocket',supabaseDatabase:'Supabase Database',supabaseStorage:'Supabase Storage'};
+    const HEALTH_ICONS={browser:'fa-globe',github:'fa-code-branch',render:'fa-server',websocket:'fa-arrows-rotate',supabaseDatabase:'fa-database',supabaseStorage:'fa-box-archive'};
+    const HEALTH_FIXES={browser:'Open the portal using its HTTPS Render URL. Enable cookies/site storage and perform Ctrl+F5 if an old page is cached.',github:'Connect the correct GitHub repository and branch under Render Settings, then enable Auto-Deploy or deploy the latest commit manually.',render:'Check Render Events and Logs. Confirm the Start Command is node server.js and that the service is listening on process.env.PORT.',websocket:'Confirm the WebSocket server uses the same HTTP server, accepts wss:// traffic and is not blocked by a proxy or browser extension.',supabaseDatabase:'Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Render Environment. Run the supplied Supabase health SQL, then redeploy Render.',supabaseStorage:'Create a private Supabase bucket named portal-private, keep the service-role key only in Render, and redeploy the service.'};
+    function healthEscape(v){return escapeHtml(String(v??'—'))}
+    function healthStatusClass(status){return status==='ok'?'ok':status==='warning'?'warn':'bad'}
+    function renderHealthResults(report){
+      const checks=report.checks||{},keys=Object.keys(HEALTH_LABELS),passed=keys.filter(k=>checks[k]?.status==='ok').length,score=Math.round(passed/keys.length*100);
+      document.getElementById('healthScore').textContent=score+'%';document.getElementById('healthScore').style.color=score===100?'#34d399':score>=60?'#fbbf24':'#f87171';
+      document.getElementById('healthScoreBar').style.width=score+'%';document.getElementById('healthScoreBar').style.background=score===100?'#10b981':score>=60?'#f59e0b':'#ef4444';
+      document.getElementById('healthSummaryText').textContent=score===100?'All configured cloud services are active.':`${passed} of ${keys.length} services passed. Review the corrective actions below.`;
+      document.getElementById('healthLastChecked').textContent='Last checked '+new Date().toLocaleString()+' • Request '+healthEscape(report.requestId||'—');
+      document.getElementById('healthServiceGrid').innerHTML=keys.map(k=>{const c=checks[k]||{status:'error',message:'No result returned'},cls=healthStatusClass(c.status),label=c.status==='ok'?'ACTIVE':c.status==='warning'?'CHECK':'FAILED';return `<div class="dashboard-card" style="min-height:145px;border-color:${c.status==='ok'?'rgba(16,185,129,.32)':c.status==='warning'?'rgba(245,158,11,.32)':'rgba(239,68,68,.32)'}"><div style="display:flex;justify-content:space-between;gap:10px"><i class="fa-solid ${HEALTH_ICONS[k]}" style="color:var(--brass);font-size:18px"></i><span class="dash-status ${cls}">${label}</span></div><div class="label" style="margin-top:16px">${HEALTH_LABELS[k]}</div><div class="sub" style="margin-top:7px;line-height:1.5">${healthEscape(c.message)}</div>${c.latencyMs!=null?`<div style="margin-top:8px;font:10px 'JetBrains Mono';color:var(--text-faint)">${c.latencyMs} ms</div>`:''}</div>`}).join('');
+      const problems=keys.filter(k=>checks[k]?.status!=='ok');document.getElementById('healthRecommendations').innerHTML=problems.length?problems.map((k,i)=>`<div class="dash-row" style="align-items:flex-start"><span style="display:flex;gap:10px"><span class="badge-tag" style="color:#fbbf24">${i+1}</span><span><strong>${HEALTH_LABELS[k]}</strong><small style="display:block;color:var(--text-muted);line-height:1.55;margin-top:4px">${healthEscape(checks[k]?.recommendation||HEALTH_FIXES[k])}</small></span></span></div>`).join(''):'<div class="leave-empty" style="color:#34d399"><i class="fa-solid fa-circle-check"></i><br>All services passed. No corrective action is required.</div>';
+      const d=report.deployment||{};document.getElementById('healthDeploymentInfo').innerHTML=[['Environment',d.environment],['Service',d.serviceName],['Public URL',d.externalUrl||location.origin],['Git commit',d.gitCommit],['Git branch',d.gitBranch],['Server version',d.serverVersion],['Node.js',d.nodeVersion],['Server uptime',d.uptimeSeconds!=null?Math.floor(d.uptimeSeconds/60)+' minutes':'—'],['Connected portal clients',d.websocketClients]].map(([a,b])=>`<div class="meta-item"><strong>${healthEscape(a)}</strong><span>${healthEscape(b)}</span></div>`).join('');
+    }
+    async function runSystemHealthChecks(){
+      const button=document.querySelector('#healthTab .btn-primary');if(button){button.disabled=true;button.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Testing Services'}
+      document.getElementById('healthSummaryText').textContent='Testing browser, deployment, server and cloud services…';
+      const browser={status:(window.isSecureContext||location.hostname==='localhost')?'ok':'warning',message:(window.isSecureContext||location.hostname==='localhost')?'Secure browser connection and storage are available.':'Portal is not using a secure HTTPS connection.'};
+      try{localStorage.setItem('pius_health_probe','ok');localStorage.removeItem('pius_health_probe')}catch(e){browser.status='error';browser.message='Browser storage is blocked or full.'}
+      try{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000),start=performance.now(),res=await fetch('/api/system-health',{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});clearTimeout(timer);const data=await res.json();if(!res.ok)throw new Error(data.message||`HTTP ${res.status}`);data.checks={browser,...data.checks};data.checks.websocket=portalSocket?.readyState===WebSocket.OPEN?{status:'ok',message:`Browser WebSocket connected. ${data.deployment?.websocketClients??1} portal client(s) online.`}:{status:'error',message:'Browser WebSocket is not connected to the Render server.',recommendation:HEALTH_FIXES.websocket};if(data.checks.render)data.checks.render.latencyMs=Math.round(performance.now()-start);renderHealthResults(data)}catch(error){renderHealthResults({requestId:'local-'+Date.now(),checks:{browser,github:{status:'warning',message:'Deployment details could not be received.'},render:{status:'error',message:'Health endpoint is unavailable: '+error.message},websocket:{status:portalSocket?.readyState===WebSocket.OPEN?'ok':'error',message:portalSocket?.readyState===WebSocket.OPEN?'WebSocket is connected.':'WebSocket is disconnected.'},supabaseDatabase:{status:'error',message:'Not tested because the server health endpoint failed.'},supabaseStorage:{status:'error',message:'Not tested because the server health endpoint failed.'}},deployment:{environment:location.hostname==='localhost'?'Local':'Online',externalUrl:location.origin}})}finally{if(button){button.disabled=false;button.innerHTML='<i class="fa-solid fa-rotate"></i> Run All Tests'}}
     }
 
     function logAction(actionDescription) {
@@ -5499,7 +5547,8 @@
     return cards;
   }
 
-  function makeCollapsible(card){
+    function makeCollapsible(card){
+    if (card.hasAttribute('data-no-collapse')) return;
     if (card.dataset.collapsibleReady === '1') return;
     const heading = Array.from(card.children).find(el => el.matches('h4, .academic-card-heading'));
     if (!heading) return;
