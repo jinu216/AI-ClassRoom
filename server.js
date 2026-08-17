@@ -43,7 +43,10 @@ app.get('/api/system-health', async (req, res) => {
     supabaseStorage: { status:'error', message:'Supabase environment variables are not configured.', recommendation:'Add the Supabase credentials in Render and create a private bucket named portal-private.' }
   };
   if (supabaseUrl && supabaseKey) {
-    const headers = { apikey:supabaseKey, Authorization:`Bearer ${supabaseKey}`, Accept:'application/json' };
+    // New sb_secret_* keys authenticate through the apikey header. Legacy
+    // service_role JWT keys additionally use Authorization: Bearer.
+    const headers = { apikey:supabaseKey, Accept:'application/json' };
+    if (!supabaseKey.startsWith('sb_secret_')) headers.Authorization=`Bearer ${supabaseKey}`;
     const [dbResult, storageResult] = await Promise.allSettled([
       timedFetch(`${supabaseUrl}/rest/v1/portal_health_check?select=id,service_name&limit=1`, { headers }),
       timedFetch(`${supabaseUrl}/storage/v1/bucket`, { headers })
