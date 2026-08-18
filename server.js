@@ -123,6 +123,7 @@ let classTeacherAssignments = {};
 let timetableFolders = [];
 let portionProgress = [];
 let additionalDutyAssignments = [];
+let libraryResources = [];
 let attendanceSettings = { schoolName:'Pope Pius Academy', latitude:'', longitude:'', radiusMeters:150, gpsAccuracyMeters:100, checkInTime:'08:00', checkOutTime:'16:00', graceMinutes:10, minimumFullDayMinutes:420, halfDayMinutes:240, locationRequired:true };
 let attendanceRecords = [];
 let leaveRecords = [];
@@ -225,6 +226,7 @@ wss.on('connection', (ws) => {
       ,timetableFolders
       ,portionProgress
       ,additionalDutyAssignments
+      ,libraryResources
     }
   }));
 
@@ -283,6 +285,24 @@ wss.on('connection', (ws) => {
         case 'PORTION_PROGRESS_UPDATE':
           upsertById(portionProgress,data.payload);
           broadcast({type:'PORTION_PROGRESS_UPDATED',payload:portionProgress});
+          break;
+
+        case 'SYNC_LIBRARY_RESOURCES':
+          if (!Array.isArray(data.payload)) break;
+          data.payload.forEach(item => upsertById(libraryResources,item));
+          broadcast({type:'LIBRARY_RESOURCES_UPDATED',payload:libraryResources});
+          break;
+
+        case 'LIBRARY_RESOURCE_CREATE':
+        case 'LIBRARY_RESOURCE_UPDATE':
+          upsertById(libraryResources,data.payload);
+          broadcast({type:'LIBRARY_RESOURCE_UPDATED',payload:data.payload});
+          broadcast({type:'LIBRARY_RESOURCES_UPDATED',payload:libraryResources});
+          break;
+
+        case 'LIBRARY_RESOURCE_DELETE':
+          libraryResources=libraryResources.filter(x=>x.id!==data.payload?.id);
+          broadcast({type:'LIBRARY_RESOURCES_UPDATED',payload:libraryResources});
           break;
 
         case 'SYNC_ADDITIONAL_DUTIES':
