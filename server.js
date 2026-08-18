@@ -122,6 +122,7 @@ let studentMailbox = [];
 let classTeacherAssignments = {};
 let timetableFolders = [];
 let portionProgress = [];
+let additionalDutyAssignments = [];
 let attendanceSettings = { schoolName:'Pope Pius Academy', latitude:'', longitude:'', radiusMeters:150, gpsAccuracyMeters:100, checkInTime:'08:00', checkOutTime:'16:00', graceMinutes:10, minimumFullDayMinutes:420, halfDayMinutes:240, locationRequired:true };
 let attendanceRecords = [];
 let leaveRecords = [];
@@ -223,6 +224,7 @@ wss.on('connection', (ws) => {
       ,classTeacherAssignments
       ,timetableFolders
       ,portionProgress
+      ,additionalDutyAssignments
     }
   }));
 
@@ -281,6 +283,24 @@ wss.on('connection', (ws) => {
         case 'PORTION_PROGRESS_UPDATE':
           upsertById(portionProgress,data.payload);
           broadcast({type:'PORTION_PROGRESS_UPDATED',payload:portionProgress});
+          break;
+
+        case 'SYNC_ADDITIONAL_DUTIES':
+          if (!Array.isArray(data.payload)) break;
+          data.payload.forEach(item => upsertById(additionalDutyAssignments, item));
+          broadcast({ type:'ADDITIONAL_DUTIES_UPDATED', payload:additionalDutyAssignments });
+          break;
+
+        case 'ADDITIONAL_DUTY_CREATE':
+          upsertById(additionalDutyAssignments, data.payload);
+          broadcast({ type:'ADDITIONAL_DUTY_UPDATED', payload:data.payload });
+          broadcast({ type:'ADDITIONAL_DUTIES_UPDATED', payload:additionalDutyAssignments });
+          break;
+
+        case 'ADDITIONAL_DUTY_DECISION':
+          upsertById(additionalDutyAssignments, data.payload);
+          broadcast({ type:'ADDITIONAL_DUTY_UPDATED', payload:data.payload });
+          broadcast({ type:'ADDITIONAL_DUTIES_UPDATED', payload:additionalDutyAssignments });
           break;
 
         case 'STUDENT_LOGIN_LOOKUP': {
