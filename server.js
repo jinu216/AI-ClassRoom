@@ -2,16 +2,94 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+
+app.use(express.json({ limit: '12mb' }));
+
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession:false, autoRefreshToken:false, detectSessionInUrl:false }
+    })
+  : null;
+
+const CLOUD_KEY_PATTERN = /^pius_[A-Za-z0-9_.:+-]{1,180}$/;
+const LOCAL_ONLY_KEY_PATTERN = /(password|login_grant|preview_|health_probe|_read_|_seen_|_undo|review_drafts|active_step)/i;
+function validCloudKey(key) {
+  return CLOUD_KEY_PATTERN.test(String(key || '')) && !LOCAL_ONLY_KEY_PATTERN.test(String(key || ''));
+}
+function requestActor(req) {
+  return String(req.get('x-portal-actor') || 'portal-user').slice(0,120);
+}
+function cloudUnavailable(res) {
+  return res.status(503).json({ ok:false, error:'Supabase cloud storage is not configured on the server.' });
+}
 
 // Serve the public folder through both URL styles used by the project.
 const publicDir = path.join(__dirname, 'public');
 app.use('/public', express.static(publicDir));
 app.use(express.static(publicDir));
 app.get('/', (req, res) => res.redirect('/public/principal.html'));
+
+// Central portal state. Supabase is authoritative; browsers only keep a cache.
+app.get('/api/cloud-state', async (req, res) => {
+  if (!supabase) return cloudUnavailable(res);
+  res.set('Cache-Control', 'no-store');
+  const { data, error } = await supabase
+    .from('portal_state')
+    .select('state_key,state_value,version,updated_at')
+    .order('state_key');
+  if (error) return res.status(502).json({ ok:false, error:'Cloud data could not be loaded.', detail:error.message });
+  const records = {};
+  for (const row of data || []) {
+    if (validCloudKey(row.state_key)) records[row.state_key] = {
+      value:row.state_value,
+      version:Number(row.version || 1),
+      updatedAt:row.updated_at
+    };
+  }
+  res.json({ ok:true, records, checkedAt:new Date().toISOString() });
+});
+
+app.put('/api/cloud-state/:key', async (req, res) => {
+  if (!supabase) return cloudUnavailable(res);
+  const key = decodeURIComponent(req.params.key || '');
+  if (!validCloudKey(key)) return res.status(400).json({ ok:false, error:'This browser-only key cannot be stored in the cloud.' });
+  if (!Object.prototype.hasOwnProperty.call(req.body || {}, 'value')) return res.status(400).json({ ok:false, error:'A value is required.' });
+  const actor = requestActor(req);
+  const { data:existing, error:readError } = await supabase
+    .from('portal_state').select('version').eq('state_key',key).maybeSingle();
+  if (readError) return res.status(502).json({ ok:false, error:'Cloud version could not be checked.', detail:readError.message });
+  const requestedVersion = Number(req.body.baseVersion || 0);
+  const currentVersion = Number(existing?.version || 0);
+  if (requestedVersion && currentVersion && requestedVersion !== currentVersion) {
+    return res.status(409).json({ ok:false, conflict:true, currentVersion, error:'A newer cloud copy already exists.' });
+  }
+  const nextVersion = currentVersion + 1;
+  const row = { state_key:key, state_value:req.body.value, version:nextVersion, updated_by:actor, updated_at:new Date().toISOString() };
+  const { data, error } = await supabase.from('portal_state').upsert(row,{onConflict:'state_key'}).select('version,updated_at').single();
+  if (error) return res.status(502).json({ ok:false, error:'Cloud data could not be saved.', detail:error.message });
+  await supabase.from('portal_audit_log').insert({ action:'state.upsert', entity_type:'portal_state', entity_id:key, actor, metadata:{version:data.version} });
+  broadcast({ type:'CLOUD_STATE_UPDATED', payload:{ key, value:req.body.value, version:data.version, updatedAt:data.updated_at, source:req.get('x-portal-client') || '' } });
+  res.json({ ok:true, key, version:data.version, updatedAt:data.updated_at });
+});
+
+app.delete('/api/cloud-state/:key', async (req, res) => {
+  if (!supabase) return cloudUnavailable(res);
+  const key = decodeURIComponent(req.params.key || '');
+  if (!validCloudKey(key)) return res.status(400).json({ ok:false, error:'Invalid cloud key.' });
+  const actor = requestActor(req);
+  const { error } = await supabase.from('portal_state').delete().eq('state_key',key);
+  if (error) return res.status(502).json({ ok:false, error:'Cloud data could not be removed.', detail:error.message });
+  await supabase.from('portal_audit_log').insert({ action:'state.delete', entity_type:'portal_state', entity_id:key, actor });
+  broadcast({ type:'CLOUD_STATE_DELETED', payload:{key,source:req.get('x-portal-client') || ''} });
+  res.json({ok:true,key});
+});
 
 // Read-only cloud diagnostics used by the Principal System Health page.
 // Secrets are used only on the server and are never included in the response.
@@ -128,6 +206,33 @@ let attendanceSettings = { schoolName:'Pope Pius Academy', latitude:'', longitud
 let attendanceRecords = [];
 let leaveRecords = [];
 
+async function hydrateSharedStateFromCloud() {
+  if (!supabase) return;
+  const keys = [
+    'pius_staff_data','pius_students_data','pius_profile_verification_requests',
+    'pius_student_profile_requests','pius_student_leave_records',
+    'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
+    'pius_additional_duty_assignments','pius_digital_library_resources',
+    'pius_attendance_settings','pius_attendance_records','pius_leave_records'
+  ];
+  const { data, error } = await supabase.from('portal_state').select('state_key,state_value').in('state_key',keys);
+  if (error) { console.error('Supabase shared-state hydration failed:', error.message); return; }
+  const value = key => (data || []).find(row => row.state_key === key)?.state_value;
+  if (Array.isArray(value('pius_staff_data'))) portalStaff=value('pius_staff_data');
+  if (Array.isArray(value('pius_students_data'))) portalStudents=value('pius_students_data');
+  if (Array.isArray(value('pius_profile_verification_requests'))) profileVerificationRequests=value('pius_profile_verification_requests');
+  if (Array.isArray(value('pius_student_profile_requests'))) studentProfileRequests=value('pius_student_profile_requests');
+  if (Array.isArray(value('pius_student_leave_records'))) studentLeaveRecords=value('pius_student_leave_records');
+  if (value('pius_class_teacher_assignments') && typeof value('pius_class_teacher_assignments') === 'object') classTeacherAssignments=value('pius_class_teacher_assignments');
+  if (Array.isArray(value('pius_timetable_folders'))) timetableFolders=value('pius_timetable_folders');
+  if (Array.isArray(value('pius_portion_progress'))) portionProgress=value('pius_portion_progress');
+  if (Array.isArray(value('pius_additional_duty_assignments'))) additionalDutyAssignments=value('pius_additional_duty_assignments');
+  if (Array.isArray(value('pius_digital_library_resources'))) libraryResources=value('pius_digital_library_resources');
+  if (value('pius_attendance_settings') && typeof value('pius_attendance_settings') === 'object') attendanceSettings=value('pius_attendance_settings');
+  if (Array.isArray(value('pius_attendance_records'))) attendanceRecords=value('pius_attendance_records');
+  if (Array.isArray(value('pius_leave_records'))) leaveRecords=value('pius_leave_records');
+}
+
 function upsertById(list, item) {
   if (!item || !item.id) return;
   const index = list.findIndex(x => x.id === item.id);
@@ -202,8 +307,11 @@ function broadcast(data) {
 // ====================================================================
 // 2. WEBSOCKET REAL-TIME ENGINE
 // ====================================================================
-wss.on('connection', (ws) => {
+wss.on('connection', async (ws) => {
   console.log('Client connected.');
+
+  await hydrateSharedStateFromCloud();
+  if (ws.readyState !== WebSocket.OPEN) return;
 
   // Send current state instantly on new connection
   ws.send(JSON.stringify({
