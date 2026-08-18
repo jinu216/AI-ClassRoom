@@ -125,15 +125,17 @@ app.get('/api/system-health', async (req, res) => {
     // service_role JWT keys additionally use Authorization: Bearer.
     const headers = { apikey:supabaseKey, Accept:'application/json' };
     if (!supabaseKey.startsWith('sb_secret_')) headers.Authorization=`Bearer ${supabaseKey}`;
+    const databaseStarted=Date.now();
     const [dbResult, storageResult] = await Promise.allSettled([
-      timedFetch(`${supabaseUrl}/rest/v1/portal_health_check?select=id,service_name&limit=1`, { headers }),
+      supabase.from('portal_health_check').select('id,service_name').limit(1),
       timedFetch(`${supabaseUrl}/storage/v1/bucket`, { headers })
     ]);
     if (dbResult.status === 'fulfilled') {
-      const { response, latencyMs } = dbResult.value;
-      if (response.ok) checks.supabaseDatabase={status:'ok',message:'Database connection and health table are available.',latencyMs};
-      else if (response.status===404) checks.supabaseDatabase={status:'warning',message:'Supabase responded, but portal_health_check is missing.',latencyMs,recommendation:'Run supabase-health-setup.sql in the Supabase SQL Editor, then test again.'};
-      else checks.supabaseDatabase={status:'error',message:`Supabase database returned HTTP ${response.status}.`,latencyMs,recommendation:'Verify the Supabase URL/key in Render and confirm the portal_health_check table is accessible.'};
+      const { error, status } = dbResult.value;
+      const latencyMs=Date.now()-databaseStarted;
+      if (!error) checks.supabaseDatabase={status:'ok',message:'Database connection and health table are available.',latencyMs};
+      else if (status===404||error.code==='PGRST205') checks.supabaseDatabase={status:'warning',message:'Supabase responded, but portal_health_check is missing.',latencyMs,recommendation:'Run supabase-portal-schema.sql in the Supabase SQL Editor, then test again.'};
+      else checks.supabaseDatabase={status:'error',message:`Supabase database check failed${status?' (HTTP '+status+')':''}.`,latencyMs,recommendation:'Verify the Supabase server key and portal_health_check permissions in Render and Supabase.'};
     } else checks.supabaseDatabase={status:'error',message:safeServiceError(dbResult.reason),recommendation:'Verify SUPABASE_URL, Render outbound connectivity and the Supabase project status.'};
     if (storageResult.status === 'fulfilled') {
       const { response, latencyMs } = storageResult.value;
