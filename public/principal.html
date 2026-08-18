@@ -5552,6 +5552,83 @@
       }
       throw new Error(`${bestFailure} The system tried ${maxAttempts} complete school-wide arrangements. Check Faculty KPI for duplicate Class Teachers, exact subject qualifications or a teacher assigned to too many class/subject blocks.`)
     }
+
+    /*
+      Deterministic school-wide timetable matcher.
+
+      After the five Class Teacher first periods are fixed, every division has
+      the same number of unfilled cells. For each remaining cell this matcher
+      creates one complete class-to-teacher matching. A teacher whose remaining
+      demand equals the remaining number of cells is mandatory in the current
+      matching; reserving that teacher prevents the late-Friday dead ends that
+      occurred in the former random 300-attempt generator.
+    */
+    function buildSchoolwideTimetableDraftsDeterministic(divisions){
+      const days=(academicSettingsStore.workingDays||[]).filter(Boolean),slots=buildDailySlots(academicSettingsStore),periods=slots.filter(s=>s.type==='period');
+      if(!days.length||!periods.length)throw new Error('Configure working days and teaching periods first.');
+      const capacity=days.length*periods.length;
+      const base=divisions.map(d=>{
+        const subjects=(classSubjectsStore[d.className]||[]).filter(s=>String(s.subject||'').trim()&&(parseInt(s.periodsPerWeek)||0)>0),total=subjects.reduce((n,s)=>n+(parseInt(s.periodsPerWeek)||0),0),ct=getTeacherForDivision(d.className,d.division);
+        if(!subjects.length)throw new Error(`${d.className}: no subjects configured`);
+        if(total!==capacity)throw new Error(`${d.className}: ${total} subject periods configured but ${capacity} are required`);
+        if(!ct)throw new Error(`${d.className} — ${d.division}: no Class Teacher assigned`);
+        const invalid=subjects.find(s=>!s.teacherEmpId||!staffStore.some(t=>String(t.empId)===String(s.teacherEmpId)&&t.profileActive!==false&&teacherQualifiedForSubject(t,s.subject)));
+        if(invalid)throw new Error(`${d.className} — ${invalid.subject}: assign an active, exactly qualified teacher`);
+        return{...d,key:classKey(d.className,d.division),ct,subjects};
+      });
+      const records=base.map(r=>({data:r,remaining:r.subjects.map(s=>({...s,remaining:parseInt(s.periodsPerWeek)||0})),grid:Object.fromEntries(days.map(day=>[day,{}])),dayCounts:Object.fromEntries(days.map(day=>[day,{}])),replaced:[]}));
+      const first=periods[0],firstBusy=new Set();
+      for(const rec of records){
+        const {ct,key}=rec.data;
+        for(const day of days){
+          const busy=`${ct.empId}|${day}|${first.index}`;
+          if(firstBusy.has(busy))throw new Error(`${ct.name} is Class Teacher for more than one division at ${day} Period ${first.index}. Assign a unique Class Teacher to every division.`);
+          firstBusy.add(busy);
+          const target=rec.remaining.find(s=>String(s.teacherEmpId)===String(ct.empId)&&s.remaining>0);
+          const chosen=target||rec.remaining.filter(s=>s.remaining>0).sort((a,b)=>b.remaining-a.remaining||String(a.subject).localeCompare(String(b.subject)))[0];
+          if(!chosen)throw new Error(`${rec.data.className} — ${rec.data.division}: no subject capacity is available for the Class Teacher first period.`);
+          chosen.remaining--;rec.dayCounts[day][chosen.id]=(rec.dayCounts[day][chosen.id]||0)+1;
+          rec.grid[day][first.index]={subject:target?chosen.subject:'Class Teacher Period',teacherName:ct.name,teacherEmpId:ct.empId,classTeacherFirstPeriod:true,replacedSubject:target?'':chosen.subject};
+          if(!target)rec.replaced.push(`${day}: ${chosen.subject}`);
+        }
+      }
+      const remainingCells=[];days.forEach(day=>periods.filter(p=>p.index!==first.index).forEach(period=>remainingCells.push({day,period})));
+      for(let cellIndex=0;cellIndex<remainingCells.length;cellIndex++){
+        const cell=remainingCells[cellIndex],slotsLeft=remainingCells.length-cellIndex,teacherRemaining=new Map();
+        records.forEach(rec=>rec.remaining.forEach(s=>{if(s.remaining>0){const id=String(s.teacherEmpId);teacherRemaining.set(id,(teacherRemaining.get(id)||0)+s.remaining)}}));
+        const overloaded=[...teacherRemaining].filter(([,n])=>n>slotsLeft);
+        if(overloaded.length)throw new Error(`Teacher demand cannot fit the ${slotsLeft} remaining school slot(s): ${overloaded.map(([id,n])=>`${staffStore.find(t=>String(t.empId)===id)?.name||id} needs ${n}`).join(', ')}. Use Policy-Based Reassignment.`);
+        const mandatory=new Set([...teacherRemaining].filter(([,n])=>n===slotsLeft).map(([id])=>id));
+        const solve=(pending,used,required)=>{
+          if(!pending.length)return required.size===0;
+          for(const teacherId of required){
+            if(!pending.some(rec=>rec.remaining.some(s=>s.remaining>0&&String(s.teacherEmpId)===teacherId&&!used.has(teacherId))))return false;
+          }
+          let selected=null,options=[];
+          for(const rec of pending){
+            const candidates=rec.remaining.filter(s=>s.remaining>0&&!used.has(String(s.teacherEmpId)));
+            if(!selected||candidates.length<options.length||candidates.length===options.length&&candidates.filter(s=>required.has(String(s.teacherEmpId))).length>options.filter(s=>required.has(String(s.teacherEmpId))).length){selected=rec;options=candidates}
+          }
+          if(!selected||!options.length)return false;
+          options=options.slice().sort((a,b)=>Number(required.has(String(b.teacherEmpId)))-Number(required.has(String(a.teacherEmpId)))||(teacherRemaining.get(String(b.teacherEmpId))||0)-(teacherRemaining.get(String(a.teacherEmpId))||0)||b.remaining-a.remaining||String(a.subject).localeCompare(String(b.subject)));
+          const rest=pending.filter(rec=>rec!==selected);
+          for(const chosen of options){
+            const teacherId=String(chosen.teacherEmpId),nextRequired=new Set(required);nextRequired.delete(teacherId);used.add(teacherId);chosen.remaining--;selected.dayCounts[cell.day][chosen.id]=(selected.dayCounts[cell.day][chosen.id]||0)+1;selected.grid[cell.day][cell.period.index]={subject:chosen.subject,teacherName:chosen.teacherName||staffStore.find(t=>String(t.empId)===teacherId)?.name||teacherId,teacherEmpId:chosen.teacherEmpId};
+            if(solve(rest,used,nextRequired))return true;
+            delete selected.grid[cell.day][cell.period.index];selected.dayCounts[cell.day][chosen.id]--;chosen.remaining++;used.delete(teacherId);
+          }
+          return false;
+        };
+        if(!solve(records.slice(),new Set(),mandatory)){
+          const constrained=[...teacherRemaining].sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,n])=>`${staffStore.find(t=>String(t.empId)===id)?.name||id}: ${n}/${slotsLeft}`).join(', ');
+          throw new Error(`Deterministic matching stopped at ${cell.day} Period ${cell.period.index}. Highest remaining teacher demands: ${constrained}. Review these exact teacher assignments in Faculty KPI.`);
+        }
+      }
+      const left=records.flatMap(r=>r.remaining.filter(s=>s.remaining>0).map(s=>`${r.data.className} — ${r.data.division} — ${s.subject}: ${s.remaining}`));
+      if(left.length)throw new Error(`Unscheduled subject periods remained: ${left.slice(0,10).join(', ')}`);
+      return records.map((r,i)=>({id:`TT-${Date.now()+i}-${sanitizeFileName(r.data.className)}-${sanitizeFileName(r.data.division)}`,classKey:r.data.key,className:r.data.className,division:r.data.division,classTeacher:r.data.ct.name,classTeacherEmpId:r.data.ct.empId,recipientTeacherEmpIds:[...new Set([r.data.ct.empId,...r.data.subjects.map(s=>s.teacherEmpId)].filter(Boolean))],recipientStudentIds:studentStore.filter(s=>String(s.grade||s.className||'').trim()===r.data.className&&String(s.section||s.division||'').trim()===r.data.division).map(s=>s.rollId||s.admissionNo||s.studentId).filter(Boolean),settings:JSON.parse(JSON.stringify(academicSettingsStore)),slots,grid:r.grid,createdAt:new Date().toISOString(),autoGenerated:true,published:false,status:'Principal Review',generatorVersion:'schoolwide-deterministic-matching-v5',classTeacherReplacements:r.replaced}));
+    }
+    buildSchoolwideTimetableDrafts=buildSchoolwideTimetableDraftsDeterministic;
     function renderGenerationFailureInKpi(message,divisions){const box=document.getElementById('facultyKpiCapacityPanel');if(!box)return;let panel=document.getElementById('schoolwideGenerationDiagnostic');if(!panel){panel=document.createElement('div');panel.id='schoolwideGenerationDiagnostic';panel.className='editor-card';panel.style.cssText='margin-top:14px;border-color:var(--danger-bright)';box.prepend(panel)}panel.innerHTML=`<div class="academic-card-heading"><div><h4><i class="fa-solid fa-triangle-exclamation"></i> School-Wide Generation Diagnostic</h4><p>The existing published timetable and review drafts were not changed.</p></div><span class="badge-tag">${divisions} division(s) checked</span></div><div class="calculation-badge" style="border-color:var(--danger-bright)">${escapeHtml(message)}</div><div class="calculation-badge" style="margin-top:10px"><strong>Automatic checks:</strong><div>1. Every class must total exactly the weekly timetable capacity.</div><div>2. Every subject must have an active, exactly qualified teacher.</div><div>3. One Class Teacher cannot own two divisions.</div><div>4. A teacher cannot be assigned to two classes in the same period.</div><div>5. Use Policy-Based Reassignment when a teacher owns too many class/subject blocks.</div></div>`}
     generateAllClassDivisionTimetables=function(){try{saveAcademicSettings();const divisions=buildAutoClassDivisions();if(!divisions.length)return alert('No Class / Division records were created from student data. Check student Class and Division fields.');ensureClassTeachersForTimetable(divisions);const classTeacherChanges=autoRepairClassTeacherAssignments(divisions),balance=applyAutomaticPolicyTeacherBalance();if(balance.unresolved.length)throw new Error(balance.unresolved.join('; '));const aligned=alignClassTeachersWithSubjects(divisions,balance),check=runTeacherSubjectCapacityAnalysis(false);if(!check.ready){if(confirm('Automatic teacher and Class Teacher balancing completed, but structural staffing or subject-allocation issues remain. Open Faculty KPI for the exact solution?'))openFacultyKpiCapacity();return}const generated=buildSchoolwideTimetableDrafts(divisions,300);timetableDraftsStore=generated;saveTimetableDraftState();generatedTimetable=generated[0];const select=document.getElementById('timetable-class-select');if(select)select.value=generated[0].classKey;prepareTimetableClass();renderGeneratedTimetable();logAction(`Generated a complete school-wide set of ${generated.length} timetable review drafts`);const automaticCount=classTeacherChanges.length+balance.changes.length+aligned.length;alert(`Complete school-wide generation succeeded. ${generated.length} of ${divisions.length} class/division timetables were created as Principal review drafts.${automaticCount?`\n\nThe system automatically completed ${automaticCount} teacher/Class Teacher allocation adjustment(s).`:''}\n\nReview the drafts and press Send Selected Timetables when approved.`)}catch(error){console.error(error);const divisionCount=buildAutoClassDivisions().length;renderGenerationFailureInKpi(error.message,divisionCount);if(confirm(`No partial timetable set was saved.\n\n${error.message}\n\nOpen Faculty KPI for the diagnostic and solution?`)){openFacultyKpiCapacity();setTimeout(()=>renderGenerationFailureInKpi(error.message,divisionCount),250)}}};
     function sendReviewedTimetables(){if(!timetableDraftsStore.length)return alert('No reviewed timetable drafts are available.');const audience=document.getElementById('timetableSendAudience')?.value||'all',className=document.getElementById('timetableSendClass')?.value||'',division=document.getElementById('timetableSendDivision')?.value||'';if(['class','division'].includes(audience)&&!className)return alert('Select a class first.');if(audience==='division'&&!division)return alert('Select a division first.');let selected=timetableDraftsStore.filter(d=>audience==='class'?d.className===className:audience==='division'?d.className===className&&d.division===division:true);if(!selected.length)return alert('No matching timetable drafts were found.');const labels={all:'all concerned students and faculty',class:`${className} — all divisions`,division:`${className} — ${division}`,faculty:'all subject faculty',classTeachers:'Class Teachers only'};if(!confirm(`Send ${selected.length} reviewed timetable(s) to ${labels[audience]}?`))return;const now=new Date().toISOString(),published=selected.map(d=>({...d,published:true,status:'Published',publishedAt:now,publicationAudience:audience,recipientStudentIds:['faculty','classTeachers'].includes(audience)?[]:d.recipientStudentIds,recipientTeacherEmpIds:audience==='classTeachers'?[d.classTeacherEmpId].filter(Boolean):d.recipientTeacherEmpIds,notification:{title:'New timetable published',message:`${d.className} — ${d.division} timetable is now available.`,createdAt:now}}));published.forEach(record=>{const i=timetableFoldersStore.findIndex(x=>x.classKey===record.classKey);if(i>=0)timetableFoldersStore[i]=record;else timetableFoldersStore.unshift(record)});StorageAdapter.saveTimetableFolders(timetableFoldersStore);const sentIds=new Set(selected.map(x=>x.id));timetableDraftsStore=timetableDraftsStore.filter(x=>!sentIds.has(x.id));saveTimetableDraftState();renderClassFolders();renderTimetableAnalysis();logAction(`Published ${published.length} timetable(s) to ${labels[audience]}`);alert(`${published.length} timetable(s) sent successfully to ${labels[audience]}. Faculty and student portals will receive the published timetable through portal synchronization.`)}
