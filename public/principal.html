@@ -502,6 +502,31 @@
       gap: 12px;
     }
 
+    .student-class-directory { display: grid; gap: 20px; }
+    .student-class-group { border: 1px solid var(--hairline-strong); border-radius: 14px; overflow: hidden; background: var(--panel-soft); }
+    .student-class-heading { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:16px 18px; background:linear-gradient(135deg,rgba(201,162,75,.15),rgba(201,162,75,.035)); border-bottom:1px solid var(--hairline-strong); }
+    .student-class-heading h4 { font-family:'Fraunces',serif; color:var(--brass-bright); font-size:20px; margin:0; }
+    .student-class-summary { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; }
+    .class-teacher-strip { padding:14px 18px; border-bottom:1px solid var(--hairline); background:rgba(255,255,255,.018); }
+    .class-teacher-strip-title { color:var(--text-muted); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-bottom:9px; }
+    .class-teacher-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:9px; }
+    .class-teacher-card { display:flex; align-items:center; gap:10px; min-height:58px; padding:10px 12px; border-radius:10px; border:1px solid var(--hairline-strong); background:var(--panel); }
+    .class-teacher-card.unassigned { border-style:dashed; color:var(--text-faint); }
+    .class-teacher-avatar { width:38px; height:38px; border-radius:50%; object-fit:cover; border:1px solid var(--brass-dim); flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:var(--panel-soft); color:var(--brass-bright); }
+    .class-teacher-card strong { display:block; color:var(--text-primary); font-size:13px; }
+    .class-teacher-card small { color:var(--text-muted); font-size:10.5px; }
+    .student-division-group { padding:15px 18px 3px; }
+    .student-division-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:11px; padding-bottom:8px; border-bottom:1px solid var(--hairline); }
+    .student-division-heading h5 { margin:0; color:var(--text-primary); font-size:14px; }
+    .student-class-group .staff-card { margin-bottom:12px; background:var(--panel); }
+
+    @media (max-width: 720px) {
+      .student-class-heading { align-items:flex-start; flex-direction:column; }
+      .student-class-summary { justify-content:flex-start; }
+      .student-class-heading,.class-teacher-strip,.student-division-group { padding-left:12px; padding-right:12px; }
+      .class-teacher-list { grid-template-columns:1fr; }
+    }
+
     .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; width: 100%; }
     .staff-details h4 { font-family: 'Fraunces', serif; font-size: 17px; color: var(--text-primary); }
     
@@ -3551,62 +3576,15 @@
     }
 
     function renderStudents() {
-      const container = document.getElementById('studentRosterList');
-      if (!container) return;
-
-      const query = document.getElementById('studentSearchInput') ? document.getElementById('studentSearchInput').value.toLowerCase() : '';
-      const filtered = studentStore.filter(s => 
-        s.name.toLowerCase().includes(query) || 
-        s.rollId.toLowerCase().includes(query) || 
-        (s.fatherName && s.fatherName.toLowerCase().includes(query)) ||
-        s.grade.toLowerCase().includes(query) ||
-        String(s.portalMobile || '').toLowerCase().includes(query)
-      );
-
-      if (filtered.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">No student records found matching search query.</p>';
-        return;
-      }
-
-      container.innerHTML = filtered.map(s => {
-        let customBadges = '';
-        if (s.customData) {
-          for (let key in s.customData) {
-            if (s.customData[key]) {
-              customBadges += `<span class="badge-tag">${key}: ${s.customData[key]}</span> `;
-            }
-          }
-        }
-
-        return `
-          <div class="staff-card">
-            <div class="card-top-row">
-              <div style="display: flex; gap: 14px; align-items: flex-start;">
-                ${s.photoUrl ? `<img src="${s.photoUrl}" class="staff-avatar-thumb">` : `<div class="staff-avatar-thumb" style="display:flex;align-items:center;justify-content:center;background:#111;color:#666;font-size:10px;">No Photo</div>`}
-                <div class="staff-details">
-                  <h4>${s.name} <span style="font-size:12px; font-weight:normal; color:var(--brass-bright);">(${s.rollId})</span></h4>
-                  <div class="badge-tag">Class: ${s.grade} — ${s.section} | Joined: ${s.joined}</div>
-                  <div class="meta-list">
-                    <span><i class="fa-solid fa-user"></i> Father: ${s.fatherName || 'N/A'}</span>
-                    <span><i class="fa-solid fa-cake-candles"></i> DOB: ${s.dob || 'N/A'}</span>
-                    <span><i class="fa-solid fa-location-dot"></i> ${s.address || 'N/A'}</span>
-                    <span><i class="fa-solid fa-envelope"></i> ${s.email}</span>
-                    <span><i class="fa-solid fa-phone"></i> ${s.phone}</span>
-                    <span><i class="fa-solid fa-mobile-screen-button"></i> Portal: ${s.portalMobile || 'Not registered'} ${s.portalAccess === false ? '<span class="status-badge status-offline">Portal Disabled</span>' : '<span class="status-badge status-online">Portal Enabled</span>'}</span>
-                    ${customBadges}
-                  </div>
-                </div>
-              </div>
-              <div class="card-actions">
-                <button class="btn-secondary" onclick="openPortalForRecord('student','${s.rollId}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Portal</button>
-                <button class="${s.portalAccess===false?'btn-success':'btn-secondary'}" onclick="toggleIndividualProfile('student','${s.rollId}')"><i class="fa-solid ${s.portalAccess===false?'fa-circle-check':'fa-circle-pause'}"></i> ${s.portalAccess===false?'Activate':'Deactivate'}</button>
-                <button class="btn-edit" onclick="editStudent('${s.rollId}')"><i class="fa-solid fa-pen"></i> Edit</button>
-                <button class="btn-delete" onclick="deleteStudent('${s.rollId}')"><i class="fa-solid fa-trash"></i> Delete</button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
+      const container=document.getElementById('studentRosterList');if(!container)return;
+      const query=String(document.getElementById('studentSearchInput')?.value||'').trim().toLowerCase();
+      const filtered=studentStore.filter(s=>[s.name,s.rollId,s.fatherName,s.grade,s.section,s.portalMobile].some(v=>String(v||'').toLowerCase().includes(query)));
+      if(!filtered.length){container.innerHTML='<p style="color:var(--text-faint);font-size:13px;">No student records found matching the search.</p>';return}
+      const groups=new Map();filtered.forEach(s=>{const className=String(s.grade||s.className||'Class Not Assigned').trim()||'Class Not Assigned',division=String(s.section||s.division||'Division Pending').trim()||'Division Pending';if(!groups.has(className))groups.set(className,new Map());if(!groups.get(className).has(division))groups.get(className).set(division,[]);groups.get(className).get(division).push(s)});
+      const assignments=getClassTeacherAssignments();
+      const studentCard=s=>{const encodedId=encodeURIComponent(String(s.rollId||''));let customBadges='';Object.entries(s.customData||{}).forEach(([key,value])=>{if(value)customBadges+=`<span class="badge-tag">${escapeHtml(key)}: ${escapeHtml(value)}</span> `});return `<div class="staff-card"><div class="card-top-row"><div style="display:flex;gap:14px;align-items:flex-start;">${s.photoUrl?`<img src="${escapeHtml(s.photoUrl)}" class="staff-avatar-thumb" alt="${escapeHtml(s.name||'Student')}">`:`<div class="staff-avatar-thumb" style="display:flex;align-items:center;justify-content:center;background:#111;color:#666;font-size:10px;">No Photo</div>`}<div class="staff-details"><h4>${escapeHtml(s.name||'Unnamed Student')} <span style="font-size:12px;font-weight:normal;color:var(--brass-bright);">(${escapeHtml(s.rollId||'ID Pending')})</span></h4><div class="badge-tag">${escapeHtml(s.grade||'Class Pending')} — ${escapeHtml(s.section||'Division Pending')} | Joined: ${escapeHtml(s.joined||'N/A')}</div><div class="meta-list"><span><i class="fa-solid fa-user"></i> Father: ${escapeHtml(s.fatherName||'N/A')}</span><span><i class="fa-solid fa-cake-candles"></i> DOB: ${escapeHtml(s.dob||'N/A')}</span><span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(s.address||'N/A')}</span><span><i class="fa-solid fa-envelope"></i> ${escapeHtml(s.email||'N/A')}</span><span><i class="fa-solid fa-phone"></i> ${escapeHtml(s.phone||'N/A')}</span><span><i class="fa-solid fa-mobile-screen-button"></i> Portal: ${escapeHtml(s.portalMobile||'Not registered')} ${s.portalAccess===false?'<span class="status-badge status-offline">Portal Disabled</span>':'<span class="status-badge status-online">Portal Enabled</span>'}</span>${customBadges}</div></div></div><div class="card-actions"><button class="btn-secondary" onclick="openPortalForRecord('student',decodeURIComponent('${encodedId}'))"><i class="fa-solid fa-arrow-up-right-from-square"></i> Portal</button><button class="${s.portalAccess===false?'btn-success':'btn-secondary'}" onclick="toggleIndividualProfile('student',decodeURIComponent('${encodedId}'))"><i class="fa-solid ${s.portalAccess===false?'fa-circle-check':'fa-circle-pause'}"></i> ${s.portalAccess===false?'Activate':'Deactivate'}</button><button class="btn-edit" onclick="editStudent(decodeURIComponent('${encodedId}'))"><i class="fa-solid fa-pen"></i> Edit</button><button class="btn-delete" onclick="deleteStudent(decodeURIComponent('${encodedId}'))"><i class="fa-solid fa-trash"></i> Delete</button></div></div></div>`};
+      const classes=[...groups.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+      container.innerHTML=`<div class="student-class-directory">${classes.map(className=>{const divisions=groups.get(className),divisionNames=[...divisions.keys()].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})),classTotal=divisionNames.reduce((n,d)=>n+divisions.get(d).length,0);const teacherCards=divisionNames.map(division=>{const empId=assignments[getClassTeacherAssignmentKey(className,division)],teacher=staffStore.find(t=>String(t.empId)===String(empId));return teacher?`<div class="class-teacher-card">${teacher.photoUrl?`<img class="class-teacher-avatar" src="${escapeHtml(teacher.photoUrl)}" alt="${escapeHtml(teacher.name)}">`:`<div class="class-teacher-avatar"><i class="fa-solid fa-chalkboard-user"></i></div>`}<div><strong>${escapeHtml(teacher.name||'Class Teacher')}</strong><small>${escapeHtml(division)} • ${escapeHtml(teacher.empId||'')}</small></div></div>`:`<div class="class-teacher-card unassigned"><div class="class-teacher-avatar"><i class="fa-solid fa-user-clock"></i></div><div><strong>Class Teacher not assigned</strong><small>${escapeHtml(division)} • Assign from Academic Schedule</small></div></div>`}).join('');const divisionHtml=divisionNames.map(division=>{const students=divisions.get(division).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true,sensitivity:'base'}));return `<section class="student-division-group"><div class="student-division-heading"><h5><i class="fa-solid fa-people-roof"></i> ${escapeHtml(division)}</h5><span class="badge-tag">${students.length} student${students.length===1?'':'s'}</span></div>${students.map(studentCard).join('')}</section>`}).join('');return `<section class="student-class-group"><header class="student-class-heading"><h4><i class="fa-solid fa-school"></i> ${escapeHtml(className)}</h4><div class="student-class-summary"><span class="badge-tag">${classTotal} student${classTotal===1?'':'s'}</span><span class="badge-tag">${divisionNames.length} division${divisionNames.length===1?'':'s'}</span></div></header><div class="class-teacher-strip"><div class="class-teacher-strip-title"><i class="fa-solid fa-chalkboard-user"></i> Class Teachers</div><div class="class-teacher-list">${teacherCards}</div></div>${divisionHtml}</section>`}).join('')}</div>`;
     }
 
     function filterStudentRoster() { renderStudents(); }
