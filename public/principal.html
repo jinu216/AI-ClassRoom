@@ -1122,6 +1122,7 @@
               <div class="form-group">
                 <label>Employee ID</label>
                 <input type="text" id="staffEmpId" placeholder="e.g. EMP-2026-01" required>
+                <small id="staffNextIdHint" style="color:var(--text-muted)">Next available ID is suggested automatically. You can edit it.</small>
               </div>
               <div class="form-group">
                 <label>Staff Category</label>
@@ -1346,6 +1347,7 @@
               <div class="form-group">
                 <label>Admission ID / Roll No</label>
                 <input type="text" id="studentRollId" placeholder="e.g. STU-2026-089" required>
+                <small id="studentNextIdHint" style="color:var(--text-muted)">Next available roll number is suggested automatically. You can edit it.</small>
               </div>
               <div class="form-group">
                 <label>Full Student Name</label>
@@ -2336,6 +2338,11 @@
     // Backward-compatible student portal migration. Existing student records
     // retain their normal phone number and receive an independent login field.
     studentStore = studentStore.map(s => ({ ...s, portalMobile: s.portalMobile || '', portalAccess: s.portalAccess !== false }));
+    function nextContinuationId(records,field,type,additionalIds=[]){const ids=[...(records||[]).map(r=>String(r?.[field]||'').trim()),...additionalIds.map(x=>String(x||'').trim())].filter(Boolean),used=new Set(ids.map(x=>x.toLowerCase())),parsed=ids.map(id=>{const m=id.match(/^(.*?)(\d+)$/);return m?{id,prefix:m[1],number:Number(m[2]),width:m[2].length}:null}).filter(Boolean),anchor=parsed[parsed.length-1];let prefix=anchor?.prefix||`${type}-${new Date().getFullYear()}-`,width=anchor?.width||3,max=parsed.filter(x=>x.prefix.toLowerCase()===prefix.toLowerCase()).reduce((n,x)=>Math.max(n,x.number),0),candidate;do{max++;candidate=prefix+String(max).padStart(width,'0')}while(used.has(candidate.toLowerCase()));return candidate}
+    function nextStaffEmployeeId(extra=[]){return nextContinuationId(staffStore,'empId','EMP',extra)}
+    function nextStudentRollId(extra=[]){return nextContinuationId(studentStore,'rollId','STU',extra)}
+    function refreshNextRecordIdSuggestions(force=false){const staffInput=document.getElementById('staffEmpId'),staffEditing=document.getElementById('editingStaffEmpId')?.value,studentInput=document.getElementById('studentRollId'),studentEditing=document.getElementById('editingStudentRollId')?.value;if(staffInput&&!staffEditing&&(force||!staffInput.value)){const next=nextStaffEmployeeId();staffInput.value=next;const hint=document.getElementById('staffNextIdHint');if(hint)hint.textContent=`Suggested continuation: ${next} — editable if required.`}if(studentInput&&!studentEditing&&(force||!studentInput.value)){const next=nextStudentRollId();studentInput.value=next;const hint=document.getElementById('studentNextIdHint');if(hint)hint.textContent=`Suggested continuation: ${next} — editable if required.`}}
+    function ensureStoredRecordIds(){let staffChanged=false,studentChanged=false,staffReserved=[],studentReserved=[];staffStore.forEach(s=>{if(!String(s.empId||'').trim()){s.empId=nextStaffEmployeeId(staffReserved);staffReserved.push(s.empId);staffChanged=true}});studentStore.forEach(s=>{if(!String(s.rollId||'').trim()){s.rollId=nextStudentRollId(studentReserved);studentReserved.push(s.rollId);studentChanged=true}});if(staffChanged)StorageAdapter.saveStaff(staffStore);if(studentChanged)StorageAdapter.saveStudents(studentStore);return{staffChanged,studentChanged}}
     let timetableFoldersStore = StorageAdapter.getTimetableFolders();
     let portionProgressStore = JSON.parse(localStorage.getItem('pius_portion_progress') || '[]');
     let financeStore = StorageAdapter.getFinance();
@@ -3125,8 +3132,9 @@
         alert("No staff data available to export.");
         return;
       }
+      ensureStoredRecordIds();
 
-      const baseHeadings = ["Employee ID", "Full Name", "Category", "Role / Position", "Assigned Class", "Assigned Division", "Qualification", "Year Joined", "Email Address", "Mobile Number", "Password", "Main Subject", "Priority Sub 2", "Priority Sub 3", "Priority Sub 4"];
+      const baseHeadings = ["Employee ID", "Full Name", "Category", "Role / Position", "Assigned Class", "Assigned Division", "Qualification", "Year Joined", "Email Address", "Mobile Number", "Registered Teacher Portal Mobile", "Teacher Portal Access", "Password", "Main Subject", "Priority Sub 2", "Priority Sub 3", "Priority Sub 4"];
       const allHeadings = [...baseHeadings, ...customColumnsStore];
 
       const rows = staffStore.map(s => {
@@ -3231,8 +3239,9 @@
         alert("No student data available to export.");
         return;
       }
+      ensureStoredRecordIds();
 
-      const baseHeadings = ["Roll ID", "Full Student Name", "Father's Name", "DOB", "Address", "Gmail", "Phone Number", "Class", "Section", "Joined Year"];
+      const baseHeadings = ["Roll ID", "Full Student Name", "Father's Name", "DOB", "Address", "Gmail", "Phone Number", "Registered Student Portal Mobile", "Student Portal Access", "Class", "Section", "Joined Year"];
       const allHeadings = [...baseHeadings, ...studentCustomColumnsStore];
 
       const rows = studentStore.map(s => {
@@ -3330,8 +3339,10 @@
         const json = XLSX.utils.sheet_to_json(worksheet);
 
         let importedCount = 0;
+        const reservedStudentIds=json.map(row=>row['Roll ID']||row['Admission ID']||row['Roll No']).filter(Boolean).map(String);
         json.forEach(row => {
-          const rollId = row['Roll ID'] || row['Admission ID'] || row['Roll No'] || `STU-${Date.now().toString().slice(-4)}`;
+          const suppliedRollId=String(row['Roll ID']||row['Admission ID']||row['Roll No']||'').trim();
+          const rollId=suppliedRollId||nextStudentRollId(reservedStudentIds);if(!suppliedRollId)reservedStudentIds.push(rollId);
           const name = row['Full Student Name'] || row['Name'] || 'Imported Student';
           const fatherName = row['Father\'s Name'] || row['Father Name'] || 'N/A';
           const dob = row['DOB'] || '2010-01-01';
@@ -3361,6 +3372,7 @@
         StorageAdapter.saveStudents(studentStore);
         renderStudents();
         renderAutoClassDivisions();
+        refreshNextRecordIdSuggestions(true);
         logAction(`Imported ${importedCount} student records via Excel`);
         alert(`Successfully imported ${importedCount} student records from Excel!`);
       };
@@ -3371,6 +3383,7 @@
       event.preventDefault();
       const editingRollId = document.getElementById('editingStudentRollId').value;
       const rollId = document.getElementById('studentRollId').value.trim();
+      if(!rollId){alert('Student Roll ID is required.');return}if(studentStore.some(s=>s.rollId!==editingRollId&&String(s.rollId).toLowerCase()===rollId.toLowerCase())){alert(`Student Roll ID ${rollId} already exists. Use the suggested continuation or enter another unique number.`);return}
       const portalMobile = document.getElementById('studentPortalMobile').value.trim();
       const portalAccess = document.getElementById('studentPortalAccess').value !== 'disabled';
       if (portalAccess && !portalMobile) {
@@ -3416,6 +3429,7 @@
       if (editingRollId) {
         const idx = studentStore.findIndex(s => s.rollId === editingRollId);
         if (idx !== -1) studentStore[idx] = studentData;
+        if(editingRollId!==rollId){timetableFoldersStore.forEach(t=>{if(Array.isArray(t.recipientStudentIds))t.recipientStudentIds=t.recipientStudentIds.map(id=>String(id)===String(editingRollId)?rollId:id)});StorageAdapter.saveTimetableFolders(timetableFoldersStore)}
         logAction(`Updated Student Profile: ${studentData.name} (${studentData.rollId})`);
       } else {
         const exists = studentStore.some(s => s.rollId === rollId);
@@ -3475,6 +3489,7 @@
         renderStudents();
         renderAutoClassDivisions();
         logAction(`Deleted Student Profile: ${target ? target.name : rollId}`);
+        refreshNextRecordIdSuggestions(true);
       }
     }
 
@@ -3485,6 +3500,7 @@
       document.querySelectorAll('.student-custom-field-input').forEach(i => i.value = '');
       document.getElementById('studentFormTitle').innerHTML = `<i class="fa-solid fa-user-plus"></i> Add New Student Record`;
       document.getElementById('cancelStudentEditBtn').style.display = 'none';
+      refreshNextRecordIdSuggestions(true);
     }
 
     function toggleStudentDirectorySection() {
@@ -3800,8 +3816,10 @@
         const json = XLSX.utils.sheet_to_json(worksheet);
 
         let importedCount = 0;
+        const reservedStaffIds=json.map(row=>row['Employee ID']||row['Emp ID']).filter(Boolean).map(String);
         json.forEach(row => {
-          const empId = row['Employee ID'] || row['Emp ID'] || `EMP-${Date.now().toString().slice(-4)}`;
+          const suppliedEmpId=String(row['Employee ID']||row['Emp ID']||'').trim();
+          const empId=suppliedEmpId||nextStaffEmployeeId(reservedStaffIds);if(!suppliedEmpId)reservedStaffIds.push(empId);
           const name = row['Full Name'] || row['Name'] || 'Imported Staff';
           const role = row['Role / Position'] || row['Role'] || 'Staff Member';
           const category = row['Category'] || 'Teaching';
@@ -3836,6 +3854,7 @@
         renderStaffRoster();
         populateTeacherDropdown();
         renderClassAssignments();
+        refreshNextRecordIdSuggestions(true);
         logAction(`Imported ${importedCount} staff records via Excel`);
         alert(`Successfully imported ${importedCount} records from Excel!`);
       };
@@ -3846,6 +3865,7 @@
       event.preventDefault();
       const editingEmpId = document.getElementById('editingStaffEmpId').value;
       const empId = document.getElementById('staffEmpId').value.trim();
+      if(!empId){alert('Employee ID is required.');return}if(staffStore.some(s=>s.empId!==editingEmpId&&String(s.empId).toLowerCase()===empId.toLowerCase())){alert(`Employee ID ${empId} already exists. Use the suggested continuation or enter another unique ID.`);return}
 
       const customData = {};
       document.querySelectorAll('.custom-field-input').forEach(inp => {
@@ -3891,6 +3911,7 @@
         const idx = staffStore.findIndex(s => s.empId === editingEmpId);
         if (idx !== -1) {
           staffStore[idx] = staffData;
+          if(editingEmpId!==empId){const assignments=getClassTeacherAssignments();Object.keys(assignments).forEach(k=>{if(String(assignments[k])===String(editingEmpId))assignments[k]=empId});saveClassTeacherAssignments(assignments);Object.values(classSubjectsStore).forEach(rows=>(rows||[]).forEach(r=>{if(String(r.teacherEmpId)===String(editingEmpId)){r.teacherEmpId=empId;r.teacherName=staffData.name}}));localStorage.setItem('pius_class_subjects_by_class',JSON.stringify(classSubjectsStore));timetableFoldersStore.forEach(t=>{if(String(t.classTeacherEmpId)===String(editingEmpId))t.classTeacherEmpId=empId;if(Array.isArray(t.recipientTeacherEmpIds))t.recipientTeacherEmpIds=t.recipientTeacherEmpIds.map(id=>String(id)===String(editingEmpId)?empId:id);Object.values(t.grid||{}).forEach(day=>Object.values(day||{}).forEach(cell=>{if(String(cell?.teacherEmpId)===String(editingEmpId))cell.teacherEmpId=empId}))});StorageAdapter.saveTimetableFolders(timetableFoldersStore);sendPortalServer('SYNC_CLASS_TEACHER_ASSIGNMENTS',assignments)}
           logAction(`Updated Staff Profile and synchronized Faculty Portal: ${staffData.name} (${staffData.empId})`);
         }
       } else {
@@ -3958,6 +3979,7 @@
         populateTeacherDropdown();
         renderClassAssignments();
         logAction(`Deleted Staff Profile: ${target ? target.name : empId}`);
+        refreshNextRecordIdSuggestions(true);
       }
     }
 
@@ -3970,6 +3992,7 @@
       document.querySelectorAll('.custom-field-input').forEach(i => i.value = '');
       document.getElementById('staffFormTitle').innerHTML = `<i class="fa-solid fa-user-plus"></i> Add New Staff Member`;
       document.getElementById('cancelStaffEditBtn').style.display = 'none';
+      refreshNextRecordIdSuggestions(true);
     }
 
 
@@ -5780,6 +5803,7 @@
       renderCameraControlCenter();
     };
       document.addEventListener('DOMContentLoaded', initializeStaffDirectoryState);
+      document.addEventListener('DOMContentLoaded',()=>refreshNextRecordIdSuggestions(true));
 
 </script>
 
