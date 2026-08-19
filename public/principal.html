@@ -261,28 +261,40 @@
 
     .content-container { max-width: 1180px; margin: 0 auto; width: 100%; padding: 28px 28px 56px; }
     /* PROFESSIONAL DASHBOARD */
-    .dashboard-hero { background: linear-gradient(135deg, var(--panel) 0%, var(--panel-soft) 100%); border:1px solid var(--hairline-strong); border-radius:10px; padding:20px 22px; margin-bottom:18px; position:relative; overflow:hidden; }
-    .dashboard-hero:after { content:""; position:absolute; width:220px; height:220px; border-radius:50%; border:1px solid var(--hairline); right:-80px; top:-100px; opacity:.5; }
-    .dashboard-kicker { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--brass); margin-bottom:6px; }
-    .dashboard-hero h1 { font-family:'Fraunces',serif; font-size:24px; margin:0 0 6px; }
-    .dashboard-hero p { color:var(--text-muted); margin:0; line-height:1.5; font-size:13px; }
-    .dashboard-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:18px; }
-    .dashboard-card { background:var(--panel); border:1px solid var(--hairline); border-radius:8px; padding:14px 16px; }
+    .dashboard-hero { background: radial-gradient(ellipse at 100% 0%, rgba(201,162,75,0.10), transparent 55%), linear-gradient(135deg, var(--panel) 0%, var(--panel-soft) 100%); border:1px solid var(--hairline-strong); border-radius:12px; padding:22px 24px; margin-bottom:18px; position:relative; overflow:hidden; }
+    .dashboard-hero:after { content:""; position:absolute; width:260px; height:260px; border-radius:50%; border:1px solid var(--hairline); right:-90px; top:-120px; opacity:.55; }
+    .dashboard-hero:before { content:""; position:absolute; width:180px; height:180px; border-radius:50%; border:1px solid var(--hairline); right:-40px; top:-70px; opacity:.4; }
+    .dashboard-hero-inner { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap; position:relative; z-index:1; }
+    .dashboard-hero-meta { text-align:right; font-size:10px; color:var(--text-muted); line-height:1.8; }
+    .dashboard-kicker { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--brass); margin-bottom:7px; display:flex; align-items:center; gap:7px; }
+    .dashboard-hero h1 { font-family:'Fraunces',serif; font-size:25px; margin:0 0 6px; }
+    .dashboard-hero p { color:var(--text-muted); margin:0; line-height:1.55; font-size:13px; max-width:520px; }
+    .dashboard-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .dashboard-card { background:var(--panel); border:1px solid var(--hairline); border-top:2px solid var(--card-accent, var(--brass)); border-radius:9px; padding:15px 16px; position:relative; transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+    .dashboard-card[onclick]:hover { transform:translateY(-2px); box-shadow:0 8px 20px -8px var(--card-accent-glow, rgba(201,162,75,.35)); border-color:var(--card-accent, var(--brass-dim)); }
+    .dashboard-card .dash-card-icon { display:grid; place-items:center; width:30px; height:30px; border-radius:8px; margin-bottom:10px; font-size:13px; background:var(--card-accent-soft, rgba(201,162,75,.12)); color:var(--card-accent, var(--brass-bright)); }
+    .dashboard-card[data-accent="indigo"] { --card-accent:#818cf8; --card-accent-soft:rgba(129,140,248,.14); --card-accent-glow:rgba(129,140,248,.28); }
+    .dashboard-card[data-accent="teal"] { --card-accent:#2dd4bf; --card-accent-soft:rgba(45,212,191,.14); --card-accent-glow:rgba(45,212,191,.28); }
+    .dashboard-card[data-accent="green"] { --card-accent:#34d399; --card-accent-soft:rgba(52,211,153,.14); --card-accent-glow:rgba(52,211,153,.28); }
+    .dashboard-card[data-accent="amber"] { --card-accent:#fbbf24; --card-accent-soft:rgba(251,191,36,.14); --card-accent-glow:rgba(251,191,36,.28); }
+    .dashboard-card[data-accent="rose"] { --card-accent:#fb7185; --card-accent-soft:rgba(251,113,133,.14); --card-accent-glow:rgba(251,113,133,.28); }
+    .dashboard-card[data-accent="blue"] { --card-accent:#60a5fa; --card-accent-soft:rgba(96,165,250,.14); --card-accent-glow:rgba(96,165,250,.28); }
     .dashboard-card .label { color:var(--text-muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; }
     .dashboard-card .value { font-family:'Fraunces',serif; font-size:23px; margin-top:5px; color:var(--text-primary); }
     .dashboard-card .sub { font-size:10.5px; color:var(--text-faint); margin-top:4px; }
     .dashboard-layout { display:grid; grid-template-columns:1.15fr .85fr; gap:14px; }
-    .dashboard-panel { background:var(--panel); border:1px solid var(--hairline); border-radius:8px; padding:16px; }
+    .dashboard-panel { background:var(--panel); border:1px solid var(--hairline); border-radius:9px; padding:16px; }
     .dashboard-panel h3 { font-family:'Fraunces',serif; font-size:16px; margin:0 0 12px; }
-    .dash-row { display:flex; justify-content:space-between; gap:15px; padding:11px 0; border-bottom:1px solid var(--hairline); font-size:12.5px; }
+    .dash-row { display:flex; justify-content:space-between; gap:15px; padding:10px 0; border-bottom:1px solid var(--hairline); font-size:12.5px; }
     .dash-row:last-child { border-bottom:0; }
-    .dash-status { font-size:10px; font-family:'JetBrains Mono',monospace; padding:4px 7px; border-radius:5px; background:var(--panel-soft); }
-    .dash-status.ok { color:var(--online); } .dash-status.warn { color:var(--brass-bright); } .dash-status.bad { color:#e98b8b; }
-    .progress-track { height:7px; background:var(--panel-soft); border-radius:10px; overflow:hidden; margin-top:10px; }
-    .progress-fill { height:100%; background:var(--brass); border-radius:10px; transition:width .3s ease; }
-    .quick-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
-    .quick-action { border:1px solid var(--hairline); background:var(--panel-soft); border-radius:9px; padding:12px; cursor:pointer; color:var(--text-primary); font-size:12px; }
-    .quick-action:hover { border-color:var(--hairline-strong); transform:translateY(-1px); }
+    .dash-status { font-size:9.5px; font-family:'JetBrains Mono',monospace; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:4px 9px; border-radius:20px; background:var(--panel-soft); border:1px solid var(--hairline); }
+    .dash-status.ok { color:var(--online); border-color:rgba(16,185,129,.3); background:rgba(16,185,129,.08); } .dash-status.warn { color:var(--brass-bright); border-color:rgba(201,162,75,.3); background:rgba(201,162,75,.08); } .dash-status.bad { color:#f87171; border-color:rgba(248,113,113,.3); background:rgba(248,113,113,.08); }
+    .progress-track { height:6px; background:var(--panel-soft); border-radius:10px; overflow:hidden; margin-top:10px; }
+    .progress-fill { height:100%; background:linear-gradient(90deg, var(--brass-dim), var(--brass-bright)); border-radius:10px; transition:width .4s ease; }
+    .quick-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .quick-action { display:flex; align-items:center; gap:9px; border:1px solid var(--hairline); background:var(--panel-soft); border-radius:8px; padding:11px 12px; cursor:pointer; color:var(--text-primary); font-size:12px; font-weight:500; transition:.15s ease; }
+    .quick-action i { width:26px; height:26px; flex:0 0 26px; display:grid; place-items:center; border-radius:7px; background:rgba(201,162,75,.12); color:var(--brass-bright); font-size:11.5px; }
+    .quick-action:hover { border-color:var(--brass-dim); background:rgba(201,162,75,.06); transform:translateY(-1px); }
     .quick-person-search { position:relative; margin-top:12px; }
     .quick-person-search-box { display:flex; align-items:center; gap:9px; padding:0 12px; border:1px solid var(--hairline); border-radius:9px; background:var(--panel-soft); }
     .quick-person-search-box:focus-within { border-color:var(--brass); box-shadow:0 0 0 3px rgba(201,162,75,.08); }
@@ -998,15 +1010,15 @@
            ==================================================================== -->
       <div id="dashboardTab" class="tab-content active">
         <div class="dashboard-hero">
-          <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap"><div><div class="dashboard-kicker">Principal Command Center</div><h1 id="dashboardWelcome">Good day, Principal</h1><p>Executive overview and actions requiring attention. Detailed controls remain in their dedicated management pages.</p></div><div style="text-align:right;font-size:10px;color:var(--text-muted);line-height:1.8"><div id="dashboardCurrentDate"></div><div><span id="dashboardServerDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:5px"></span><span id="dashboardServerStatus">Connecting to school server</span></div><div id="dashboardLastRefresh">Awaiting refresh</div></div></div>
+          <div class="dashboard-hero-inner"><div><div class="dashboard-kicker"><i class="fa-solid fa-shield-halved"></i> Principal Command Center</div><h1 id="dashboardWelcome">Good day, Principal</h1><p>Executive overview and actions requiring attention. Detailed controls remain in their dedicated management pages.</p></div><div class="dashboard-hero-meta"><div id="dashboardCurrentDate"></div><div><span id="dashboardServerDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:5px"></span><span id="dashboardServerStatus">Connecting to school server</span></div><div id="dashboardLastRefresh">Awaiting refresh</div></div></div>
         </div>
         <div class="dashboard-grid" style="grid-template-columns:repeat(6,minmax(0,1fr))">
-          <div class="dashboard-card" onclick="dashboardGo('studentsTab',this)" style="cursor:pointer"><div class="label">Total Student Strength</div><div class="value" id="dashStudents">0</div><div class="sub" id="dashStudentStrengthSub">Registered students</div></div>
-          <div class="dashboard-card" onclick="dashboardGo('staffTab',this)" style="cursor:pointer"><div class="label">Total Faculty Strength</div><div class="value" id="dashStaff">0</div><div class="sub" id="dashFacultyStrengthSub">Teaching faculty</div></div>
-          <div class="dashboard-card" onclick="dashboardGo('attendanceTab',this)" style="cursor:pointer"><div class="label">Faculty Present Today</div><div class="value" id="dashExecutivePresent">0</div><div class="sub" id="dashExecutivePresentSub">0 of 0 faculty</div></div>
-          <div class="dashboard-card" onclick="dashboardGo('attendanceTab',this)" style="cursor:pointer"><div class="label">Faculty on Leave Today</div><div class="value" id="dashExecutiveLeave">0</div><div class="sub" id="dashExecutiveLeaveSub">Approved leave</div></div>
-          <div class="dashboard-card" onclick="openPendingApprovals(this)" style="cursor:pointer"><div class="label">Pending Approvals</div><div class="value" id="dashExecutivePending">0</div><div class="sub" id="dashExecutivePendingSub">Leave and profile requests</div></div>
-          <div class="dashboard-card" onclick="dashboardGo('attendanceTab',this)" style="cursor:pointer"><div class="label">Attendance Completion</div><div class="value" id="dashExecutiveCompletion">0%</div><div class="sub" id="dashExecutiveCompletionSub">0 records pending</div></div>
+          <div class="dashboard-card" data-accent="indigo" onclick="dashboardGo('studentsTab',this)" style="cursor:pointer"><i class="fa-solid fa-user-graduate dash-card-icon"></i><div class="label">Total Student Strength</div><div class="value" id="dashStudents">0</div><div class="sub" id="dashStudentStrengthSub">Registered students</div></div>
+          <div class="dashboard-card" data-accent="teal" onclick="dashboardGo('staffTab',this)" style="cursor:pointer"><i class="fa-solid fa-chalkboard-user dash-card-icon"></i><div class="label">Total Faculty Strength</div><div class="value" id="dashStaff">0</div><div class="sub" id="dashFacultyStrengthSub">Teaching faculty</div></div>
+          <div class="dashboard-card" data-accent="green" onclick="dashboardGo('attendanceTab',this)" style="cursor:pointer"><i class="fa-solid fa-user-check dash-card-icon"></i><div class="label">Faculty Present Today</div><div class="value" id="dashExecutivePresent">0</div><div class="sub" id="dashExecutivePresentSub">0 of 0 faculty</div></div>
+          <div class="dashboard-card" data-accent="amber" onclick="dashboardGo('attendanceTab',this)" style="cursor:pointer"><i class="fa-solid fa-plane-departure dash-card-icon"></i><div class="label">Faculty on Leave Today</div><div class="value" id="dashExecutiveLeave">0</div><div class="sub" id="dashExecutiveLeaveSub">Approved leave</div></div>
+          <div class="dashboard-card" data-accent="rose" onclick="openPendingApprovals(this)" style="cursor:pointer"><i class="fa-solid fa-bell dash-card-icon"></i><div class="label">Pending Approvals</div><div class="value" id="dashExecutivePending">0</div><div class="sub" id="dashExecutivePendingSub">Leave and profile requests</div></div>
+          <div class="dashboard-card" data-accent="blue" onclick="dashboardGo('attendanceTab',this)" style="cursor:pointer"><i class="fa-solid fa-chart-pie dash-card-icon"></i><div class="label">Attendance Completion</div><div class="value" id="dashExecutiveCompletion">0%</div><div class="sub" id="dashExecutiveCompletionSub">0 records pending</div></div>
         </div>
         <div id="dashboardSearchPanel" class="dashboard-panel" style="margin-top:14px;position:relative;z-index:25">
           <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0"><i class="fa-solid fa-magnifying-glass"></i> Search Faculty or Student</h3><p style="margin:4px 0 0;color:var(--text-muted);font-size:10px">Search by name, employee code or student roll ID. Predictive matches appear while typing.</p></div><span class="badge-tag">Predictive Search</span></div>
