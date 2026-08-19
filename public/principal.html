@@ -1741,7 +1741,9 @@
                 <div class="form-row-triple">
                   <div class="form-group">
                     <label>Subject Name</label>
-                    <input type="text" id="subject-name-input" placeholder="e.g. Mathematics" oninput="autoMatchSubjectTeacher()">
+                    <input type="text" id="subject-name-input" list="subject-name-datalist" placeholder="e.g. Mathematics" oninput="autoMatchSubjectTeacher()" autocomplete="off">
+                    <datalist id="subject-name-datalist"></datalist>
+                    <small class="field-help">Start typing to see subjects already used elsewhere in the school — pick a suggestion to avoid spelling mismatches.</small>
                   </div>
                   <div class="form-group" style="display:none">
                     <label>Subject Teacher (Auto-Matched from Page 01)</label>
@@ -1769,6 +1771,23 @@
                 </div>
                 <div style="font-size:11px;color:var(--text-faint);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">You can select multiple subjects here. Use “Subject Name” on the left to add anything not included in the catalogue.</div>
               </div>
+              </div>
+
+              <div class="editor-card" style="margin-top:16px;border-color:var(--brass-dim);background:var(--panel-soft)">
+                <div class="academic-card-heading">
+                  <div>
+                    <h4><i class="fa-solid fa-file-excel"></i> Bulk Subject Entry via Excel</h4>
+                    <p>Generate a template pre-filled with every existing Class, fill in Subject and Periods / Week for each row (add more rows for more subjects per class), then upload it here. Subjects already saved for a class are kept — only new rows are added, so it is safe to re-upload.</p>
+                  </div>
+                  <span class="badge-tag">Same subjects apply to every Division automatically</span>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                  <button type="button" class="btn-secondary" onclick="downloadSubjectTemplateExcel()"><i class="fa-solid fa-file-arrow-down"></i> Download Subject Template (.xlsx)</button>
+                  <div class="form-group" style="margin:0;flex:1;min-width:220px;">
+                    <input type="file" id="subjectExcelFileInput" accept=".xlsx, .xls, .csv" onchange="processSubjectExcelImport(event)">
+                  </div>
+                </div>
+                <small class="field-help">Template columns: <strong>Class</strong>, <strong>Subject</strong>, <strong>Periods Per Week</strong>. The Class value must exactly match a class generated from Page 02 student records. Any row with a class that is not found, or a subject already configured for that class, is skipped and reported after upload.</small>
               </div>
 
               <div style="margin-top:18px;">
@@ -5060,9 +5079,82 @@
       logAction(`Added subject "${subject}" for Class ${className}; automatically available to all divisions of the class. Teacher: ${teacher?.name || teacherEmpId}`);
     }
 
+    function refreshSubjectNameSuggestions() {
+      const list = document.getElementById('subject-name-datalist');
+      if (!list) return;
+      const names = new Set();
+      Object.values(classSubjectsStore).forEach(rows => (rows || []).forEach(s => {
+        if (s && s.subject) names.add(String(s.subject).trim());
+      }));
+      try {
+        const { subjects } = currentCurriculumCatalogue();
+        (subjects || []).forEach(entry => {
+          const name = Array.isArray(entry) ? entry[0] : (entry && (entry.name || entry.subject)) || entry;
+          if (name) names.add(String(name).trim());
+        });
+      } catch (e) {}
+      list.innerHTML = [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b))
+        .map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+    }
+
+    function downloadSubjectTemplateExcel() {
+      const classes = getAssignedClasses();
+      const header = ['Class', 'Subject', 'Periods Per Week'];
+      const rows = classes.length
+        ? classes.map(c => [c.className, '', ''])
+        : [['Class 1', '', '']];
+      const worksheetData = [header, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+      ws['!cols'] = [{wch:16},{wch:32},{wch:20}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Subject_Template");
+      XLSX.writeFile(wb, "Pius_Subject_Configuration_Template.xlsx");
+      logAction('Downloaded bulk subject-entry Excel template');
+    }
+
+    function processSubjectExcelImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(worksheet);
+        const validClasses = new Set(getAssignedClasses().map(c => c.className));
+        const board = document.getElementById('schoolCurriculumBoard')?.value || 'kerala';
+        const catalogue = SCHOOL_CURRICULUM_CATALOGUE[board] || SCHOOL_CURRICULUM_CATALOGUE.kerala;
+        let added = 0, skippedDuplicate = 0, skippedInvalidClass = 0, skippedIncomplete = 0;
+        const touchedClasses = new Set();
+        json.forEach((row, index) => {
+          const className = String(row['Class'] || row['Class Name'] || '').trim();
+          const subject = String(row['Subject'] || row['Subject Name'] || '').trim();
+          const periods = Math.max(0, parseInt(row['Periods Per Week'] || row['Periods/Week'] || row['Periods'] || 0) || 0);
+          if (!className || !subject) { skippedIncomplete++; return; }
+          if (!validClasses.has(className)) { skippedInvalidClass++; return; }
+          if (!classSubjectsStore[className]) classSubjectsStore[className] = [];
+          if (classSubjectsStore[className].some(s => keralaPortalClean(s.subject) === keralaPortalClean(subject))) { skippedDuplicate++; return; }
+          classSubjectsStore[className].push({id:`EXCEL-${Date.now()}-${index}`, subject, teacherEmpId:'', teacherName:'', periodsPerWeek:periods, curriculumBoard:catalogue.label, curriculumSource:'Imported via Excel template'});
+          touchedClasses.add(className);
+          added++;
+        });
+        if (added) {
+          localStorage.setItem('pius_class_subjects_by_class', JSON.stringify(classSubjectsStore));
+          const currentClass = document.getElementById('subject-class-select')?.value || '';
+          renderClassSubjects(currentClass);
+          prepareTimetableClass();
+          logAction(`Imported ${added} subject(s) across ${touchedClasses.size} class(es) via Excel`);
+        }
+        event.target.value = '';
+        alert(`Excel subject import complete.\n\nAdded: ${added}\nSkipped — already configured for that class: ${skippedDuplicate}\nSkipped — class not found: ${skippedInvalidClass}\nSkipped — missing class/subject: ${skippedIncomplete}\n\nOpen each affected class above and use "Match Faculty to Subjects" or assign a teacher manually before generating timetables.`);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
     function renderClassSubjects(className) {
       const body = document.getElementById('class-subjects-body');
       const summary = document.getElementById('subject-load-summary');
+      refreshSubjectNameSuggestions();
       if (!body) return;
       if (!className) {
         body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);">Select a class to view its subjects.</td></tr>';
