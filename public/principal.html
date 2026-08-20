@@ -902,6 +902,325 @@
       .card-actions .btn-edit,.card-actions .btn-delete{flex:1;justify-content:center;min-height:40px}
     }
 
+    /* ================================================================
+       DASHBOARD PROFESSIONAL POLISH LAYER
+       Visual upgrade only — all IDs, classes and hooks unchanged.
+       ================================================================ */
+    #dashboardTab .dashboard-hero{
+      background:
+        radial-gradient(ellipse at 92% -20%, rgba(201,162,75,0.16), transparent 55%),
+        radial-gradient(ellipse at 0% 120%, rgba(59,130,246,0.07), transparent 50%),
+        linear-gradient(135deg, #1e2130 0%, var(--panel) 55%, #171926 100%);
+      border:1px solid var(--hairline-strong);
+      border-radius:16px;
+      padding:28px 30px;
+      box-shadow:0 18px 44px -22px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    #dashboardTab .dashboard-hero:after{ width:340px;height:340px;right:-110px;top:-150px;border-color:rgba(201,162,75,.18); }
+    #dashboardTab .dashboard-hero:before{ width:230px;height:230px;right:-55px;top:-95px;border-color:rgba(201,162,75,.13); }
+    #dashboardTab .dashboard-kicker{
+      display:inline-flex;align-items:center;gap:7px;
+      padding:5px 11px;border-radius:999px;
+      background:rgba(201,162,75,.1);border:1px solid rgba(201,162,75,.28);
+      color:var(--brass-bright);
+    }
+    #dashboardTab .dashboard-hero h1{
+      font-size:30px;letter-spacing:-.01em;margin:12px 0 8px;
+      background:linear-gradient(120deg,#faf6ec 30%,var(--brass-bright) 100%);
+      -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    #dashboardTab .dashboard-hero p{ font-size:13.5px;max-width:560px; }
+    #dashboardTab .dashboard-hero-meta{
+      display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+      padding:12px 16px;border-radius:12px;
+      background:rgba(10,11,17,.5);border:1px solid var(--hairline);
+      backdrop-filter:blur(6px);
+    }
+    #dashboardTab .dashboard-hero-meta > div{ display:flex;align-items:center;gap:6px; }
+
+    /* --- Stat cards --- */
+    #dashboardTab .dashboard-card{
+      background:linear-gradient(160deg, rgba(255,255,255,.028), rgba(255,255,255,0) 46%), var(--panel);
+      border:1px solid var(--hairline);
+      border-top:1px solid var(--card-accent, var(--brass));
+      border-radius:14px;
+      padding:18px 17px 16px;
+      box-shadow:0 1px 2px rgba(0,0,0,.28);
+      position:relative;
+      overflow:hidden;
+    }
+    #dashboardTab .dashboard-card::after{
+      content:"";
+      position:absolute;inset:0;
+      background:radial-gradient(ellipse at 85% -30%, var(--card-accent-soft, rgba(201,162,75,.12)), transparent 62%);
+      opacity:.8;pointer-events:none;
+    }
+    #dashboardTab .dashboard-card > *{ position:relative;z-index:1; }
+    #dashboardTab .dashboard-card .dash-card-icon{
+      width:38px;height:38px;border-radius:11px;font-size:15px;
+      border:1px solid var(--card-accent, var(--brass-dim));
+      box-shadow:0 4px 12px -6px var(--card-accent-glow, rgba(201,162,75,.4));
+    }
+    #dashboardTab .dashboard-card .label{ margin-top:12px; }
+    #dashboardTab .dashboard-card .value{ font-size:28px;letter-spacing:-.01em; }
+    #dashboardTab .dashboard-card .sub{
+      padding-top:7px;margin-top:7px;
+      border-top:1px dashed rgba(201,162,75,.14);
+    }
+    #dashboardTab .dashboard-card[onclick]{
+      cursor:pointer;
+    }
+    #dashboardTab .dashboard-card[onclick]::before{
+      content:"\f05b";
+      font-family:"Font Awesome 6 Free";font-weight:900;
+      position:absolute;right:13px;top:13px;z-index:1;
+      font-size:10px;color:var(--text-faint);
+      opacity:0;transform:translate(-4px,4px);
+      transition:.18s ease;
+    }
+    #dashboardTab .dashboard-card[onclick]:hover::before{ opacity:1;transform:none;color:var(--card-accent,var(--brass-bright)); }
+    #dashboardTab .dashboard-card[onclick]:hover{
+      transform:translateY(-3px);
+      border-color:var(--card-accent, var(--brass-dim));
+      box-shadow:0 16px 30px -14px var(--card-accent-glow, rgba(201,162,75,.4)), 0 3px 8px rgba(0,0,0,.3);
+    }
+    #dashboardTab .dashboard-card:active{ transform:translateY(-1px); }
+
+    /* --- Panels --- */
+    #dashboardTab .dashboard-panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.014), rgba(255,255,255,0) 120px), var(--panel);
+      border-radius:14px;
+      border-top:1px solid rgba(201,162,75,.22);
+      box-shadow:0 1px 2px rgba(0,0,0,.26);
+    }
+    #dashboardTab .dashboard-panel h3{
+      display:flex;align-items:center;gap:9px;
+      padding-bottom:11px;margin-bottom:14px !important;
+      border-bottom:1px solid var(--hairline);
+      font-size:15.5px;
+    }
+    #dashboardTab .dashboard-panel h3 i{ color:var(--brass);font-size:14px; }
+
+    /* --- Readiness rows & progress --- */
+    #dashboardTab .dash-row{
+      padding:11px 10px;border-radius:9px;
+      transition:background .15s ease;
+    }
+    #dashboardTab .dash-row:hover{ background:rgba(201,162,75,.05); }
+    #dashboardTab .progress-track{ height:8px;border-radius:99px;background:rgba(255,255,255,.05);box-shadow:inset 0 1px 2px rgba(0,0,0,.35); }
+    #dashboardTab .progress-fill{
+      background:linear-gradient(90deg, var(--brass-dim), var(--brass-bright) 70%, #f4e2ab);
+      box-shadow:0 0 12px rgba(201,162,75,.4);
+      position:relative;overflow:hidden;
+    }
+    #dashboardTab .progress-fill::after{
+      content:"";position:absolute;inset:0;
+      background:linear-gradient(100deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%);
+      transform:translateX(-100%);
+      animation:dashShimmer 2.6s ease-in-out infinite;
+    }
+    @keyframes dashShimmer{ 55%,100%{ transform:translateX(100%);} }
+    #dashboardTab .dash-status{ border-radius:999px; }
+
+    /* --- Quick actions --- */
+    #dashboardTab .quick-action{
+      border-radius:11px;padding:13px 13px;
+      background:linear-gradient(160deg, rgba(255,255,255,.03), rgba(255,255,255,0) 55%), var(--panel-soft);
+      box-shadow:0 1px 2px rgba(0,0,0,.22);
+    }
+    #dashboardTab .quick-action i{
+      border-radius:9px;
+      box-shadow:inset 0 0 0 1px rgba(201,162,75,.18);
+    }
+    #dashboardTab .quick-action:hover{
+      border-color:var(--brass);
+      background:linear-gradient(160deg, rgba(201,162,75,.12), rgba(201,162,75,.03));
+      box-shadow:0 8px 18px -10px rgba(201,162,75,.35);
+    }
+    #dashboardTab .quick-actions .quick-action:nth-child(2) i{ background:rgba(45,212,191,.12);color:#2dd4bf;box-shadow:inset 0 0 0 1px rgba(45,212,191,.2); }
+    #dashboardTab .quick-actions .quick-action:nth-child(3) i{ background:rgba(129,140,248,.12);color:#818cf8;box-shadow:inset 0 0 0 1px rgba(129,140,248,.2); }
+    #dashboardTab .quick-actions .quick-action:nth-child(4) i{ background:rgba(251,191,36,.12);color:#fbbf24;box-shadow:inset 0 0 0 1px rgba(251,191,36,.2); }
+    #dashboardTab .quick-actions .quick-action:nth-child(5) i{ background:rgba(52,211,153,.12);color:#34d399;box-shadow:inset 0 0 0 1px rgba(52,211,153,.2); }
+    #dashboardTab .quick-actions .quick-action:nth-child(6) i{ background:rgba(96,165,250,.12);color:#60a5fa;box-shadow:inset 0 0 0 1px rgba(96,165,250,.2); }
+
+    /* --- Predictive search panel --- */
+    #dashboardSearchPanel{
+      background:
+        radial-gradient(ellipse at 0% 0%, rgba(201,162,75,.06), transparent 55%),
+        var(--panel);
+    }
+    #dashboardTab .quick-person-search-box{ border-radius:11px;padding:0 14px; }
+    #dashboardTab .quick-person-search-box input{ font-size:13px; }
+    #dashboardTab .quick-person-results{ border-radius:12px; }
+
+    /* --- Executive action feed --- */
+    #dashboardTab .executive-action{ padding:12px 10px;border-radius:9px;transition:background .15s ease; }
+    #dashboardTab .executive-action:hover{ background:rgba(201,162,75,.05); }
+    #dashboardTab .executive-action strong{ font-size:12px; }
+    #dashboardTab .executive-action small{ font-size:9.5px; }
+    #dashboardTab .executive-link{
+      padding:6px 11px;border-radius:999px;border:1px solid rgba(201,162,75,.3);
+      background:rgba(201,162,75,.08);transition:.15s ease;
+    }
+    #dashboardTab .executive-link:hover{ background:var(--brass);color:#201404;border-color:var(--brass); }
+
+    /* --- Entrance animation --- */
+    #dashboardTab.active .dashboard-hero,
+    #dashboardTab.active > .dashboard-grid,
+    #dashboardTab.active > .dashboard-panel,
+    #dashboardTab.active > .dashboard-layout > .dashboard-panel,
+    #dashboardTab.active > .section-tiles .section-tile{
+      animation:dashRise .45s cubic-bezier(.22,.68,.36,1) both;
+    }
+    #dashboardTab.active > .dashboard-grid{ animation-delay:.06s; }
+    #dashboardTab.active > .dashboard-panel{ animation-delay:.1s; }
+    #dashboardTab.active > .dashboard-layout{ animation-delay:.14s; }
+    #dashboardTab.active > .dashboard-layout > .dashboard-panel{ animation-delay:.16s; }
+    #dashboardTab.active > .section-tiles .section-tile:nth-child(1){ animation-delay:.14s; }
+    #dashboardTab.active > .section-tiles .section-tile:nth-child(2){ animation-delay:.18s; }
+    #dashboardTab.active > .section-tiles .section-tile:nth-child(3){ animation-delay:.22s; }
+    #dashboardTab.active > .section-tiles .section-tile:nth-child(4){ animation-delay:.26s; }
+    @keyframes dashRise{ from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:none;} }
+    @media (prefers-reduced-motion: reduce){
+      #dashboardTab.active .dashboard-hero,
+      #dashboardTab.active > .dashboard-grid,
+      #dashboardTab.active > .dashboard-panel,
+      #dashboardTab.active > .dashboard-layout > .dashboard-panel,
+      #dashboardTab.active > .section-tiles .section-tile{ animation:none; }
+      #dashboardTab .progress-fill::after{ animation:none; }
+    }
+
+    /* --- Collapsible dashboard folders --- */
+    #dashboardTab .dash-folder{ padding:0; overflow:hidden; }
+    #dashboardTab .dash-folder > summary.dash-folder-summary{
+      list-style:none;cursor:pointer;user-select:none;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:15px 17px;
+      transition:background .16s ease;
+    }
+    #dashboardTab .dash-folder > summary.dash-folder-summary::-webkit-details-marker{ display:none; }
+    #dashboardTab .dash-folder > summary.dash-folder-summary:hover{ background:rgba(201,162,75,.06); }
+    #dashboardTab .dash-folder[open] > summary.dash-folder-summary{ border-bottom:1px solid var(--hairline); }
+    #dashboardTab .dash-folder-title{
+      display:flex;align-items:center;gap:10px;
+      font-family:'Fraunces',serif;font-size:15.5px;color:var(--text-primary);
+    }
+    #dashboardTab .dash-folder-title i{ color:var(--brass);font-size:14px; }
+    #dashboardTab .dash-folder-title::after{
+      content:"\f078";
+      font-family:"Font Awesome 6 Free";font-weight:900;
+      font-size:11px;color:var(--text-faint);
+      transition:transform .18s ease;margin-left:2px;
+    }
+    #dashboardTab .dash-folder[open] .dash-folder-title::after{ transform:rotate(180deg);color:var(--brass-bright); }
+    #dashboardTab .dash-folder-side{ display:flex;align-items:center;gap:8px;flex:0 0 auto; }
+    #dashboardTab .dash-folder-side .btn-secondary{ padding:6px 10px;font-size:11px; }
+    #dashboardTab .dash-folder-badge{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:4px 10px;border-radius:999px;
+      font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+      color:#fca5a5;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+      animation:badgePulse 2.2s ease-in-out infinite;
+    }
+    #dashboardTab .dash-folder-badge.info{ color:#93c5fd;background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.28);animation:none; }
+    #dashboardTab .dash-folder-badge.ok{ color:#86efac;background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);animation:none; }
+    #dashboardTab .dash-folder-badge.warn{ color:var(--brass-bright);background:rgba(201,162,75,.1);border-color:rgba(201,162,75,.3);animation:none; }
+    @keyframes badgePulse{ 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.28);} 50%{box-shadow:0 0 0 5px rgba(239,68,68,0);} }
+    #dashboardTab .dash-folder-body{ padding:14px 17px 17px; }
+    @media (max-width:620px){
+      #dashboardTab .dash-folder > summary.dash-folder-summary{ padding:13px 14px; }
+      #dashboardTab .dash-folder-body{ padding:12px 14px 14px; }
+      #dashboardTab .dash-folder-side .btn-secondary{ display:none; }
+    }
+
+    #dashboardTab .dash-folder.modal-open .dash-folder-title::after{ transform:rotate(180deg);color:var(--brass-bright); }
+    #dashboardTab .dash-folder.modal-open{ border-color:var(--brass-dim); box-shadow:0 0 0 1px rgba(201,162,75,.25), 0 10px 24px -14px rgba(201,162,75,.35); }
+
+    /* --- Dashboard Section Tiles: Professional Clickable Cards --- */
+    #dashboardTab .section-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+    #dashboardTab .section-tile{
+      background:linear-gradient(160deg,rgba(255,255,255,.028),rgba(255,255,255,0) 46%),var(--panel);
+      border:1px solid var(--hairline);border-radius:12px;overflow:hidden;
+      transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;cursor:pointer;
+    }
+    #dashboardTab .section-tile:hover{ transform:translateY(-3px); box-shadow:0 14px 32px -10px rgba(0,0,0,.45); border-color:var(--brass-dim); }
+    #dashboardTab .section-tile:active{ transform:translateY(-1px); }
+    #dashboardTab .section-tile > summary.dash-folder-summary{ list-style:none;cursor:pointer;user-select:none;padding:0;display:block; }
+    #dashboardTab .section-tile > summary.dash-folder-summary::-webkit-details-marker{ display:none; }
+    #dashboardTab .section-tile > summary.dash-folder-summary:hover{ background:transparent; }
+    #dashboardTab .section-tile-head{ display:flex;align-items:center;gap:14px;padding:18px 20px 14px; }
+    #dashboardTab .section-tile-icon{
+      width:50px;height:50px;border-radius:13px;display:grid;place-items:center;font-size:20px;flex-shrink:0;
+    }
+    #dashboardTab .section-tile-icon.tile-danger{ background:linear-gradient(135deg,rgba(239,68,68,.14),rgba(239,68,68,.04));color:#f87171;border:1px solid rgba(239,68,68,.2);box-shadow:0 4px 14px -6px rgba(239,68,68,.28); }
+    #dashboardTab .section-tile-icon.tile-info{ background:linear-gradient(135deg,rgba(59,130,246,.14),rgba(59,130,246,.04));color:#60a5fa;border:1px solid rgba(59,130,246,.2);box-shadow:0 4px 14px -6px rgba(59,130,246,.28); }
+    #dashboardTab .section-tile-icon.tile-success{ background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.04));color:#34d399;border:1px solid rgba(16,185,129,.2);box-shadow:0 4px 14px -6px rgba(16,185,129,.28); }
+    #dashboardTab .section-tile-icon.tile-warning{ background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(251,191,36,.04));color:#fbbf24;border:1px solid rgba(251,191,36,.2);box-shadow:0 4px 14px -6px rgba(251,191,36,.28); }
+    #dashboardTab .section-tile-text{ flex:1;min-width:0; }
+    #dashboardTab .section-tile-text h4{ font-family:'Fraunces',serif;font-size:15.5px;color:var(--text-primary);margin:0 0 3px; }
+    #dashboardTab .section-tile-text p{ font-size:11px;color:var(--text-muted);margin:0;line-height:1.4; }
+    #dashboardTab .section-tile-badge{ margin-left:auto;flex-shrink:0; }
+    #dashboardTab .section-tile-preview{ padding:0 20px 14px; }
+    #dashboardTab .section-tile-preview .tile-row{ display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:11px; }
+    #dashboardTab .section-tile-preview .tile-row + .tile-row{ border-top:1px solid rgba(201,162,75,.06); }
+    #dashboardTab .section-tile-preview .tile-row span{ color:var(--text-muted); }
+    #dashboardTab .section-tile-preview .tile-row strong{ color:var(--text-primary);font-size:11px;font-weight:600; }
+    #dashboardTab .section-tile-foot{
+      padding:10px 20px;background:rgba(201,162,75,.03);
+      border-top:1px solid var(--hairline);
+      display:flex;align-items:center;justify-content:center;gap:6px;
+      font-size:11px;color:var(--brass);font-weight:600;letter-spacing:.02em;
+      transition:background .15s ease,color .15s ease;
+    }
+    #dashboardTab .section-tile:hover .section-tile-foot{ background:rgba(201,162,75,.09);color:var(--brass-bright); }
+    #dashboardTab .section-tile .dash-folder-body{ padding:0 !important; }
+    @media(max-width:900px){ #dashboardTab .section-tiles{ grid-template-columns:1fr; } }
+    @media(max-width:560px){ #dashboardTab .section-tile-head{ padding:14px 16px 10px;gap:10px; } #dashboardTab .section-tile-icon{ width:42px;height:42px;font-size:17px;border-radius:11px; } #dashboardTab .section-tile-text h4{ font-size:14px; } #dashboardTab .section-tile-preview{ padding:0 16px 12px; } #dashboardTab .section-tile-foot{ padding:9px 16px; } }
+
+    /* --- Dashboard folder popup modal --- */
+    .dash-modal{ position:fixed; inset:0; z-index:1200; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .dash-modal[hidden]{ display:none; }
+    .dash-modal-backdrop{ position:absolute; inset:0; background:rgba(4,6,12,.72); backdrop-filter:blur(4px); animation:dashFadeIn .18s ease; }
+    .dash-modal-card{
+      position:relative; z-index:1;
+      width:100%; max-width:680px; max-height:min(78vh,720px);
+      display:flex; flex-direction:column;
+      background:linear-gradient(180deg, #20222e 0%, var(--panel) 100%);
+      border:1px solid var(--hairline-strong);
+      border-radius:16px;
+      box-shadow:0 32px 80px -24px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.04);
+      animation:dashModalIn .22s cubic-bezier(.22,.68,.36,1);
+      overflow:hidden;
+    }
+    .dash-modal-head{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:16px 20px; border-bottom:1px solid var(--hairline-strong);
+      background:radial-gradient(ellipse at 0% 0%, rgba(201,162,75,.1), transparent 60%);
+      flex:0 0 auto;
+    }
+    .dash-modal-head h3{
+      display:flex; align-items:center; gap:10px; margin:0;
+      font-family:'Fraunces',serif; font-size:17px; color:var(--text-primary);
+    }
+    .dash-modal-head h3 i{ color:var(--brass); }
+    .dash-modal-close{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:36px; border-radius:10px; cursor:pointer;
+      border:1px solid var(--hairline-strong); background:var(--panel-soft); color:var(--text-muted);
+      font-size:15px; transition:.15s ease; flex:0 0 auto;
+    }
+    .dash-modal-close:hover{ color:#fff; background:var(--danger); border-color:var(--danger); }
+    .dash-modal-body{ padding:18px 20px 20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .dash-modal-body .dash-folder-body{ padding:0 !important; }
+    @keyframes dashModalIn{ from{ opacity:0; transform:translateY(16px) scale(.97);} to{ opacity:1; transform:none;} }
+    @keyframes dashFadeIn{ from{opacity:0;} to{opacity:1;} }
+    @media (max-width:620px){
+      .dash-modal{ padding:12px; align-items:flex-end; }
+      .dash-modal-card{ max-height:86vh; border-radius:16px 16px 12px 12px; }
+      .dash-modal-head{ padding:14px 16px; }
+      .dash-modal-body{ padding:14px 16px 16px; }
+    }
+
   </style>
 </head>
 <body>
@@ -1027,36 +1346,183 @@
             <div id="dashboardPersonResults" class="quick-person-results"></div>
           </div>
         </div>
-        <div class="dashboard-layout" style="margin-top:14px">
-          <div id="dashboardActionPanel" class="dashboard-panel"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h3><i class="fa-solid fa-triangle-exclamation"></i> Action Required</h3><button class="btn-secondary" onclick="renderExecutiveDashboard()">Refresh</button></div><div id="dashboardActionRequired"></div></div>
-          <div id="dashboardOperationsPanel" class="dashboard-panel"><h3><i class="fa-solid fa-chart-line"></i> Operational Overview</h3><div id="dashboardOperationalOverview"></div></div>
-        </div>
-        <div class="dashboard-layout">
-          <div class="dashboard-panel">
-            <h3><i class="fa-solid fa-clipboard-check"></i> Academic Readiness</h3>
-            <div class="dash-row"><span>Student Records</span><span class="dash-status" id="dashStudentStatus">Pending</span></div>
-            <div class="dash-row"><span>Class / Division Setup</span><span class="dash-status" id="dashDivisionStatus">Pending</span></div>
-            <div class="dash-row"><span>Class Teacher Assignments</span><span class="dash-status" id="dashTeacherStatus">Pending</span></div>
-            <div class="dash-row"><span>Timetables</span><span class="dash-status" id="dashTimetableStatus">Pending</span></div>
-            <div style="margin-top:14px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted)"><span>Overall readiness</span><strong id="dashReadinessText">0%</strong></div>
-            <div class="progress-track"><div id="dashReadinessBar" class="progress-fill" style="width:0%"></div></div>
-          </div>
-          <div class="dashboard-panel">
-            <h3><i class="fa-solid fa-bolt"></i> Quick Actions</h3>
-            <div class="quick-actions">
-              <button class="quick-action" onclick="dashboardGo('staffTab', this)"><i class="fa-solid fa-user-plus"></i> Manage Faculty</button>
-              <button class="quick-action" onclick="dashboardGo('studentsTab', this)"><i class="fa-solid fa-user-graduate"></i> Manage Students</button>
-              <button class="quick-action" onclick="dashboardGo('academicsTab', this)"><i class="fa-solid fa-calendar-days"></i> Academic Planning</button>
-              <button class="quick-action" onclick="dashboardGo('noticesTab', this)"><i class="fa-solid fa-bullhorn"></i> Notices & Alerts</button>
-              <button class="quick-action" onclick="dashboardGo('attendanceTab', this)"><i class="fa-solid fa-user-clock"></i> Attendance Center</button>
-              <button class="quick-action" onclick="dashboardGo('cameraTab', this)"><i class="fa-solid fa-video"></i> Camera Controls</button>
+        <div class="section-tiles">
+          <details id="dashboardActionPanel" class="dash-folder section-tile">
+            <summary class="dash-folder-summary">
+              <div class="section-tile-head">
+                <div class="section-tile-icon tile-danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="section-tile-text">
+                  <h4>Action Required</h4>
+                  <p>Pending approvals, attendance gaps and immediate tasks</p>
+                </div>
+                <span class="dash-folder-badge section-tile-badge" id="dashFolderActionBadge" hidden>0</span>
+              </div>
+              <div class="section-tile-preview" id="tileActionPreview">
+                <div class="tile-row"><span>Loading...</span><strong></strong></div>
+              </div>
+              <div class="section-tile-foot"><i class="fa-solid fa-expand"></i> Click to open details</div>
+            </summary>
+            <div class="dash-folder-body"><div id="dashboardActionRequired"></div></div>
+          </details>
+          <details id="dashboardOperationsPanel" class="dash-folder section-tile">
+            <summary class="dash-folder-summary">
+              <div class="section-tile-head">
+                <div class="section-tile-icon tile-info"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="section-tile-text">
+                  <h4>Operational Overview</h4>
+                  <p>Faculty presence, camera readiness and academic structure</p>
+                </div>
+                <span class="dash-folder-badge info section-tile-badge" id="dashFolderOpsBadge" hidden>0</span>
+              </div>
+              <div class="section-tile-preview" id="tileOpsPreview">
+                <div class="tile-row"><span>Loading...</span><strong></strong></div>
+              </div>
+              <div class="section-tile-foot"><i class="fa-solid fa-expand"></i> Click to open details</div>
+            </summary>
+            <div class="dash-folder-body"><div id="dashboardOperationalOverview"></div></div>
+          </details>
+          <details class="dash-folder section-tile" id="dashboardReadinessPanel">
+            <summary class="dash-folder-summary">
+              <div class="section-tile-head">
+                <div class="section-tile-icon tile-success"><i class="fa-solid fa-clipboard-check"></i></div>
+                <div class="section-tile-text">
+                  <h4>Academic Readiness</h4>
+                  <p>System setup status for students, classes, teachers and timetables</p>
+                </div>
+                <span class="dash-folder-badge section-tile-badge" id="dashFolderReadinessBadge">0%</span>
+              </div>
+              <div class="section-tile-preview" id="tileReadinessPreview">
+                <div class="tile-row"><span>Student Records</span><strong id="tileStudentStatus">Pending</strong></div>
+                <div class="tile-row"><span>Class / Division Setup</span><strong id="tileDivisionStatus">Pending</strong></div>
+                <div class="tile-row"><span>Class Teacher Assignments</span><strong id="tileTeacherStatus">Pending</strong></div>
+                <div class="tile-row"><span>Timetables</span><strong id="tileTimetableStatus">Pending</strong></div>
+              </div>
+              <div class="section-tile-foot"><i class="fa-solid fa-expand"></i> Click to open details</div>
+            </summary>
+            <div class="dash-folder-body">
+              <div class="dash-row"><span>Student Records</span><span class="dash-status" id="dashStudentStatus">Pending</span></div>
+              <div class="dash-row"><span>Class / Division Setup</span><span class="dash-status" id="dashDivisionStatus">Pending</span></div>
+              <div class="dash-row"><span>Class Teacher Assignments</span><span class="dash-status" id="dashTeacherStatus">Pending</span></div>
+              <div class="dash-row"><span>Timetables</span><span class="dash-status" id="dashTimetableStatus">Pending</span></div>
+              <div style="margin-top:14px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted)"><span>Overall readiness</span><strong id="dashReadinessText">0%</strong></div>
+              <div class="progress-track"><div id="dashReadinessBar" class="progress-fill" style="width:0%"></div></div>
             </div>
-            <div style="margin-top:18px;padding:13px;border:1px solid var(--hairline);border-radius:9px;background:var(--panel-soft)">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--brass);font-family:'JetBrains Mono',monospace">Academic Configuration</div>
-              <div style="margin-top:7px;font-size:12px;color:var(--text-muted)" id="dashAcademicSummary">Loading current academic settings...</div>
+          </details>
+          <details class="dash-folder section-tile" id="dashboardQuickActionsPanel">
+            <summary class="dash-folder-summary">
+              <div class="section-tile-head">
+                <div class="section-tile-icon tile-warning"><i class="fa-solid fa-bolt"></i></div>
+                <div class="section-tile-text">
+                  <h4>Quick Actions</h4>
+                  <p>Direct access to faculty, students, timetable and more</p>
+                </div>
+                <span class="dash-folder-badge info section-tile-badge">6 shortcuts</span>
+              </div>
+              <div class="section-tile-preview">
+                <div class="tile-row"><span><i class="fa-solid fa-user-plus" style="color:var(--brass);margin-right:6px"></i> Manage Faculty</span><strong><i class="fa-solid fa-arrow-right" style="color:var(--text-faint);font-size:10px"></i></strong></div>
+                <div class="tile-row"><span><i class="fa-solid fa-user-graduate" style="color:#2dd4bf;margin-right:6px"></i> Manage Students</span><strong><i class="fa-solid fa-arrow-right" style="color:var(--text-faint);font-size:10px"></i></strong></div>
+                <div class="tile-row"><span><i class="fa-solid fa-calendar-days" style="color:#818cf8;margin-right:6px"></i> Academic Planning</span><strong><i class="fa-solid fa-arrow-right" style="color:var(--text-faint);font-size:10px"></i></strong></div>
+                <div class="tile-row"><span><i class="fa-solid fa-bullhorn" style="color:#fbbf24;margin-right:6px"></i> Notices & Alerts</span><strong><i class="fa-solid fa-arrow-right" style="color:var(--text-faint);font-size:10px"></i></strong></div>
+              </div>
+              <div class="section-tile-foot"><i class="fa-solid fa-expand"></i> Click to open details</div>
+            </summary>
+            <div class="dash-folder-body">
+              <div class="quick-actions">
+                <button class="quick-action" onclick="event.stopPropagation();dashboardGo('staffTab', this)"><i class="fa-solid fa-user-plus"></i> Manage Faculty</button>
+                <button class="quick-action" onclick="event.stopPropagation();dashboardGo('studentsTab', this)"><i class="fa-solid fa-user-graduate"></i> Manage Students</button>
+                <button class="quick-action" onclick="event.stopPropagation();dashboardGo('academicsTab', this)"><i class="fa-solid fa-calendar-days"></i> Academic Planning</button>
+                <button class="quick-action" onclick="event.stopPropagation();dashboardGo('noticesTab', this)"><i class="fa-solid fa-bullhorn"></i> Notices & Alerts</button>
+                <button class="quick-action" onclick="event.stopPropagation();dashboardGo('attendanceTab', this)"><i class="fa-solid fa-user-clock"></i> Attendance Center</button>
+                <button class="quick-action" onclick="event.stopPropagation();dashboardGo('cameraTab', this)"><i class="fa-solid fa-video"></i> Camera Controls</button>
+              </div>
+              <div style="margin-top:18px;padding:13px;border:1px solid var(--hairline);border-radius:9px;background:var(--panel-soft)">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--brass);font-family:'JetBrains Mono',monospace">Academic Configuration</div>
+                <div style="margin-top:7px;font-size:12px;color:var(--text-muted)" id="dashAcademicSummary">Loading current academic settings...</div>
+              </div>
             </div>
+          </details>
+        </div>
+        <!-- Dashboard folder popup modal -->
+        <div id="dashFolderModal" class="dash-modal" hidden>
+          <div class="dash-modal-backdrop" onclick="closeDashFolderModal()"></div>
+          <div class="dash-modal-card" role="dialog" aria-modal="true">
+            <div class="dash-modal-head">
+              <h3 id="dashModalTitle"><i class="fa-solid fa-folder-open"></i> <span></span></h3>
+              <button class="dash-modal-close" onclick="closeDashFolderModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="dash-modal-body" id="dashModalBody"></div>
           </div>
         </div>
+        <script>
+          /* Folder notification badges: derive counts from rendered panel content. */
+          (function(){
+            function updateFolderBadges(){
+              var act=document.getElementById('dashboardActionRequired');
+              if(act){
+                var n=act.querySelectorAll('.executive-action').length;
+                var b=document.getElementById('dashFolderActionBadge');
+                if(b){ b.textContent=n; b.hidden=false; b.classList.toggle('ok',n===0); }
+              }
+              var ops=document.getElementById('dashboardOperationalOverview');
+              if(ops){
+                var rows=ops.querySelectorAll('.dash-row').length;
+                var ob=document.getElementById('dashFolderOpsBadge');
+                if(ob){ ob.textContent=rows+(rows===1?' area':' areas'); ob.hidden=rows===0; }
+              }
+              var rt=document.getElementById('dashReadinessText');
+              var rb=document.getElementById('dashFolderReadinessBadge');
+              if(rt&&rb){
+                var pct=parseInt(rt.textContent,10)||0;
+                rb.textContent=pct+'%';
+                rb.classList.toggle('ok',pct>=100);
+                rb.classList.toggle('warn',pct>0&&pct<100);
+              }
+            }
+            ['dashboardActionRequired','dashboardOperationalOverview','dashReadinessText','tileActionPreview','tileOpsPreview'].forEach(function(id){
+              var el=document.getElementById(id);
+              if(el&&window.MutationObserver) new MutationObserver(updateFolderBadges).observe(el,{childList:true,subtree:true,characterData:true});
+            });
+            document.addEventListener('DOMContentLoaded',updateFolderBadges);
+            setTimeout(updateFolderBadges,400);
+            setTimeout(updateFolderBadges,1500);
+          })();
+
+          /* Folder click opens a popup modal instead of expanding inline. */
+          var dashModalOpenFolder=null;
+          function openDashFolderModal(folder,ev){
+            if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+            if(!folder||dashModalOpenFolder) return;
+            var modal=document.getElementById('dashFolderModal');
+            var title=folder.querySelector('.dash-folder-title')||folder.querySelector('.section-tile-text h4');
+            var body=folder.querySelector('.dash-folder-body');
+            if(!modal||!body) return;
+            document.getElementById('dashModalTitle').querySelector('span').textContent=title?title.textContent.trim():'Details';
+            document.getElementById('dashModalBody').appendChild(body);
+            modal.hidden=false;
+            document.body.style.overflow='hidden';
+            folder.classList.add('modal-open');
+            folder.open=false;
+            dashModalOpenFolder=folder;
+            var closeBtn=modal.querySelector('.dash-modal-close');
+            if(closeBtn) closeBtn.focus();
+          }
+          function closeDashFolderModal(){
+            var modal=document.getElementById('dashFolderModal');
+            if(!modal||!dashModalOpenFolder) return;
+            dashModalOpenFolder.appendChild(modal.querySelector('.dash-modal-body .dash-folder-body'));
+            dashModalOpenFolder.classList.remove('modal-open');
+            dashModalOpenFolder=null;
+            modal.hidden=true;
+            document.body.style.overflow='';
+          }
+          document.addEventListener('click',function(e){
+            var s=e.target.closest('#dashboardTab .dash-folder > summary.dash-folder-summary');
+            if(s) openDashFolderModal(s.parentElement,e);
+          });
+          document.addEventListener('keydown',function(e){
+            if(e.key==='Escape') closeDashFolderModal();
+          });
+        </script>
 
         <div id="legacyDashboardIntelligence" class="dashboard-panel leave-intel" style="display:none">
           <div class="leave-intel-header">
@@ -2922,6 +3388,15 @@
       [['dashStudents',studentStore.length],['dashStaff',teaching.length],['dashExecutivePresent',presentIds.size],['dashExecutiveLeave',leaveIds.size],['dashExecutivePending',pendingTotal],['dashExecutiveCompletion',completion+'%']].forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=v});const subs={dashStudentStrengthSub:studentStore.length+' registered student'+(studentStore.length===1?'':'s'),dashFacultyStrengthSub:teaching.length+' teaching facult'+(teaching.length===1?'y':'y members'),dashExecutivePresentSub:presentIds.size+' of '+teaching.length+' faculty checked in',dashExecutiveLeaveSub:leaveIds.size+' approved leave'+(leaveIds.size===1?'':'s')+' today',dashExecutivePendingSub:pendingLeaves+' leave • '+pendingProfiles+' faculty • '+pendingStudents+' student',dashExecutiveCompletionSub:missing?missing+' attendance record'+(missing===1?'':'s')+' pending':'All faculty accounted for'};Object.entries(subs).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.textContent=value});document.getElementById('dashboardCurrentDate').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});document.getElementById('dashboardLastRefresh').textContent='Last refreshed '+new Date().toLocaleTimeString();const online=portalSocket&&portalSocket.readyState===WebSocket.OPEN,dot=document.getElementById('dashboardServerDot');dot.style.background=online?'#10b981':'#f59e0b';document.getElementById('dashboardServerStatus').textContent=online?'School server connected':'School server reconnecting';
       const actions=[];if(pendingLeaves)actions.push({title:pendingLeaves+' leave request'+(pendingLeaves===1?'':'s')+' awaiting approval',detail:'Review faculty leave type, balance and dates.',tab:'attendanceTab',tone:'warn'});if(pendingProfiles)actions.push({title:pendingProfiles+' faculty profile request'+(pendingProfiles===1?'':'s'),detail:'Approve or reject faculty profile corrections.',tab:'principalMailboxTab',tone:'warn'});if(pendingStudents)actions.push({title:pendingStudents+' student profile request'+(pendingStudents===1?'':'s'),detail:'Review requested student record corrections.',tab:'principalMailboxTab',tone:'warn'});if(missing)actions.push({title:missing+' faculty attendance record'+(missing===1?'':'s')+' not marked',detail:'Check absences or add an audited manual correction.',tab:'attendanceTab',tone:'bad'});if(late)actions.push({title:late+' late arrival'+(late===1?'':'s')+' today',detail:'Review today’s GPS attendance register.',tab:'attendanceTab',tone:'warn'});if(cameraPending)actions.push({title:cameraPending+' classroom'+(cameraPending===1?'':'s')+' without camera configuration',detail:'Complete classroom camera readiness.',tab:'cameraTab',tone:'warn'});if(unread)actions.push({title:unread+' unread mailbox message'+(unread===1?'':'s'),detail:'New faculty or student communication is available.',tab:'principalMailboxTab',tone:'warn'});document.getElementById('dashboardActionRequired').innerHTML=actions.length?actions.slice(0,5).map(a=>`<div class="executive-action"><div><strong style="color:${a.tone==='bad'?'#fca5a5':'var(--text-primary)'}">${escapeHtml(a.title)}</strong><small>${escapeHtml(a.detail)}</small></div><button class="executive-link" onclick="dashboardGo('${a.tab}',this)">Review <i class="fa-solid fa-arrow-right"></i></button></div>`).join(''):'<div class="leave-empty"><i class="fa-solid fa-circle-check"></i><br>No immediate actions. All monitored items are clear.</div>';
       document.getElementById('dashboardOperationalOverview').innerHTML=`<div class="dash-row"><span><strong>Faculty Attendance</strong><small style="display:block;color:var(--text-faint)">${presentIds.size} present • ${late} late • ${leaveIds.size} on leave • ${missing} not marked</small></span><button class="executive-link" onclick="dashboardGo('attendanceTab',this)">Open</button></div><div class="dash-row"><span><strong>Camera Readiness</strong><small style="display:block;color:var(--text-faint)">${cameraConfigurationsStore.length} configured • ${covered.size} classrooms covered • ${cameraPending} pending</small></span><button class="executive-link" onclick="dashboardGo('cameraTab',this)">Open</button></div><div class="dash-row"><span><strong>Academic Structure</strong><small style="display:block;color:var(--text-faint)">${studentStore.length} students • ${cameraOptions.length} class divisions</small></span><button class="executive-link" onclick="dashboardGo('academicsTab',this)">Open</button></div>`;
+      var tap=document.getElementById('tileActionPreview');
+      if(tap){
+        var brief=actions.slice(0,3);
+        tap.innerHTML=brief.length?brief.map(function(a){return '<div class="tile-row"><span>'+escapeHtml(a.title)+'</span><strong style="color:'+a.tone+'"><i class="fa-solid fa-arrow-right" style="font-size:9px"></i></strong></div>';}).join(''):'<div class="tile-row"><span style="color:var(--online)"><i class="fa-solid fa-circle-check"></i> All clear</span><strong></strong></div>';
+      }
+      var top=document.getElementById('tileOpsPreview');
+      if(top){
+        top.innerHTML='<div class="tile-row"><span>Faculty Present</span><strong>'+presentIds.size+' of '+teaching.length+'</strong></div><div class="tile-row"><span>Cameras Ready</span><strong>'+cameraConfigurationsStore.length+'/'+cameraOptions.length+'</strong></div><div class="tile-row"><span>Students</span><strong>'+studentStore.length+'</strong></div>';
+      }
     }
     function renderDashboard(){
       const students = Array.isArray(studentStore) ? studentStore : [];
@@ -2937,6 +3412,9 @@
       const s1=document.getElementById('dashStudentStatus'), s2=document.getElementById('dashDivisionStatus'), s3=document.getElementById('dashTeacherStatus'), s4=document.getElementById('dashTimetableStatus');
       function stat(el,ok,warn){ if(!el)return; el.className='dash-status '+(ok?'ok':warn?'warn':'bad'); el.innerText=ok?'READY':warn?'IN PROGRESS':'ACTION NEEDED'; }
       stat(s1,students.length>0,false); stat(s2,divisions.length>0,false); stat(s3,divisions.length>0 && teacherAssignments.length>=divisions.length,false); stat(s4,divisions.length>0 && timetables.length>=divisions.length,false);
+      const t1=document.getElementById('tileStudentStatus'), t2=document.getElementById('tileDivisionStatus'), t3=document.getElementById('tileTeacherStatus'), t4=document.getElementById('tileTimetableStatus');
+      function tileStat(el,ok,warn){ if(!el)return; el.style.color=ok?'#34d399':warn?'#fbbf24':'#f87171'; el.textContent=ok?'READY':warn?'IN PROGRESS':'ACTION NEEDED'; }
+      tileStat(t1,students.length>0,false); tileStat(t2,divisions.length>0,false); tileStat(t3,divisions.length>0 && teacherAssignments.length>=divisions.length,false); tileStat(t4,divisions.length>0 && timetables.length>=divisions.length,false);
       const checks=[students.length>0,divisions.length>0,divisions.length>0&&teacherAssignments.length>=divisions.length,divisions.length>0&&timetables.length>=divisions.length];
       const pct=Math.round(checks.filter(Boolean).length/checks.length*100); const rt=document.getElementById('dashReadinessText'), rb=document.getElementById('dashReadinessBar'); if(rt)rt.innerText=pct+'%'; if(rb)rb.style.width=pct+'%';
       const sum=document.getElementById('dashAcademicSummary'); if(sum) sum.innerText=`${classes} classes • ${divisions.length} divisions • ${academicSettingsStore.workingDays?.length||0} working days/week • ${typeof buildDailySlots==='function'?buildDailySlots(academicSettingsStore).filter(x=>x.type==='period').length:0} teaching periods/day`;
