@@ -340,6 +340,30 @@ function broadcast(data) {
   });
 }
 
+const RESETTABLE_STATE_KEYS=[
+  'pius_staff_data','pius_students_data','pius_profile_verification_requests',
+  'pius_student_profile_requests','pius_student_leave_records',
+  'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
+  'pius_attendance_settings','pius_attendance_records','pius_leave_records',
+  'pius_communication_messages','pius_chat_messages','pius_communication_audit_log',
+  'pius_faculty_notification_settings','pius_daily_portion_progress'
+];
+async function clearPersistentSchoolState(){
+  if(supabase){
+    try{
+      for(const key of RESETTABLE_STATE_KEYS){
+        await supabase.from('portal_state').delete().eq('state_key',key);
+      }
+    }catch(e){console.error('Cloud reset failed:',e.message)}
+  }
+}
+function clearInMemorySchoolState(){
+  portalStaff=[];profileVerificationRequests=[];portalStudents=[];studentProfileRequests=[];
+  studentLeaveRecords=[];studentMailbox=[];classTeacherAssignments={};timetableFolders=[];
+  portionProgress=[];additionalDutyAssignments=[];libraryResources=[];attendanceRecords=[];
+  leaveRecords=[];communicationMessages=[];chatMessages=[];communicationAuditLog=[];
+  facultyNotificationSettings={};dailyPortionProgress=[];portalPresence={};
+}
 async function persistRuntimeState(key,value){
   if(!supabase)return;
   try{
@@ -771,6 +795,15 @@ wss.on('connection', async (ws) => {
           facultyNotificationSettings[String(r.empId)]={...r,empId:String(r.empId),updatedAt:r.updatedAt||new Date().toISOString()};
           persistRuntimeState('pius_faculty_notification_settings',facultyNotificationSettings);
           broadcast({type:'FACULTY_NOTIFICATION_SETTINGS_UPDATED',payload:facultyNotificationSettings[String(r.empId)]});
+          break;
+        }
+
+        case 'RESET_ALL_SCHOOL_DATA': {
+          const r=data.payload||{};
+          if(r.actorRole!=='Principal'||r.confirmText!=='DELETE ALL SCHOOL DATA')break;
+          clearInMemorySchoolState();
+          clearPersistentSchoolState().catch(e=>console.error('Reset persistence error:',e.message));
+          broadcast({type:'ALL_SCHOOL_DATA_RESET',payload:{at:new Date().toISOString(),by:r.actorName||r.actorRole||'User'}});
           break;
         }
 
