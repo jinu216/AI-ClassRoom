@@ -1301,6 +1301,108 @@
 #aiIssueModal .solution-card p{margin:0;color:var(--text-muted);font-size:12px;line-height:1.5}
 @media(max-width:700px){#aiIssueModal .issue-grid{grid-template-columns:1fr}}
 
+
+/* ============================================================
+   GLOBAL SCHOOL INTELLIGENCE BOT
+   ============================================================ */
+.portal-ai-bot{
+  position:fixed;
+  right:22px;
+  bottom:18px;
+  z-index:9998;
+  font-family:'Inter',system-ui,sans-serif;
+  pointer-events:none;
+}
+.portal-ai-bot *{box-sizing:border-box}
+.ai-bot-orb{
+  width:82px;height:96px;border:0;background:transparent;padding:0;
+  cursor:pointer;position:absolute;right:0;bottom:0;pointer-events:auto;
+  filter:drop-shadow(0 14px 20px rgba(0,0,0,.38));
+  animation:aiBotFloat 4.8s ease-in-out infinite;
+}
+.ai-bot-head{
+  position:absolute;left:13px;top:12px;width:56px;height:48px;
+  border:1px solid rgba(200,162,75,.55);
+  border-radius:20px 20px 17px 17px;
+  background:linear-gradient(145deg,#292c38,#14161f);
+  box-shadow:inset 0 0 18px rgba(201,162,75,.07),0 5px 14px rgba(0,0,0,.35);
+}
+.ai-bot-antenna{position:absolute;left:39px;top:0;width:3px;height:15px;background:#8b7040;border-radius:5px}
+.ai-bot-antenna i{position:absolute;left:-3px;top:-4px;width:9px;height:9px;border-radius:50%;background:var(--brass,#c9a24b);box-shadow:0 0 10px rgba(201,162,75,.7);animation:aiAntennaPulse 2.6s ease-in-out infinite}
+.ai-bot-eye{
+  position:absolute;top:16px;width:13px;height:10px;border-radius:9px;
+  background:#060a0e;border:1px solid rgba(255,255,255,.08);overflow:hidden;
+  animation:aiBlink 5.4s infinite;
+}
+.ai-bot-eye.left{left:10px}.ai-bot-eye.right{right:10px}
+.ai-bot-eye i{
+  position:absolute;width:5px;height:5px;border-radius:50%;left:4px;top:2px;
+  background:#e7c66d;box-shadow:0 0 8px rgba(231,198,109,.85);
+  animation:aiEyeWatch 7.2s ease-in-out infinite;
+}
+.ai-bot-mouth{position:absolute;left:21px;bottom:8px;width:14px;height:2px;border-radius:3px;background:rgba(201,162,75,.65)}
+.ai-bot-body{
+  position:absolute;left:23px;top:58px;width:36px;height:28px;
+  border:1px solid rgba(200,162,75,.38);border-radius:9px 9px 14px 14px;
+  background:linear-gradient(145deg,#252833,#12141b);
+}
+.ai-bot-core{
+  position:absolute;left:13px;top:8px;width:10px;height:10px;border-radius:50%;
+  background:#c9a24b;box-shadow:0 0 12px rgba(201,162,75,.5);
+  animation:aiCore 2.4s ease-in-out infinite;
+}
+.ai-bot-shadow{position:absolute;left:18px;bottom:1px;width:48px;height:8px;border-radius:50%;background:rgba(0,0,0,.35);filter:blur(3px);animation:aiShadow 4.8s ease-in-out infinite}
+.ai-bot-badge{
+  position:absolute;right:2px;top:7px;min-width:22px;height:22px;padding:0 6px;
+  display:flex;align-items:center;justify-content:center;border-radius:20px;
+  background:#b84450;color:#fff;font-size:10px;font-weight:800;
+  border:2px solid #151720;box-shadow:0 4px 12px rgba(0,0,0,.35);
+  animation:aiBadgePulse 1.6s ease-in-out infinite;
+}
+.ai-bot-panel{
+  position:absolute;right:88px;bottom:0;width:min(430px,calc(100vw - 126px));
+  max-height:min(670px,calc(100vh - 36px));
+  border:1px solid rgba(201,162,75,.34);border-radius:16px;
+  background:linear-gradient(180deg,#1e2029,#171920);
+  box-shadow:0 24px 70px rgba(0,0,0,.52);
+  overflow:hidden;pointer-events:auto;
+  transform-origin:bottom right;transition:.22s opacity,.22s transform,.22s visibility;
+}
+.portal-ai-bot.collapsed .ai-bot-panel{opacity:0;transform:translateY(16px) scale(.94);visibility:hidden;pointer-events:none}
+.portal-ai-bot:not(.collapsed) .ai-bot-panel{opacity:1;transform:none;visibility:visible}
+.ai-bot-panel-head{padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:12px;background:#22252f}
+.ai-bot-title{display:flex;align-items:center;gap:9px}.ai-bot-title b{font-size:12px;display:block;color:#f2ead8}.ai-bot-title small{display:block;color:#969a9f;font-size:9px;margin-top:2px}
+.ai-status-dot{width:9px;height:9px;border-radius:50%;background:#6ed29a;box-shadow:0 0 10px rgba(110,210,154,.55)}
+.ai-bot-close{border:0;background:transparent;color:#aaa;font-size:20px;cursor:pointer}
+.ai-bot-scroll{padding:13px;overflow:auto;max-height:560px}
+.portal-ai-bot .botmsg{border:1px solid rgba(255,255,255,.08);background:#11131a;border-radius:10px;padding:12px;color:#e6e2d8;font-size:11.5px;line-height:1.6;max-height:none;overflow:visible}
+.portal-ai-bot .bot-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.portal-ai-bot .bot-actions button{border:1px solid rgba(201,162,75,.24);border-radius:7px;padding:8px 10px;background:#272a35;color:#e9e3d7;cursor:pointer;font-size:10px;font-weight:700}
+.portal-ai-bot .bot-actions button.good{background:#245a42}.portal-ai-bot .bot-actions button.primary{background:#b6903f;color:#17140d}
+.ai-bot-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.ai-bot-quick button{border:1px solid rgba(255,255,255,.08);background:#20232c;color:#aaa;border-radius:20px;padding:6px 9px;font-size:9px;cursor:pointer}
+.ai-bot-ask{display:flex;gap:6px;margin-top:10px}.ai-bot-ask input{flex:1;min-width:0;border:1px solid rgba(255,255,255,.1);background:#101219;color:#eee;border-radius:8px;padding:9px;font-size:10px}.ai-bot-ask button{border:0;border-radius:8px;background:#b6903f;color:#17140d;font-weight:800;padding:8px 11px;cursor:pointer;font-size:10px}
+.ai-bot-footer{padding:9px 13px;border-top:1px solid rgba(255,255,255,.07);font-size:8.5px;color:#777;background:#14161c}
+.portal-ai-bot.thinking .ai-bot-head{box-shadow:inset 0 0 20px rgba(201,162,75,.14),0 0 18px rgba(201,162,75,.18)}
+.portal-ai-bot.alerting .ai-bot-orb{animation:aiBotFloat 4.8s ease-in-out infinite,aiBotNudge .55s ease-in-out 2}
+.portal-ai-bot.happy .ai-bot-mouth{height:7px;border-bottom:2px solid #79d8a0;background:transparent;border-radius:0 0 12px 12px}
+@keyframes aiBlink{0%,44%,48%,100%{height:10px}46%{height:2px}}
+@keyframes aiEyeWatch{0%,18%,100%{transform:translateX(0)}30%,42%{transform:translateX(3px)}58%,70%{transform:translateX(-3px)}}
+@keyframes aiBotFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes aiShadow{0%,100%{transform:scaleX(1);opacity:.36}50%{transform:scaleX(.82);opacity:.24}}
+@keyframes aiAntennaPulse{0%,100%{opacity:.65;transform:scale(.9)}50%{opacity:1;transform:scale(1.18)}}
+@keyframes aiCore{0%,100%{opacity:.6;transform:scale(.86)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes aiBadgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes aiBotNudge{0%,100%{margin-right:0}30%{margin-right:5px}70%{margin-right:-2px}}
+@media(max-width:650px){
+  .portal-ai-bot{right:10px;bottom:10px}
+  .ai-bot-panel{right:0;bottom:100px;width:calc(100vw - 20px);max-height:calc(100vh - 125px)}
+  .ai-bot-orb{width:76px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ai-bot-orb,.ai-bot-eye,.ai-bot-eye i,.ai-bot-core,.ai-bot-antenna i,.ai-bot-badge,.ai-bot-shadow{animation:none!important}
+}
+
 </style>
 
 </head>
@@ -2211,32 +2313,52 @@
     </div>
 
     
-<div class="section-modal" id="aiIssueModal" aria-hidden="true">
-  <div class="section-modal-dialog" style="width:min(940px,95vw);height:auto;max-height:90vh">
-    <div class="section-modal-head">
-      <div>
-        <h2><i class="fa-solid fa-triangle-exclamation"></i> Timetable AI Recommendation</h2>
-        <div class="sub">Simple explanation of what stopped generation and what the Principal can do next.</div>
-      </div>
-      <button class="modal-close-x" onclick="closeAiIssuePopup()" aria-label="Close">×</button>
-    </div>
-    <div class="section-modal-body" id="aiIssueModalBody"></div>
-    <div class="section-modal-foot">
-      <div class="modal-stage">AI recommends only. No change is applied without Principal approval.</div>
-      <div class="row">
-        <button class="btn outline" onclick="closeAiIssuePopup()">Close</button>
-        <button class="btn primary" onclick="openSectionModal('configuration');closeAiIssuePopup()">Open Configuration</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="assistant" id="assistant">
-      <div class="assistant-head" onclick="document.getElementById('assistant').classList.toggle('min')">
-        <b><i class="fa-solid fa-robot"></i> Academic Assistant <span class="badge info">AI-ready</span></b><span>—</span>
-      </div>
-      <div class="assistant-body">
-        <div id="botmsg" class="botmsg">I will explain timetable risks, workforce balance and recommendations here. Principal approval remains the final authority.</div>
-        <div class="bot-actions" id="botActions"></div>
+<div id="assistant" class="portal-ai-bot collapsed" aria-live="polite">
+      <button class="ai-bot-orb" id="aiBotOrb" type="button" onclick="togglePortalAI()" aria-label="Open AI Assistant">
+        <span class="ai-bot-antenna"><i></i></span>
+        <span class="ai-bot-head">
+          <span class="ai-bot-eye left"><i></i></span>
+          <span class="ai-bot-eye right"><i></i></span>
+          <span class="ai-bot-mouth"></span>
+        </span>
+        <span class="ai-bot-body">
+          <span class="ai-bot-core"></span>
+        </span>
+        <span class="ai-bot-shadow"></span>
+        <span class="ai-bot-badge" id="aiBotBadge" style="display:none">0</span>
+      </button>
+
+      <div class="ai-bot-panel" id="aiBotPanel">
+        <div class="ai-bot-panel-head">
+          <div class="ai-bot-title">
+            <span class="ai-status-dot"></span>
+            <div><b>School Intelligence Assistant</b><small id="aiBotContext">Watching the portal</small></div>
+          </div>
+          <button type="button" class="ai-bot-close" onclick="togglePortalAI(false)">×</button>
+        </div>
+
+        <div class="ai-bot-scroll">
+          <div id="botmsg" class="botmsg">
+            I’m watching the school data quietly. I’ll surface useful academic, workforce and operational insights here. I can analyse and simulate, but only the Principal can approve changes.
+          </div>
+          <div class="bot-actions" id="botActions"></div>
+
+          <div class="ai-bot-quick" id="aiBotQuickActions">
+            <button type="button" onclick="botQuickAction('summary')">Explain current page</button>
+            <button type="button" onclick="botQuickAction('recommend')">Recommendations</button>
+            <button type="button" onclick="botQuickAction('risk')">Check risks</button>
+          </div>
+
+          <div class="ai-bot-ask">
+            <input id="aiBotQuestion" placeholder="Ask about staffing, timetable, workload…">
+            <button type="button" onclick="askPortalAI()">Ask</button>
+          </div>
+        </div>
+
+        <div class="ai-bot-footer">
+          <i class="fa-solid fa-shield-halved"></i>
+          AI recommends only · Principal approval required
+        </div>
       </div>
     </div>
   </div>
@@ -7458,7 +7580,206 @@ function totalPeriods(div){return subjectsForDivision(div).reduce((a,b)=>a+Numbe
 function allBundles(){let arr=[];divisions().forEach(d=>subjectsForDivision(d).forEach(s=>arr.push({key:d.id+'|'+s.name,divisionId:d.id,tier:d.tier,grade:d.grade,subject:s.name,periods:Number(s.periods),resource:s.resource||''})));return arr}
 function t(){return translations[state.lang]||translations.en}
 function setLang(v){state.lang=v;save();document.getElementById('lang').value=v;bot(t().assistantIntro);renderAll()}
-function bot(message,actions=[]){document.getElementById('botmsg').innerHTML=message;document.getElementById('botActions').innerHTML=actions.map(a=>`<button class="btn ${a.cls||'outline'}" onclick="${a.fn}">${esc(a.label)}</button>`).join('');document.getElementById('assistant').classList.remove('min')}
+
+let portalAICurrentContext='dashboard';
+let portalAIUnread=0;
+
+function mountGlobalAIBot(){
+  const a=document.getElementById('assistant');
+  if(a && a.parentElement!==document.body)document.body.appendChild(a);
+  if(a)a.classList.add('collapsed');
+}
+function togglePortalAI(force){
+  const a=document.getElementById('assistant');if(!a)return;
+  const open=force===undefined?a.classList.contains('collapsed'):!!force;
+  a.classList.toggle('collapsed',!open);
+  if(open){portalAIUnread=0;setAiBotBadge(0)}
+}
+function setAiBotBadge(n){
+  const b=document.getElementById('aiBotBadge');if(!b)return;
+  if(n<=0){b.style.display='none';b.textContent='0';return}
+  portalAIUnread=Math.max(portalAIUnread,n);
+  b.textContent=portalAIUnread>9?'9+':String(portalAIUnread);
+  b.style.display='flex';
+}
+function aiBotThink(label='Analysing school data…'){
+  const a=document.getElementById('assistant');if(a)a.classList.add('thinking');
+  const c=document.getElementById('aiBotContext');if(c)c.textContent=label;
+}
+function aiBotDone(label='Watching the portal'){
+  const a=document.getElementById('assistant');if(a)a.classList.remove('thinking');
+  const c=document.getElementById('aiBotContext');if(c)c.textContent=label;
+}
+
+function workforceManagementSnapshot(){
+  syncAcademicStaffFromPrincipal();
+  let a=analyseWorkforce(),loads=a.loads||{};
+  let teachers=state.staff.filter(t=>(loads[t.id]||0)>0 || String(t.category||'Teaching').toLowerCase()==='teaching');
+  let demand=allBundles().reduce((sum,b)=>sum+Number(b.periods||0),0);
+  let activeLoads=teachers.map(t=>({t,load:loads[t.id]||0}));
+  let avg=teachers.length?demand/teachers.length:0;
+  let under=activeLoads.filter(x=>x.load<20).sort((x,y)=>x.load-y.load);
+  let healthy=activeLoads.filter(x=>x.load>=20&&x.load<=25);
+  let over=activeLoads.filter(x=>x.load>25);
+  let arithmeticMin=Math.ceil(demand/25);
+
+  let pairs=[];
+  for(let i=0;i<under.length;i++){
+    for(let j=i+1;j<under.length;j++){
+      let A=under[i],B=under[j];
+      let aMain=norm(A.t.main),aBack=norm(A.t.secondary),bMain=norm(B.t.main),bBack=norm(B.t.secondary);
+      let overlap=(aMain&&aMain===bMain)||(aMain&&aMain===bBack)||(aBack&&aBack===bMain)||(aBack&&aBack===bBack);
+      let poolOverlap=teacherHomeTiers(A.t).some(t=>teacherHomeTiers(B.t).includes(t) || teachingPeers(t).some(p=>teacherHomeTiers(B.t).includes(p)));
+      if(overlap&&poolOverlap&&A.load+B.load<=30){
+        pairs.push({a:A,b:B,total:A.load+B.load});
+      }
+    }
+  }
+  pairs.sort((x,y)=>x.total-y.total);
+
+  return {demand,teachers,avg,under,healthy,over,arithmeticMin,pairs,loads};
+}
+
+function renderWorkforceBotInsight(){
+  let w=workforceManagementSnapshot();
+  let potential=w.pairs.slice(0,4);
+  let text=`<b>Workforce intelligence</b><br>
+  Current teaching demand: <b>${w.demand} periods/week</b><br>
+  Teaching faculty analysed: <b>${w.teachers.length}</b><br>
+  Average workload: <b>${w.avg.toFixed(1)}/25</b><br>
+  Under-utilised below 20: <b>${w.under.length}</b><br>
+  Arithmetic floor at 25 periods: <b>${w.arithmeticMin} teachers</b><br><br>`;
+
+  if(potential.length){
+    text+=`I found <b>${potential.length} overlapping capability combination${potential.length>1?'s':''}</b> worth simulating. This does <u>not</u> mean those staff can simply be removed; complete subject bundles, Section Tier, class-teacher duties, substitution reserve and CSP timetable feasibility must all pass first.<br><br>`;
+    text+=potential.map((p,i)=>`${i+1}. <b>${esc(academicTeacherName(p.a.t))}</b> (${p.a.load}/25) + <b>${esc(academicTeacherName(p.b.t))}</b> (${p.b.load}/25) — overlapping ${esc(p.a.t.main||p.a.t.secondary||'subject')} capability.`).join('<br>');
+  }else{
+    text+=`I do not see an obvious same-capability consolidation pair from workload alone. I recommend keeping the current staff until complete-bundle and CSP simulations identify a safe reduction.`;
+  }
+
+  text+=`<br><br><b>Management rule:</b> never reduce staff from workload numbers alone. I will recommend reduction only after a simulation proves subject coverage and timetable feasibility.`;
+
+  bot(text,[
+    {label:'Show consolidation candidates',fn:'botShowWorkforceCandidates()',cls:'primary'},
+    {label:'Open What-if & Impact',fn:"openSectionModal('simulation')"},
+    {label:'Workforce Analysis',fn:"openSectionModal('workforce')"}
+  ],{open:false,badgeCount:potential.length||1});
+  aiBotDone(`${potential.length||1} workforce insight${potential.length===1?'':'s'} available`);
+}
+
+function botShowWorkforceCandidates(){
+  let w=workforceManagementSnapshot(),pairs=w.pairs.slice(0,8);
+  if(!pairs.length){
+    return bot('<b>No immediate consolidation candidate proved.</b><br>I need to preserve complete subject ownership, teaching-block eligibility and timetable feasibility. Use What-if & Impact for targeted staff-removal simulations.',[
+      {label:'Open What-if & Impact',fn:"openSectionModal('simulation')",cls:'primary'}
+    ]);
+  }
+  let html=`<b>Potential manpower consolidation candidates</b><br><span style="color:#aaa">These are screening candidates only — not removal decisions.</span><br><br>`;
+  html+=pairs.map((p,i)=>`${i+1}. <b>${esc(academicTeacherName(p.a.t))}</b> ${p.a.load}/25 + <b>${esc(academicTeacherName(p.b.t))}</b> ${p.b.load}/25<br><span style="color:#999">Shared/overlapping capability: ${esc(p.a.t.main||p.a.t.secondary||'subject')}. Combined current load ${p.total} periods.</span>`).join('<br><br>');
+  html+=`<br><br>For a real reduction recommendation I must reassign every complete bundle, preserve one class + one subject + one teacher, check ≤25 normally / ≤30 only with approval, and generate a valid CSP timetable.`;
+  bot(html,[
+    {label:'Open What-if & Impact',fn:"openSectionModal('simulation')",cls:'primary'},
+    {label:'Review ownership',fn:"openSectionModal('ownership')"}
+  ],{badge:false});
+}
+
+function botObservePage(page){
+  portalAICurrentContext=page||portalAICurrentContext;
+  aiBotThink('Checking '+String(page||'current page').replace(/-/g,' ')+'…');
+  setTimeout(()=>{
+    if(page==='workforce')return renderWorkforceBotInsight();
+    if(page==='generator'){
+      let issues=scheduleFeasible();
+      if(issues.length){
+        let issue=classifySolverIssue();
+        bot(`<b>${esc(issue.category)} — ${esc(issue.title)}</b><br>${esc(issue.simple)}<br><br><b>Recommended next step:</b> ${esc(issue.solutions?.[0]?.text||'Review the blocking configuration.')}`,[
+          {label:'Explain',fn:'explainCurrentFailure()',cls:'primary'},
+          {label:'Open required section',fn: issue.solutions?.[0]?.action==="ownership" ? "openSectionModal('ownership')" : issue.solutions?.[0]?.action==="workforce" ? "openSectionModal('workforce')" : "openSectionModal('configuration')"}
+        ],{open:false});
+        return aiBotDone('Timetable issue detected');
+      }
+      aiBotDone('Timetable generator ready');
+      return;
+    }
+    if(page==='ownership'){
+      let bundles=allBundles(),approved=bundles.filter(b=>state.ownership[b.key]).length;
+      let missing=bundles.length-approved;
+      if(missing>0){
+        bot(`<b>Ownership review</b><br>${approved}/${bundles.length} complete subject bundles currently have approved teacher ownership. <b>${missing}</b> still need attention before timetable generation.`,[
+          {label:'Review blockers',fn:"openSectionModal('ownership')",cls:'primary'}
+        ],{open:false});
+        return aiBotDone(`${missing} ownership item${missing===1?'':'s'} need attention`);
+      }
+      aiBotDone('Ownership looks complete');
+      return;
+    }
+    aiBotDone('Watching the portal');
+  },320);
+}
+
+function botQuickAction(type){
+  if(type==='recommend' && portalAICurrentContext==='workforce')return renderWorkforceBotInsight();
+  if(type==='recommend' && portalAICurrentContext==='generator')return findSmallestFix();
+  if(type==='risk' && portalAICurrentContext==='generator')return explainCurrentFailure();
+  if(type==='risk' && portalAICurrentContext==='workforce'){
+    let w=workforceManagementSnapshot();
+    return bot(`<b>Workforce risk check</b><br>${w.over.length?`${w.over.length} teacher(s) exceed the normal 25-period target.`:'No teacher exceeds the normal 25-period target in the current ownership.'}<br>${w.under.length} teacher(s) are below 20 periods and should be reviewed for structural vs avoidable under-utilisation.`,[
+      {label:'Analyse workforce',fn:"openSectionModal('workforce')",cls:'primary'}
+    ]);
+  }
+  if(type==='summary'){
+    if(portalAICurrentContext==='workforce')return renderWorkforceBotInsight();
+    if(portalAICurrentContext==='generator'){
+      let issue=scheduleFeasible();
+      return bot(issue.length?`<b>Generate Timetable is blocked.</b><br>${issue.map(esc).join('<br>')}`:'<b>Generate Timetable is ready.</b><br>Pre-generation checks are currently passing.');
+    }
+    return bot(`<b>Current page:</b> ${esc(portalAICurrentContext)}<br>I am monitoring this page for academic, workforce and operational exceptions. Important insights will appear here without interrupting your work.`);
+  }
+  return bot('<b>No critical risk detected from this quick check.</b><br>I will continue monitoring the current page.');
+}
+
+function askPortalAI(){
+  const input=document.getElementById('aiBotQuestion');
+  let q=String(input?.value||'').trim().toLowerCase();
+  if(!q)return;
+  if(input)input.value='';
+  aiBotThink('Thinking about your question…');
+
+  setTimeout(()=>{
+    if(q.includes('staff')||q.includes('manpower')||q.includes('human resource')||q.includes('reduce')||q.includes('remove')||q.includes('workload')||q.includes('utilis')||q.includes('utiliz')){
+      aiBotDone('Workforce analysis ready');
+      return renderWorkforceBotInsight();
+    }
+    if(q.includes('why')&&q.includes('fail')||q.includes('timetable')||q.includes('solver')||q.includes('generation')){
+      aiBotDone('Timetable analysis ready');
+      if(state.generatorStatus?.state==='failed'||scheduleFeasible().length)return explainCurrentFailure();
+      return bot('<b>Timetable status</b><br>The current pre-generation checks are passing. Generate the timetable to let the CSP solver prove actual slot feasibility.');
+    }
+    if(q.includes('smallest')||q.includes('solution')||q.includes('fix')){aiBotDone('Recommendations ready');return findSmallestFix()}
+    if(q.includes('compare')){aiBotDone('Options ready');return compareSolverOptions()}
+    if(q.includes('simulate')||q.includes('what if')){aiBotDone('Simulation ready');return simulateBestFix()}
+    aiBotDone('Response ready');
+    return bot('<b>I can help with this from the school data currently available.</b><br>For the strongest result, ask me about workforce efficiency, teacher reduction, timetable blockers, ownership, workload, or what-if simulations.');
+  },380);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(mountGlobalAIBot,0);
+});
+function bot(message,actions=[],options={}){
+  const assistant=document.getElementById('assistant');
+  const msg=document.getElementById('botmsg');
+  const acts=document.getElementById('botActions');
+  if(msg)msg.innerHTML=message;
+  if(acts)acts.innerHTML=actions.map(a=>`<button class="${a.cls||''}" onclick="${a.fn}">${esc(a.label)}</button>`).join('');
+  if(assistant){
+    assistant.classList.remove('thinking','happy');
+    assistant.classList.add(options.success?'happy':'alerting');
+    setTimeout(()=>assistant.classList.remove('alerting'),1300);
+    if(options.open!==false)assistant.classList.remove('collapsed');
+  }
+  if(options.badge!==false)setAiBotBadge(options.badgeCount||1);
+}
 const academicEnginePages=[
  ['dashboard','Overview','⌂','School readiness, academic status and key workflow checkpoints.'],
  ['configuration','Configuration','⚙','School structure, teaching blocks, subjects, resources and divisions.'],
@@ -7508,6 +7829,7 @@ function openSectionModal(p){
  let idx=academicEnginePages.findIndex(x=>x[0]===p);document.getElementById('modalStageText').textContent=idx>=0?`Academic Schedule folder ${idx+1} of ${academicEnginePages.length}`:'Moved workflow: Attendance & Leave';
  document.getElementById('continueStageBtn').style.display=idx>=0&&idx<academicEnginePages.length-1?'inline-flex':'none';
  document.getElementById('sectionModal').classList.add('open');document.getElementById('sectionModal').setAttribute('aria-hidden','false');
+ setTimeout(()=>botObservePage(p),180);
 }
 function closeSectionModal(){
  let body=document.getElementById('sectionModalBody');let store=document.getElementById('viewStore');
@@ -8538,6 +8860,7 @@ function renderWorkforce(){
   ${pressure?`<div class="table-wrap"><table class="table"><thead><tr><th>Teaching Pool</th><th>Subject</th><th>Overload Periods</th><th>Teachers Carrying Overload</th><th>Eligible Teachers Across Merged Pool</th></tr></thead><tbody>${pressure}</tbody></table></div>`:'<div class="status green">No subject overload detected.</div>'}
   ${recs?`<div style="margin-top:12px"><h3>Staffing Suggestions</h3>${recs}</div>`:''}
   </div>`;
+setTimeout(()=>{if(portalAICurrentContext==='workforce')renderWorkforceBotInsight()},250);
 }
 function scheduleFeasible(){let cfg=validateConfig(),a=analyseWorkforce(),issues=[...cfg,...a.blockers];if(Object.keys(state.ownership).length!==allBundles().length)issues.push('Teacher ownership is not fully approved.');return issues}
 
@@ -8596,28 +8919,7 @@ function renderGenerator(){
       </div>
     </div>
 
-    <div class="card" id="aiSolverAssistant">
-      <div class="card-head">
-        <div><h2>AI Solver Assistant</h2>
-          <div class="sub"><b>Read / Analyse / Simulate / Recommend only.</b> Any proposed change is checked against the same Academic criteria, shown to the Principal with its impact, and can be applied only after explicit Principal approval.</div>
-        </div>
-        <span class="badge info">Principal Controlled</span>
-      </div>
-      <div class="grid g4">
-        <button class="btn outline" onclick="explainCurrentFailure()">Explain Failure</button>
-        <button class="btn outline" onclick="findSmallestFix()">Find Smallest Fix</button>
-        <button class="btn outline" onclick="compareSolverOptions()">Compare Solutions</button>
-        <button class="btn outline" onclick="simulateBestFix()">Simulate Best Fix</button>
-      </div>
-      <div class="field" style="margin-top:12px">
-        <label>Ask AI about this timetable</label>
-        <div class="row">
-          <input id="aiSolverQuestion" placeholder="Why is generation failing? Can it be solved without adding staff?" style="flex:1">
-          <button class="btn primary" onclick="answerSolverQuestion()">Ask AI</button>
-        </div>
-      </div>
-      <div id="aiSolverAnswer" class="notice" style="margin-top:10px">${state.aiSolverAnalysis?renderAiSolverAnalysis(state.aiSolverAnalysis):'Generate the timetable first. If there is a problem, the assistant will explain the bottleneck and rank the least disruptive valid options.'}</div>
-    </div>
+    <div class="notice"><b>AI is watching this generation.</b><span class="sub">Solver explanations and recommendations are available from the animated assistant at the bottom-right.</span></div>
 
     <div id="generationDiagnostics">${renderGenerationDiagnostics()}</div>
     <div id="genResult">${state.timetable?renderDivisionTimetable(divisions()[0]?.id):'<div class="empty">No timetable generated yet.</div>'}</div>`;
@@ -8663,7 +8965,7 @@ function renderGenerationDiagnostics(){
     ${d.proofErrors?.length?`<div class="status red"><b>Mathematical / rule blockers</b><br>${d.proofErrors.map(esc).join('<br>')}</div>`:''}
     ${d.deadEnds?.length?`<div class="status red"><b>Most frequent dead-end positions</b><br>${d.deadEnds.slice(0,10).map(x=>`${esc(x.key)} — ${x.count} occurrence(s)`).join('<br>')}</div>`:''}
     ${d.teacherPressure?.length?`<div class="status amber"><b>Highest teacher slot pressure</b><br>${d.teacherPressure.slice(0,10).map(x=>`${esc(x.name)} — ${x.load} periods/week`).join('<br>')}</div>`:''}
-    <div class="notice"><b>Solver conclusion</b><span class="sub">${esc(d.conclusion||'The search did not complete a valid timetable. Use AI Solver Assistant to explain the bottleneck and simulate the smallest valid change.')}</span></div>
+    <div class="notice"><b>Solver conclusion</b><span class="sub">${esc(d.conclusion||'The search did not complete a valid timetable. Open the animated AI assistant at the bottom-right to explain the bottleneck and simulate the smallest valid change.')}</span></div>
   </div>`;
 }
 
@@ -8744,7 +9046,7 @@ function generateTimetable(){
     state.aiSolverAnalysis=buildAiFailureAnalysis();
     state.aiSolverOptions=buildSolverOptions();
     save();renderGenerator();
-    bot('<b>Timetable needs intervention.</b><br>The AI Solver Assistant has prepared a simple issue explanation and Principal-controlled solutions. No changes were made automatically.');
+    bot('<b>Timetable needs intervention.</b><br>The AI assistant has prepared a simple issue explanation and Principal-controlled solutions. No changes were made automatically.');
     setTimeout(showAiIssuePopup,80);
   },30);
 }
@@ -9052,32 +9354,33 @@ function classifySolverIssue(){
 
 function showAiIssuePopup(){
   let issue=classifySolverIssue();
-  let body=document.getElementById('aiIssueModalBody');if(!body)return;
-  body.innerHTML=`
-    <div class="issue-hero">
-      <div class="issue-type">Issue Type: ${esc(issue.category)} · ${esc(issue.severity)}</div>
-      <div class="issue-title">${esc(issue.title)}</div>
-      <div class="sub">${esc(issue.simple)}</div>
-    </div>
-    ${issue.metrics?.length?`<div class="issue-grid">${issue.metrics.map(([a,b])=>`<div class="issue-kpi"><small>${esc(a)}</small><b>${esc(b)}</b></div>`).join('')}</div>`:''}
-    <div class="status amber"><b>Why this happened</b><br>${esc(issue.cause)}</div>
-    <div class="status red"><b>Why timetable generation stopped</b><br>${esc(issue.impact)}</div>
-    <div style="margin-top:14px"><b>Recommended solutions</b>${issue.solutions.map((x,i)=>`<div class="solution-card"><h4>${i+1}. ${esc(x.title)}</h4><p>${esc(x.text)}</p><div class="row" style="margin-top:8px">${x.action==='configuration'?`<button class="btn outline" onclick="closeAiIssuePopup();openSectionModal('configuration')">Review Configuration</button>`:x.action==='ownership'?`<button class="btn outline" onclick="closeAiIssuePopup();openSectionModal('ownership')">Open Ownership</button>`:x.action==='staff'?`<button class="btn outline" onclick="closeAiIssuePopup();openSectionModal('staff')">Open Staff & Capability</button>`:x.action==='workforce'?`<button class="btn outline" onclick="closeAiIssuePopup();openSectionModal('workforce')">Open Workforce Analysis</button>`:`<button class="btn outline" onclick="closeAiIssuePopup();findSmallestFix()">Analyse Option</button>`}</div></div>`).join('')}</div>
-    <div class="notice" style="margin-top:14px"><b>Principal control</b><span class="sub">AI has explained and recommended only. No resource, teacher, ownership or timetable value has been changed.</span></div>`;
-  document.getElementById('aiIssueModal').classList.add('open');
-  document.getElementById('aiIssueModal').setAttribute('aria-hidden','false');
+  let html=`<b>${esc(issue.category)} — ${esc(issue.title)}</b><br>
+  ${esc(issue.simple)}<br><br>
+  <b>Why:</b> ${esc(issue.cause)}<br>
+  <b>Impact:</b> ${esc(issue.impact)}<br><br>
+  <b>Recommended solutions</b><br>
+  ${(issue.solutions||[]).map((x,i)=>`${i+1}. <b>${esc(x.title)}</b><br><span style="color:#aaa">${esc(x.text)}</span>`).join('<br><br>')}`;
+  let actions=(issue.solutions||[]).slice(0,3).map(x=>({
+    label:x.title,
+    cls:x.action==='ai'?'primary':'',
+    fn:x.action==='ownership'?"openSectionModal('ownership')":
+       x.action==='staff'?"openSectionModal('staff')":
+       x.action==='workforce'?"openSectionModal('workforce')":
+       x.action==='configuration'?"openSectionModal('configuration')":
+       "findSmallestFix()"
+  }));
+  bot(html,actions);
 }
-
-function closeAiIssuePopup(){
-  document.getElementById('aiIssueModal')?.classList.remove('open');
-  document.getElementById('aiIssueModal')?.setAttribute('aria-hidden','true');
-}
+function closeAiIssuePopup(){ togglePortalAI(false); }
 
 function explainCurrentFailure(){
   let issue=classifySolverIssue();
   let a={type:'failure',title:`${issue.category}: ${issue.title}`,summary:issue.simple,details:[issue.cause,issue.impact]};
   state.aiSolverAnalysis=a;save();
-  let box=document.getElementById('aiSolverAnswer');if(box)box.innerHTML=renderAiSolverAnalysis(a);
+  bot(renderAiSolverAnalysis(a),[
+    {label:'Find smallest fix',fn:'findSmallestFix()',cls:'primary'},
+    {label:'Compare solutions',fn:'compareSolverOptions()'}
+  ]);
   showAiIssuePopup();
 }
 
@@ -9089,14 +9392,12 @@ function findSmallestFix(){
     ?`First candidate: ${opts[0].description}`
     :'No safe ownership transfer was found; workforce review is the next valid step.');
   state.aiSolverAnalysis=a;save();
-  let box=document.getElementById('aiSolverAnswer');
-  if(box)box.innerHTML=renderAiSolverAnalysis(a)+`<div style="margin-top:10px">${opts.slice(0,3).map(optionImpactHtml).join('')}</div>`;
+  bot(renderAiSolverAnalysis(a)+`<div style="margin-top:10px">${opts.slice(0,3).map(optionImpactHtml).join('')}</div>`,[],{badge:false});
 }
 
 function compareSolverOptions(){
   let opts=buildSolverOptions();
-  let box=document.getElementById('aiSolverAnswer');
-  if(box)box.innerHTML=`<b>Solution comparison</b><br><span class="sub">Ranked from lowest disruption upward. None is applied automatically.</span><div style="margin-top:10px">${opts.map(optionImpactHtml).join('')}</div>`;
+  bot(`<b>Solution comparison</b><br><span style="color:#aaa">Ranked from lowest disruption upward. None is applied automatically.</span><div style="margin-top:10px">${opts.map(optionImpactHtml).join('')}</div>`,[],{badge:false});
 }
 
 function simulateOwnershipOption(o){
@@ -9117,13 +9418,12 @@ function simulateSolverOption(id){
   let o=(state.aiSolverOptions||[]).find(x=>x.id===id)||buildSolverOptions().find(x=>x.id===id);
   if(!o)return;
   if(o.type==='staff_review'){
-    let box=document.getElementById('aiSolverAnswer');if(box)box.innerHTML=optionImpactHtml(o);return;
+    bot(optionImpactHtml(o),[],{badge:false});return;
   }
   let r=simulateOwnershipOption(o);
   o.lastSimulation={ok:r.ok,message:r.message};
   save();
-  let box=document.getElementById('aiSolverAnswer');
-  if(box)box.innerHTML=`<b>Simulation only — no live data changed</b><br>${esc(r.message)}${r.errors?.length?`<div class="status red" style="margin-top:8px">${r.errors.map(esc).join('<br>')}</div>`:''}<div style="margin-top:10px">${optionImpactHtml(o)}</div>`;
+  bot(`<b>Simulation only — no live data changed</b><br>${esc(r.message)}${r.errors?.length?`<div style="margin-top:8px;color:#f1a0a9">${r.errors.map(esc).join('<br>')}</div>`:''}<div style="margin-top:10px">${optionImpactHtml(o)}</div>`,[],{badge:false});
 }
 
 function simulateBestFix(){
@@ -9188,7 +9488,7 @@ function answerSolverQuestion(){
   a.title='AI response';
   a.details.push('For this page I can explain the solver failure, find the smallest criteria-compliant ownership change, compare options, and simulate before Principal approval. I cannot change timetable data independently.');
   state.aiSolverAnalysis=a;save();
-  let box=document.getElementById('aiSolverAnswer');if(box)box.innerHTML=renderAiSolverAnalysis(a);
+  bot(renderAiSolverAnalysis(a),[],{badge:false});
 }
 
 function auditData(schedule=state.timetable){let errors=[],warnings=[];if(!schedule)return{errors:['No timetable generated.'],warnings:[]};let seenClass=new Set(),seenTeacher=new Set(),seenResource=new Set(),counts={},byClassDay={};schedule.forEach(e=>{let ck=e.divisionId+'|'+e.day+'|'+e.period,tk=e.teacherId+'|'+e.day+'|'+e.period,rk=e.resource?e.resource+'|'+e.day+'|'+e.period:'';if(seenClass.has(ck))errors.push('Class clash '+ck);seenClass.add(ck);if(seenTeacher.has(tk))errors.push('Teacher clash '+staffName(e.teacherId)+' '+e.day+' P'+e.period);seenTeacher.add(tk);if(rk&&seenResource.has(rk))errors.push('Resource clash '+rk);if(rk)seenResource.add(rk);counts[e.divisionId+'|'+e.subject]=(counts[e.divisionId+'|'+e.subject]||0)+1;(byClassDay[e.divisionId+'|'+e.day]=byClassDay[e.divisionId+'|'+e.day]||[]).push(e)});allBundles().forEach(b=>{let got=counts[b.key]||0;if(got!==b.periods)errors.push(`${b.key}: ${got}/${b.periods} periods`)});Object.keys(byClassDay).forEach(k=>{let a=byClassDay[k].sort((x,y)=>x.period-y.period);for(let i=1;i<a.length;i++)if(a[i].subject===a[i-1].subject)errors.push(`${k}: consecutive ${a[i].subject} at P${a[i-1].period}/P${a[i].period}`)});let wa=analyseWorkforce();warnings.push(...wa.warnings);return{errors:[...new Set(errors)],warnings:[...new Set(warnings)]}}
