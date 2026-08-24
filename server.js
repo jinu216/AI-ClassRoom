@@ -219,6 +219,7 @@ let timetableFolders = [];
 let timetableReview = null;
 let communicationMessages = [];
 let chatMessages = [];
+let communicationAuditLog = [];
 let pushSubscriptions = [];
 const VAPID_PUBLIC_KEY=process.env.VAPID_PUBLIC_KEY||'';
 const VAPID_PRIVATE_KEY=process.env.VAPID_PRIVATE_KEY||'';
@@ -241,7 +242,7 @@ async function hydrateSharedStateFromCloud() {
     'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
     'pius_additional_duty_assignments','pius_digital_library_resources',
     'pius_attendance_settings','pius_attendance_records','pius_leave_records',
-    'pius_communication_messages','pius_chat_messages'
+    'pius_communication_messages','pius_chat_messages','pius_communication_audit_log'
   ];
   const { data, error } = await supabase.from('portal_state').select('state_key,state_value').in('state_key',keys);
   if (error) { console.error('Supabase shared-state hydration failed:', error.message); return; }
@@ -261,6 +262,7 @@ async function hydrateSharedStateFromCloud() {
   if (Array.isArray(value('pius_leave_records'))) leaveRecords=value('pius_leave_records');
   if (Array.isArray(value('pius_communication_messages'))) communicationMessages=value('pius_communication_messages');
   if (Array.isArray(value('pius_chat_messages'))) chatMessages=value('pius_chat_messages');
+  if (Array.isArray(value('pius_communication_audit_log'))) communicationAuditLog=value('pius_communication_audit_log');
 }
 
 function upsertById(list, item) {
@@ -343,9 +345,14 @@ async function persistRuntimeState(key,value){
   }catch(e){console.error('Runtime state persistence failed:',key,e.message)}
 }
 function commId(prefix='MSG'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}
+function requestNo(prefix='REQ'){const d=new Date(),stamp=d.toISOString().slice(0,10).replace(/-/g,'');return `${prefix}-${stamp}-${String(Date.now()).slice(-7)}-${Math.random().toString(36).slice(2,5).toUpperCase()}`}
+function ensureRequestNo(obj,prefix='REQ'){if(!obj)return '';if(!obj.requestNo)obj.requestNo=obj.id||requestNo(prefix);return obj.requestNo}
+function auditCommunication(action,item,actor={}){const row={id:commId('AUD'),requestNo:item?.requestNo||item?.id||'',messageId:item?.id||'',action,actorRole:actor.role||actor.actorRole||'',actorId:actor.id||actor.actorId||'',actorName:actor.name||actor.actorName||'',status:item?.status||'',at:new Date().toISOString()};communicationAuditLog.unshift(row);communicationAuditLog=communicationAuditLog.slice(0,10000);persistRuntimeState('pius_communication_audit_log',communicationAuditLog);broadcast({type:'COMMUNICATION_AUDIT_UPDATED',payload:row});return row}
 function addCommunication(msg){
-  const item={id:msg.id||commId('MAIL'),kind:'official',status:msg.status||'New',createdAt:msg.createdAt||new Date().toISOString(),...msg};
+  const item={id:msg.id||commId('MAIL'),requestNo:msg.requestNo||requestNo(msg.type&&/REQUEST|PROFILE|LEAVE|TIMETABLE/.test(msg.type)?'REQ':'MSG'),kind:'official',status:msg.status||'New',createdAt:msg.createdAt||new Date().toISOString(),readBy:Array.isArray(msg.readBy)?msg.readBy:[],deletedFor:Array.isArray(msg.deletedFor)?msg.deletedFor:[],...msg};
+  ensureRequestNo(item,msg.type&&/REQUEST|PROFILE|LEAVE|TIMETABLE/.test(msg.type)?'REQ':'MSG');
   communicationMessages.unshift(item);communicationMessages=communicationMessages.slice(0,5000);
+  auditCommunication('CREATED',item,{role:msg.fromRole,id:msg.fromId,name:msg.fromName});
   persistRuntimeState('pius_communication_messages',communicationMessages);
   broadcast({type:'COMMUNICATION_UPDATED',payload:item});
   return item;
@@ -477,6 +484,7 @@ wss.on('connection', async (ws) => {
       ,timetableReview
       ,communicationMessages
       ,chatMessages
+      ,communicationAuditLog
       ,portionProgress
       ,additionalDutyAssignments
       ,libraryResources
@@ -550,6 +558,25 @@ wss.on('connection', async (ws) => {
           addCommunication({fromRole:'Faculty',fromId:String(r.teacherId),fromName:r.teacherName||String(r.teacherId),toRole:'Principal',toId:'principal',toName:'Principal',type:r.status==='Accepted'?'TIMETABLE_ACCEPTED':'TIMETABLE_ISSUE',title:`${r.teacherName||r.teacherId} — timetable ${r.status}`,body:r.status==='Accepted'?`Timetable V${r.version} accepted.`:`Timetable V${r.version} issue: ${r.reason||'No reason supplied'}`,status:r.status,actionRef:`TIMETABLE:${r.version}`});
           addCommunication({fromRole:'System',fromId:'system',fromName:'School System',toRole:'Faculty',toId:String(r.teacherId),toName:r.teacherName||String(r.teacherId),type:'TIMETABLE_RESPONSE_RECORDED',title:`Timetable V${r.version} — ${r.status}`,body:r.status==='Accepted'?'Your timetable is confirmed and is now active in your Faculty Portal.':'Your issue has been sent to the Principal.',status:r.status,actionRef:`TIMETABLE:${r.version}`});
           persistRuntimeState('pius_communication_messages',communicationMessages);
+          break;
+        }
+
+        case 'COMMUNICATION_MESSAGE_ACTION': {
+          const r=data.payload||{},item=communicationMessages.find(x=>String(x.id)===String(r.messageId));
+          if(!item)break;
+          ensureRequestNo(item);
+          if(r.action==='READ'){
+            item.readBy=Array.isArray(item.readBy)?item.readBy:[];
+            const key=`${r.actorRole||''}|${r.actorId||''}`;
+            if(key&&!item.readBy.includes(key))item.readBy.push(key);
+          }else if(r.action==='DELETE'){
+            item.deletedFor=Array.isArray(item.deletedFor)?item.deletedFor:[];
+            const key=`${r.actorRole||''}|${r.actorId||''}`;
+            if(key&&!item.deletedFor.includes(key))item.deletedFor.push(key);
+          }
+          persistRuntimeState('pius_communication_messages',communicationMessages);
+          auditCommunication(r.action,item,{role:r.actorRole,id:r.actorId,name:r.actorName});
+          broadcast({type:'COMMUNICATION_MESSAGE_UPDATED',payload:item});
           break;
         }
 
@@ -732,18 +759,27 @@ wss.on('connection', async (ws) => {
         }
 
         // A new request can originate from either portal.
-        case 'PROFILE_VERIFICATION_CREATE':
-          upsertVerification(data.payload);
-          broadcast({ type: 'PROFILE_VERIFICATION_CREATED', payload: data.payload });
+        case 'PROFILE_VERIFICATION_CREATE': {
+          const r=data.payload||{};ensureRequestNo(r,'PV');
+          upsertVerification(r);
+          broadcast({ type: 'PROFILE_VERIFICATION_CREATED', payload: r });
+          const existing=communicationMessages.find(x=>x.type==='FACULTY_PROFILE_REQUEST'&&String(x.requestNo)===String(r.requestNo));
+          if(!existing)addCommunication({requestNo:r.requestNo,fromRole:'Faculty',fromId:String(r.empId||''),fromName:r.teacherName||r.empId||'Faculty',toRole:'Principal',toId:'principal',toName:'Principal',type:'FACULTY_PROFILE_REQUEST',title:'Faculty profile update request',body:r.note||'Faculty requested a profile update.',status:'Pending Principal Approval',details:{previous:r.previousSnapshot||{},proposed:r.snapshot||r.proposedChanges||{},note:r.note||'',source:r.source||'Teacher Profile Edit'},actionRef:r.id});
           break;
+        }
 
         // Principal approves or rejects a faculty-originated request.
-        case 'PROFILE_VERIFICATION_DECISION':
-          upsertVerification(data.payload);
-          if (data.payload?.appliedProfile) applyProfileToRoster(data.payload.appliedProfile);
-          broadcast({ type: 'PROFILE_VERIFICATION_DECIDED', payload: data.payload });
+        case 'PROFILE_VERIFICATION_DECISION': {
+          const r=data.payload||{};ensureRequestNo(r,'PV');
+          upsertVerification(r);
+          if (r.appliedProfile) applyProfileToRoster(r.appliedProfile);
+          broadcast({ type: 'PROFILE_VERIFICATION_DECIDED', payload: r });
           broadcast({ type: 'PORTAL_STAFF_UPDATED', payload: portalStaff });
+          const original=communicationMessages.find(x=>x.type==='FACULTY_PROFILE_REQUEST'&&(String(x.requestNo)===String(r.requestNo)||String(x.actionRef)===String(r.id)));
+          if(original){original.status=r.status;original.decisionAt=r.decisionAt||new Date().toISOString();original.decisionBy=r.decisionBy||r.approvedBy||r.rejectedBy||'Principal';original.decisionReason=r.rejectionReason||'';persistRuntimeState('pius_communication_messages',communicationMessages);broadcast({type:'COMMUNICATION_MESSAGE_UPDATED',payload:original});auditCommunication(r.status==='Approved'?'APPROVED':'REJECTED',original,{role:'Principal',id:'principal',name:'Principal'})}
+          addCommunication({requestNo:r.requestNo,fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(r.empId||''),toName:r.teacherName||r.empId||'Faculty',type:'FACULTY_PROFILE_DECISION',title:`Profile update request ${r.status}`,body:r.status==='Approved'?'Your requested profile changes were approved and applied.':`Your requested profile changes were rejected.${r.rejectionReason?' Reason: '+r.rejectionReason:''}`,status:r.status,details:{decisionAt:r.decisionAt||'',decisionBy:r.decisionBy||'',reason:r.rejectionReason||''},actionRef:r.id});
           break;
+        }
 
         // Faculty confirms a Principal edit or asks for a correction.
         case 'PRINCIPAL_PROFILE_CONFIRMED':
