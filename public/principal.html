@@ -1403,6 +1403,15 @@
   .ai-bot-orb,.ai-bot-eye,.ai-bot-eye i,.ai-bot-core,.ai-bot-antenna i,.ai-bot-badge,.ai-bot-shadow{animation:none!important}
 }
 
+
+#workforceScenarioModal .scenario-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+#workforceScenarioModal .scenario-kpi{border:1px solid var(--hairline);background:var(--panel-soft);border-radius:10px;padding:12px}
+#workforceScenarioModal .scenario-kpi small{display:block;color:var(--text-muted);font-size:10px;margin-bottom:5px}
+#workforceScenarioModal .scenario-kpi b{font-size:18px}
+#workforceScenarioModal .candidate-card{border:1px solid var(--hairline);border-radius:10px;padding:12px;margin:8px 0;background:var(--panel)}
+#workforceScenarioModal .scenario-pass{color:#8de2ae}.scenario-fail{color:#f1a0a9}
+@media(max-width:800px){#workforceScenarioModal .scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 
 </head>
@@ -2313,6 +2322,27 @@
     </div>
 
     
+
+<div class="section-modal" id="workforceScenarioModal" aria-hidden="true">
+  <div class="section-modal-dialog" style="width:min(1180px,96vw);height:min(860px,94vh)">
+    <div class="section-modal-head">
+      <div>
+        <h2><i class="fa-solid fa-people-arrows-left-right"></i> Workforce Optimization Scenario</h2>
+        <div class="sub" id="workforceScenarioSubtitle">Simulation only — no live staffing change until Principal approval.</div>
+      </div>
+      <button class="modal-close-x" onclick="closeWorkforceScenarioModal()">×</button>
+    </div>
+    <div class="section-modal-body" id="workforceScenarioBody"></div>
+    <div class="section-modal-foot">
+      <div class="modal-stage">AI/engine simulation only · Principal decision required</div>
+      <div class="row">
+        <button class="btn outline" onclick="closeWorkforceScenarioModal()">Close</button>
+        <button class="btn outline" onclick="saveWorkforceScenarioDraft()">Save Scenario</button>
+        <button class="btn primary" id="applyWorkforceScenarioBtn" onclick="applyWorkforceScenario()" disabled>Principal Approve & Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="assistant" class="portal-ai-bot collapsed" aria-live="polite">
       <button class="ai-bot-orb" id="aiBotOrb" type="button" onclick="togglePortalAI()" aria-label="Open AI Assistant">
         <span class="ai-bot-antenna"><i></i></span>
@@ -7614,52 +7644,129 @@ function aiBotDone(label='Watching the portal'){
 function ownershipMapFromProposal(){
   const proposal=state.ownershipProposal;
   if(!proposal)return null;
+  const bundleKeys=new Set(allBundles().map(b=>b.key));
+  const map={};
 
-  if(proposal && !Array.isArray(proposal) && typeof proposal==='object'){
+  const addRow=(r)=>{
+    if(!r)return;
+    const divisionId=r.divisionId || r.classId || r.divId || r.classDivision || r.class;
+    const subject=r.subject || r.subjectName || r.sub;
+    const key=r.key || r.bundleKey || (divisionId && subject ? `${divisionId}|${subject}` : '');
+    const teacherObj=r.teacher || r.proposedTeacher || r.owner;
+    const tid=
+      r.teacherId || r.teacherEmpId || r.proposedTeacherId || r.ownerId ||
+      teacherObj?.id || teacherObj?.empId || teacherObj?.teacherId ||
+      (typeof teacherObj==='string'?teacherObj:'');
+    if(key && tid)map[key]=String(tid);
+  };
+
+  if(Array.isArray(proposal))proposal.forEach(addRow);
+
+  if(proposal && typeof proposal==='object' && !Array.isArray(proposal)){
+    if(Array.isArray(proposal.assignments))proposal.assignments.forEach(addRow);
+    if(Array.isArray(proposal.rows))proposal.rows.forEach(addRow);
+    if(Array.isArray(proposal.proposal))proposal.proposal.forEach(addRow);
+    if(Array.isArray(proposal.items))proposal.items.forEach(addRow);
+    if(Array.isArray(proposal.bundles))proposal.bundles.forEach(addRow);
+
     if(proposal.assignments && typeof proposal.assignments==='object' && !Array.isArray(proposal.assignments)){
-      return {...proposal.assignments};
-    }
-    if(Array.isArray(proposal.assignments)){
-      const map={};
-      proposal.assignments.forEach(r=>{
-        const key=r.key || r.bundleKey || (r.divisionId && r.subject ? `${r.divisionId}|${r.subject}` : '');
-        const tid=r.teacherId || r.teacherEmpId || r.proposedTeacherId || r.ownerId;
-        if(key && tid)map[key]=tid;
+      Object.entries(proposal.assignments).forEach(([k,v])=>{
+        if(typeof v==='string'||typeof v==='number')map[k]=String(v);
+        else if(v&&typeof v==='object')addRow({...v,key:k});
       });
-      return Object.keys(map).length?map:null;
-    }
-    if(Array.isArray(proposal.rows)){
-      const map={};
-      proposal.rows.forEach(r=>{
-        const key=r.key || r.bundleKey || (r.divisionId && r.subject ? `${r.divisionId}|${r.subject}` : '');
-        const tid=r.teacherId || r.teacherEmpId || r.proposedTeacherId || r.ownerId;
-        if(key && tid)map[key]=tid;
-      });
-      return Object.keys(map).length?map:null;
     }
 
-    const bundleKeys=new Set(allBundles().map(b=>b.key));
-    const direct={};
     Object.entries(proposal).forEach(([k,v])=>{
-      if(bundleKeys.has(k) && (typeof v==='string' || typeof v==='number')) direct[k]=String(v);
-      else if(bundleKeys.has(k) && v && typeof v==='object'){
-        const tid=v.teacherId || v.teacherEmpId || v.proposedTeacherId || v.ownerId;
-        if(tid)direct[k]=String(tid);
+      if(bundleKeys.has(k)){
+        if(typeof v==='string'||typeof v==='number')map[k]=String(v);
+        else if(v&&typeof v==='object')addRow({...v,key:k});
       }
     });
-    if(Object.keys(direct).length)return direct;
   }
 
-  if(Array.isArray(proposal)){
-    const map={};
-    proposal.forEach(r=>{
-      const key=r.key || r.bundleKey || (r.divisionId && r.subject ? `${r.divisionId}|${r.subject}` : '');
-      const tid=r.teacherId || r.teacherEmpId || r.proposedTeacherId || r.ownerId;
-      if(key && tid)map[key]=tid;
-    });
-    return Object.keys(map).length?map:null;
+  return Object.keys(map).length?map:null;
+}
+
+function normalizedOwnershipProposalRows(){
+  const map=ownershipMapFromProposal();
+  if(!map)return [];
+  return allBundles().filter(b=>map[b.key]).map(b=>({
+    ...b,
+    teacherId:map[b.key],
+    teacher:state.staff.find(t=>t.id===map[b.key])||null
+  }));
+}
+
+function autoValidateOwnershipProposal(){
+  const proposalMap=ownershipMapFromProposal();
+  if(!proposalMap)return {validated:0,total:allBundles().length,exceptions:[]};
+
+  const loads={};state.staff.forEach(t=>loads[t.id]=0);
+  const exceptions=[];
+  const validMap={};
+
+  // First calculate proposal loads.
+  allBundles().forEach(b=>{
+    const tid=proposalMap[b.key];
+    if(tid)loads[tid]=(loads[tid]||0)+Number(b.periods||0);
+  });
+
+  allBundles().forEach(b=>{
+    const tid=proposalMap[b.key];
+    if(!tid){
+      exceptions.push({bundle:b,reason:'No proposed teacher'});
+      return;
+    }
+    const t=state.staff.find(x=>x.id===tid);
+    if(!t){
+      exceptions.push({bundle:b,reason:'Teacher record missing'});
+      return;
+    }
+    if(!teacherEligibleForBundle(t,b)){
+      exceptions.push({bundle:b,teacher:t,reason:'Section Tier or Main/Backup subject eligibility does not match'});
+      return;
+    }
+    const load=loads[tid]||0;
+    if(load>30){
+      exceptions.push({bundle:b,teacher:t,reason:`Teacher workload would be ${load}/30`});
+      return;
+    }
+    // Main or already-approved Backup is valid automatically.
+    validMap[b.key]=tid;
+  });
+
+  // Only auto-commit when every bundle is valid.
+  if(Object.keys(validMap).length===allBundles().length && exceptions.length===0){
+    state.ownership={...validMap};
+    state.ownershipValidation={
+      status:'validated',
+      validated:Object.keys(validMap).length,
+      total:allBundles().length,
+      exceptions:[],
+      at:new Date().toISOString()
+    };
+    try{save()}catch(e){}
+  }else{
+    state.ownershipValidation={
+      status:'exceptions',
+      validated:Object.keys(validMap).length,
+      total:allBundles().length,
+      exceptions:exceptions.map(x=>({
+        key:x.bundle?.key,
+        divisionId:x.bundle?.divisionId,
+        subject:x.bundle?.subject,
+        teacherId:x.teacher?.id||'',
+        reason:x.reason
+      })),
+      at:new Date().toISOString()
+    };
   }
-  return null;
+
+  return {
+    validated:Object.keys(validMap).length,
+    total:allBundles().length,
+    exceptions
+  };
 }
 
 function workloadSource(){
@@ -7695,6 +7802,218 @@ function loadsFromOwnershipMap(map){
     if(tid)loads[tid]=(loads[tid]||0)+Number(b.periods||0);
   });
   return loads;
+}
+
+let currentWorkforceScenario=null;
+
+function buildWorkforceScenarioTargets(){
+  const w=workforceManagementSnapshot();
+  if(!w.individualReady)return [];
+  const current=w.teachers.length;
+  const min=Math.max(w.arithmeticMin,1);
+  const targets=[];
+  [current-1,current-2,current-3,Math.max(min,current-4),min].forEach(n=>{
+    if(n>=min && n<current && !targets.includes(n))targets.push(n);
+  });
+  return targets;
+}
+
+function simulateWorkforceTarget(targetCount){
+  const w=workforceManagementSnapshot();
+  if(!w.individualReady)return {ok:false,reason:'Build a complete ownership proposal first.'};
+
+  const ownership={...w.source.map};
+  const teachers=state.staff.slice();
+  const currentCount=teachers.length;
+  const removeCount=currentCount-targetCount;
+  if(removeCount<=0)return {ok:false,reason:'Target must be lower than current teaching staff.'};
+
+  const loads=loadsFromOwnershipMap(ownership);
+  const candidates=teachers.slice().sort((a,b)=>{
+    const la=loads[a.id]||0,lb=loads[b.id]||0;
+    const uniqueA=allBundles().filter(x=>ownership[x.key]===a.id).filter(bundle=>{
+      return !teachers.some(t=>t.id!==a.id&&teacherEligibleForBundle(t,bundle)&&(loads[t.id]||0)+bundle.periods<=25);
+    }).length;
+    const uniqueB=allBundles().filter(x=>ownership[x.key]===b.id).filter(bundle=>{
+      return !teachers.some(t=>t.id!==b.id&&teacherEligibleForBundle(t,bundle)&&(loads[t.id]||0)+bundle.periods<=25);
+    }).length;
+    return uniqueA-uniqueB || la-lb || academicTeacherName(a).localeCompare(academicTeacherName(b));
+  });
+
+  let activeIds=new Set(teachers.map(t=>t.id));
+  let proposed={...ownership};
+  let removed=[];
+  let moveLog=[];
+
+  for(let cand of candidates){
+    if(removed.length>=removeCount)break;
+    const owned=allBundles().filter(b=>proposed[b.key]===cand.id);
+    let temp={...proposed};
+    let tempLoads=loadsFromOwnershipMap(temp);
+    let localMoves=[];
+    let feasible=true;
+
+    // Reassign complete bundles only.
+    for(let bundle of owned.sort((a,b)=>b.periods-a.periods)){
+      let alts=teachers.filter(t=>
+        activeIds.has(t.id) &&
+        t.id!==cand.id &&
+        !removed.some(r=>r.id===t.id) &&
+        teacherEligibleForBundle(t,bundle) &&
+        (tempLoads[t.id]||0)+bundle.periods<=25
+      ).sort((a,b)=>(tempLoads[a.id]||0)-(tempLoads[b.id]||0) || capabilityRank(a,bundle.subject)-capabilityRank(b,bundle.subject));
+      if(!alts.length){feasible=false;break}
+      let to=alts[0];
+      temp[bundle.key]=to.id;
+      tempLoads[to.id]=(tempLoads[to.id]||0)+bundle.periods;
+      tempLoads[cand.id]=(tempLoads[cand.id]||0)-bundle.periods;
+      localMoves.push({bundle,from:cand,to});
+    }
+
+    if(feasible){
+      proposed=temp;
+      activeIds.delete(cand.id);
+      removed.push(cand);
+      moveLog.push(...localMoves);
+    }
+  }
+
+  if(removed.length<removeCount){
+    return {
+      ok:false,
+      targetCount,
+      currentCount,
+      removed,
+      moveLog,
+      reason:`Only ${removed.length} of ${removeCount} proposed staff reductions could be covered while keeping complete bundles and ≤25 workload.`
+    };
+  }
+
+  const proof=structuralFeasibilityAnalysis(proposed);
+  if(proof.errors.length){
+    return {ok:false,targetCount,currentCount,removed,moveLog,reason:'Hard-rule validation failed.',errors:proof.errors};
+  }
+
+  const result=buildScheduleCSP(proposed,{nodeLimit:180000,timeLimitMs:5000});
+  if(!result.ok){
+    return {
+      ok:false,targetCount,currentCount,removed,moveLog,
+      reason:result.limitReached?'CSP simulation reached its search limit; this scenario is not yet proven safe.':'CSP timetable simulation failed under current hard constraints.'
+    };
+  }
+
+  const audit=auditData(result.schedule);
+  if(audit.errors.length){
+    return {ok:false,targetCount,currentCount,removed,moveLog,reason:'Final timetable audit failed.',errors:audit.errors};
+  }
+
+  const finalLoads=loadsFromOwnershipMap(proposed);
+  const activeTeachers=teachers.filter(t=>activeIds.has(t.id));
+  const freeReserve=activeTeachers.reduce((sum,t)=>sum+Math.max(0,25-(finalLoads[t.id]||0)),0);
+  const maxLoad=Math.max(...activeTeachers.map(t=>finalLoads[t.id]||0),0);
+
+  return {
+    ok:true,targetCount,currentCount,removed,moveLog,proposed,schedule:result.schedule,
+    finalLoads,freeReserve,maxLoad,nodes:result.nodes,warnings:audit.warnings||[]
+  };
+}
+
+function openWorkforceScenario(targetCount){
+  const r=simulateWorkforceTarget(Number(targetCount));
+  currentWorkforceScenario=r;
+  const body=document.getElementById('workforceScenarioBody');
+  const applyBtn=document.getElementById('applyWorkforceScenarioBtn');
+  if(!body)return;
+
+  let html=`<div class="scenario-grid">
+    <div class="scenario-kpi"><small>Current teaching staff</small><b>${r.currentCount||state.staff.length}</b></div>
+    <div class="scenario-kpi"><small>Scenario target</small><b>${r.targetCount||targetCount}</b></div>
+    <div class="scenario-kpi"><small>Proposed reduction</small><b>${Math.max(0,(r.currentCount||state.staff.length)-(r.targetCount||targetCount))}</b></div>
+    <div class="scenario-kpi"><small>Simulation</small><b class="${r.ok?'scenario-pass':'scenario-fail'}">${r.ok?'PASS':'NOT PROVEN'}</b></div>
+  </div>`;
+
+  if(r.ok){
+    html+=`<div class="status green"><b>Scenario passes current academic rules and CSP timetable simulation.</b><br>Maximum workload: ${r.maxLoad}/25 · Remaining free-period reserve: ${r.freeReserve} periods/week · CSP nodes: ${r.nodes}</div>`;
+    html+=`<h3 style="margin-top:16px">Teachers proposed for redeployment/removal review</h3>`;
+    html+=r.removed.map(t=>`<div class="candidate-card"><b>${esc(academicTeacherName(t))}</b><div class="sub">${esc(t.main||'—')} / ${esc(t.secondary||'—')} · Current load ${workforceManagementSnapshot().loads[t.id]||0}/25</div></div>`).join('');
+    html+=`<h3 style="margin-top:16px">Complete bundle reallocations</h3>`;
+    html+=`<div class="table-wrap"><table class="table"><thead><tr><th>Class</th><th>Subject</th><th>Periods</th><th>From</th><th>To</th><th>New Load</th></tr></thead><tbody>${r.moveLog.map(m=>`<tr><td>${esc(m.bundle.divisionId)}</td><td>${esc(m.bundle.subject)}</td><td>${m.bundle.periods}</td><td>${esc(academicTeacherName(m.from))}</td><td>${esc(academicTeacherName(m.to))}</td><td>${r.finalLoads[m.to.id]||0}/25</td></tr>`).join('')}</tbody></table></div>`;
+    html+=`<div class="notice" style="margin-top:12px"><b>Important:</b><span class="sub">Applying this scenario changes academic ownership only. It does not delete the faculty profiles automatically. The Principal can later decide whether the listed staff are redeployed, retained for other duties, or removed through Faculty & Staff Management.</span></div>`;
+  }else{
+    html+=`<div class="status red"><b>This staffing target is not proven safe.</b><br>${esc(r.reason||'Simulation failed.')}</div>`;
+    if(r.removed?.length)html+=`<div class="notice"><b>Partial result</b><span class="sub">The engine could safely cover ${r.removed.length} proposed staff reductions before hitting a constraint.</span></div>`;
+    if(r.errors?.length)html+=`<div class="status red">${r.errors.map(esc).join('<br>')}</div>`;
+  }
+
+  body.innerHTML=html;
+  if(applyBtn)applyBtn.disabled=!r.ok;
+  document.getElementById('workforceScenarioModal').classList.add('open');
+  document.getElementById('workforceScenarioModal').setAttribute('aria-hidden','false');
+}
+
+function closeWorkforceScenarioModal(){
+  document.getElementById('workforceScenarioModal')?.classList.remove('open');
+  document.getElementById('workforceScenarioModal')?.setAttribute('aria-hidden','true');
+}
+
+function saveWorkforceScenarioDraft(){
+  if(!currentWorkforceScenario)return;
+  state.savedWorkforceScenario={
+    targetCount:currentWorkforceScenario.targetCount,
+    ok:!!currentWorkforceScenario.ok,
+    removed:(currentWorkforceScenario.removed||[]).map(t=>t.id),
+    at:new Date().toISOString()
+  };
+  save();
+  bot('<b>Workforce scenario saved.</b><br>No live academic ownership or staffing data has been changed.',[],{success:true});
+}
+
+function applyWorkforceScenario(){
+  const r=currentWorkforceScenario;
+  if(!r?.ok)return;
+  const names=r.removed.map(t=>academicTeacherName(t)).join(', ');
+  if(!confirm(`PRINCIPAL APPROVAL REQUIRED\n\nTarget teaching staff: ${r.targetCount}\nProposed redeployment/removal review: ${names}\n\nThis will apply the simulated class-subject ownership changes and clear the live timetable for regeneration. Faculty profiles will NOT be deleted automatically.\n\nContinue?`))return;
+
+  // Revalidate once more before apply.
+  const proof=structuralFeasibilityAnalysis(r.proposed);
+  if(proof.errors.length){
+    return bot('<b>Scenario not applied.</b><br>Hard-rule validation changed since simulation:<br>'+proof.errors.map(esc).join('<br>'));
+  }
+  const check=buildScheduleCSP(r.proposed,{nodeLimit:180000,timeLimitMs:5000});
+  if(!check.ok){
+    return bot('<b>Scenario not applied.</b><br>Final CSP revalidation did not prove a valid timetable.');
+  }
+  const audit=auditData(check.schedule);
+  if(audit.errors.length){
+    return bot('<b>Scenario not applied.</b><br>Final timetable audit failed:<br>'+audit.errors.map(esc).join('<br>'));
+  }
+
+  state.ownership={...r.proposed};
+  state.ownershipValidation={status:'validated',validated:allBundles().length,total:allBundles().length,exceptions:[],at:new Date().toISOString()};
+  state.timetable=null;
+  state.facultyReviews={};state.classPublish={};state.principalReviewApproved=false;state.reviewDispatched=false;state.facultyReviewIssues={};
+  state.approvedWorkforceScenario={
+    targetCount:r.targetCount,
+    proposedRedeploymentIds:r.removed.map(t=>t.id),
+    at:new Date().toISOString()
+  };
+  save();renderAll();closeWorkforceScenarioModal();
+  bot(`<b>Principal-approved workforce scenario applied.</b><br>Ownership has been rebalanced for a ${r.targetCount}-teacher teaching structure. Faculty profiles were not deleted. Generate the timetable again and review the listed staff for redeployment/removal separately.`,[
+    {label:'Generate Timetable',fn:"openSectionModal('generator')",cls:'primary'}
+  ],{success:true});
+}
+
+function renderWorkforceScenarioLauncher(){
+  const w=workforceManagementSnapshot();
+  if(!w.individualReady){
+    return `<div class="status amber"><b>Scenario simulation unavailable.</b><br>Build the ownership proposal first so teacher workloads can be calculated correctly.</div>`;
+  }
+  const targets=buildWorkforceScenarioTargets();
+  if(!targets.length)return '<div class="empty">No lower staffing target is available to simulate.</div>';
+  return `<div class="card"><div class="card-head"><div><h2>AI Workforce Optimization & Decision Support</h2><div class="sub">Choose a staffing target manually. Each scenario reassigns complete subject bundles, checks Section Tier/Main-Backup eligibility, keeps normal workload ≤25, runs CSP timetable simulation and shows the exact teachers affected before the Principal can apply anything.</div></div></div>
+    <div class="row">${targets.map(n=>`<button class="btn outline" onclick="openWorkforceScenario(${n})">Simulate ${n} Teachers</button>`).join('')}</div>
+    <div class="notice" style="margin-top:10px"><b>Current:</b><span class="sub">${w.teachers.length} teaching faculty · ${w.demand} periods/week · theoretical arithmetic floor ${w.arithmeticMin}. The arithmetic floor is not a recommendation.</span></div>
+  </div>`;
 }
 
 function workforceManagementSnapshot(){
@@ -8895,7 +9214,7 @@ function workforceAnalysisForDisplay(){
   return {...base,workloadSource:source};
 }
 function renderWorkforce(){
-  let a=workforceAnalysisForDisplay();
+  let a=workforceAnalysisForDisplay();let ws=a.workloadSource||workloadSource();
   let rows=state.staff.map(t=>{
     let l=a.loads[t.id]||0,freeTo25=Math.max(0,25-l),freeWeek=Math.max(0,30-l),over=Math.max(0,l-25);
     let status=l>25
@@ -8923,14 +9242,14 @@ function renderWorkforce(){
   </tr>`).join('');
   let recs=(a.staffRecommendations||[]).map(r=>`<div class="notice"><b>${esc(r.poolLabel||r.tiers.join(' + '))} · Add / source teacher</b><span class="sub">Main: <b>${esc(r.main)}</b>${r.secondary?` · Secondary: <b>${esc(r.secondary)}</b>`:''} · Expected overload coverage: ${r.periods} p/week</span></div>`).join('');
 
-  document.getElementById('workforce').innerHTML=`
+  document.getElementById('workforce').innerHTML=`${renderWorkforceScenarioLauncher()}
   <div class="grid g4">
     <div class="kpi"><div class="label">Demand</div><div class="value">${a.totalDemand}</div><small>class-periods/week</small></div>
     <div class="kpi"><div class="label">Staff Capacity @25</div><div class="value">${state.staff.length*25}</div><small>normal planned capacity</small></div>
     <div class="kpi"><div class="label">Reserved Capacity</div><div class="value">${state.staff.length*5}</div><small>target free periods</small></div>
     <div class="kpi"><div class="label">Hard Blockers</div><div class="value">${a.blockers.length}</div><small>must resolve</small></div>
   </div>
-  <div class="card"><div class="card-head"><div><h2>Teacher Workload</h2><div class="sub">20–25 is healthy. Below 20 is a preferred pool for taking additional approved subject bundles. 26–30 requires Principal approval.</div></div><button class="btn good" onclick="exportFinalWorkbook()">Download Analysis Excel</button></div>
+  <div class="card"><div class="card-head"><div><h2>Teacher Workload</h2><div class="sub">Workload source: <b>${ws.type==='proposal'?'Ownership Proposal':ws.type==='confirmed'?'Validated Ownership':'No complete ownership yet'}</b></div><div class="sub">20–25 is healthy. Below 20 is a preferred pool for taking additional approved subject bundles. 26–30 requires Principal approval.</div></div><button class="btn good" onclick="exportFinalWorkbook()">Download Analysis Excel</button></div>
   ${a.blockers.length?`<div class="status red">${a.blockers.map(esc).join('<br>')}</div>`:''}
   ${a.warnings.length?`<div class="status amber" style="margin-top:8px">${a.warnings.map(esc).join('<br>')}</div>`:''}
   <div class="table-wrap" style="margin-top:10px"><table class="table"><thead><tr><th>Teacher</th><th>Main</th><th>Backup</th><th>Planned</th><th>Capacity to 25</th><th>Free to 30</th><th>Overload</th><th>Target</th><th>Status</th><th>Optimization</th></tr></thead><tbody>${rows}</tbody></table></div></div>
@@ -9006,7 +9325,9 @@ function renderWorkforce(){
   </div>`;
 setTimeout(()=>{if(portalAICurrentContext==='workforce')renderWorkforceBotInsight()},250);
 }
-function scheduleFeasible(){let cfg=validateConfig(),a=analyseWorkforce(),issues=[...cfg,...a.blockers];if(Object.keys(state.ownership).length!==allBundles().length)issues.push('Class-Subject Ownership is not fully validated.');return issues}
+function scheduleFeasible(){
+  if(Object.keys(state.ownership||{}).length!==allBundles().length && state.ownershipProposal){autoValidateOwnershipProposal();}
+let cfg=validateConfig(),a=analyseWorkforce(),issues=[...cfg,...a.blockers];if(Object.keys(state.ownership).length!==allBundles().length)issues.push('Class-Subject Ownership is not fully validated.');return issues}
 
 function sanitizeStaleGeneratorDiagnostics(){
   let activeResources=new Set((state.resources||[]).map(r=>String(r||'').trim()));
@@ -9438,7 +9759,7 @@ function classifySolverIssue(){
       category:'TEACHER OWNERSHIP',
       severity:'Setup incomplete',
       title:'Class-Subject Ownership is not fully approved',
-      simple:`The timetable solver has not started. ${assigned}/${bundles.length} class-subject bundles currently have validated ownership; ${missing} still require approval.`,
+      simple:`The timetable solver has not started. ${assigned}/${bundles.length} class-subject bundles currently have validated ownership; ${missing} still require validation.`,
       cause:'Generate Timetable requires every class + subject to have one approved teacher for the complete weekly bundle.',
       impact:'Until ownership is complete, the system cannot know which teacher must be scheduled for every subject.',
       metrics:[
