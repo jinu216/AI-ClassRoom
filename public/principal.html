@@ -4971,6 +4971,7 @@ function requireMainAdmin(){if(currentAccessProfile?.id!=='main-admin'){alert('O
 
     renderStudents=function(){
       const container=document.getElementById('studentRosterList');if(!container)return;
+      try{syncAcademicClassTeachersToPortalAssignments({notify:false,render:false})}catch(e){}
       const globalQuery=String(document.getElementById('studentSearchInput')?.value||'').trim().toLowerCase();
       const filtered=studentStore.filter(s=>[s.name,s.rollId,s.fatherName,s.grade,s.section,s.portalMobile].some(v=>String(v||'').toLowerCase().includes(globalQuery)));
       if(!filtered.length){container.innerHTML='<p style="color:var(--text-faint);font-size:13px;">No student records found matching the search.</p>';return}
@@ -5851,6 +5852,7 @@ function requireMainAdmin(){if(currentAccessProfile?.id!=='main-admin'){alert('O
 
     function saveClassTeacherAssignments(assignments) {
       localStorage.setItem('pius_class_teacher_assignments', JSON.stringify(assignments || {}));
+      try { syncPortalAssignmentsToAcademicEngine(assignments || {}); } catch(e) {}
     }
 
     function getClassTeacherAssignmentKey(className, division) {
@@ -7883,6 +7885,7 @@ state.classExtras=state.classExtras||{};
 state.resources=Array.isArray(state.resources)?state.resources:[];
 state.staff=state.staff||[];
 state.classTeachers=state.classTeachers||{};
+try{syncPortalAssignmentsToAcademicEngine(getClassTeacherAssignments())}catch(e){}
 state.ownership=state.ownership||{};
 state.overloadApprovals=state.overloadApprovals||{};
 state.facultyReviews=state.facultyReviews||{};
@@ -7953,7 +7956,10 @@ state.availabilityIssues=state.availabilityIssues||[];
 state.substitutionEvents=state.substitutionEvents||[];
 state.lang=state.lang||'en';
 function makeDefaultState(){return {periodsPerDay:6,divisions:{LKG:2,UKG:2,'1':2,'2':2,'3':2,'4':2,'5':2,'6':2,'7':2,'8':2,'9':2,'10':2},divisionOverrides:{},tierBlocks:{KG:'KG',LP:'LP',UP:'UP',HS:'HS'},tierActive:{KG:true,LP:true,UP:true,HS:true},subjects:structuredClone(DEFAULT_SUBJECTS),classExtras:{},resources:[],staff:[],classTeachers:{},ownership:{},ownershipProposal:null,overloadApprovals:{},timetable:null,timetableVersion:0,facultyReviews:{},classPublish:{},principalReviewApproved:false,reviewDispatched:false,facultyReviewIssues:{},portionProgress:{},availabilityIssues:[],substitutionEvents:[],lang:'en'} }
-function save(){localStorage.setItem('pius_timetable_engine_v2',JSON.stringify(state))}
+function save(){
+  localStorage.setItem('pius_timetable_engine_v2',JSON.stringify(state));
+  try{syncAcademicClassTeachersToPortalAssignments({notify:true,render:true})}catch(e){console.warn('Class Teacher sync',e)}
+}
 function loadState(){try{return JSON.parse(localStorage.getItem('pius_timetable_engine_v2'))}catch(e){return null}}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function id(prefix='ID'){return prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7)}
@@ -8023,6 +8029,57 @@ function divisions(){
   }));
   return out;
 }
+
+function academicStudentClassName(grade){
+  const g=String(grade||'').trim();
+  const exact=[...new Set((studentStore||[]).map(s=>String(s.grade||s.className||'').trim()).filter(Boolean))];
+  return exact.find(x=>x===g)
+    || exact.find(x=>{try{return String(classNumberFromValue(x))===String(classNumberFromValue(g))}catch(e){return false}})
+    || g;
+}
+function academicPortalDivisionName(letter){
+  const d=String(letter||'').replace(/^Div\s*/i,'').trim();
+  const existing=[...new Set((studentStore||[]).map(s=>String(s.section||s.division||'').trim()).filter(Boolean))];
+  return existing.find(x=>String(x).replace(/^Div\s*/i,'').trim().toLowerCase()===d.toLowerCase()) || `Div ${d}`;
+}
+function syncAcademicClassTeachersToPortalAssignments({notify=true,render=true}={}){
+  if(typeof state==='undefined'||!state?.classTeachers)return false;
+  const current=getClassTeacherAssignments(),next={...current};
+  let changed=false;
+  divisions().forEach(d=>{
+    const className=academicStudentClassName(d.grade),division=academicPortalDivisionName(d.division);
+    const key=getClassTeacherAssignmentKey(className,division),empId=String(state.classTeachers[d.id]||'');
+    if(empId){
+      if(String(next[key]||'')!==empId){next[key]=empId;changed=true}
+    }else if(next[key]){
+      delete next[key];changed=true;
+    }
+  });
+  if(!changed)return false;
+  localStorage.setItem('pius_class_teacher_assignments',JSON.stringify(next));
+  if(notify)try{sendPortalServer('SYNC_CLASS_TEACHER_ASSIGNMENTS',next)}catch(e){}
+  if(render){
+    try{renderStudents()}catch(e){}
+    try{renderAutoClassDivisions()}catch(e){}
+    try{renderClassAssignments()}catch(e){}
+    try{renderExecutiveDashboard()}catch(e){}
+  }
+  return true;
+}
+function syncPortalAssignmentsToAcademicEngine(assignments=getClassTeacherAssignments()){
+  if(typeof state==='undefined'||!state)return false;
+  state.classTeachers=state.classTeachers||{};
+  let changed=false;
+  divisions().forEach(d=>{
+    const className=academicStudentClassName(d.grade),division=academicPortalDivisionName(d.division);
+    const empId=String(assignments[getClassTeacherAssignmentKey(className,division)]||'');
+    if(empId&&String(state.classTeachers[d.id]||'')!==empId){state.classTeachers[d.id]=empId;changed=true}
+    if(!empId&&state.classTeachers[d.id]){delete state.classTeachers[d.id];changed=true}
+  });
+  if(changed)localStorage.setItem('pius_timetable_engine_v2',JSON.stringify(state));
+  return changed;
+}
+
 function subjectsForDivision(div){
   let base=((state.subjects||{})[div.tier]||[]).map(x=>({
     name:x[0],
@@ -8972,7 +9029,7 @@ function renderOwnership(){if(state.ownershipProposal)autoValidateOwnershipPropo
 <div class="card"><div class="card-head"><div><h2>Class Teacher Assignment</h2><div class="sub">One teacher per division. P1 is a preference only when the class teacher's own subject naturally fits; no artificial extra subject periods are created.</div></div><button class="btn primary" onclick="autoClassTeachers()">Auto-assign</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Division</th><th>Class Teacher</th></tr></thead><tbody>${ctRows}</tbody></table></div></div>
 <div class="card"><div class="card-head"><div><h2>Teacher Ownership Proposal</h2><div class="sub">One class + division + subject is one indivisible bundle. Main subject first; approved secondary/priority subjects are used automatically when needed. A bundle is never split between two teachers. Principal approval is required only for overload or exceptional staffing.</div></div><button class="btn primary" onclick="buildOwnershipProposal()">Build Proposal</button></div>${proposal?renderProposal(proposal):'<div class="empty">Build a proposal after staff and class teachers are ready.</div>'}</div>`}
 function invalidateOwnershipOnly(){state.ownership={};state.ownershipProposal=null;state.timetable=null;state.facultyReviews={};state.classPublish={};state.principalReviewApproved=false;state.reviewDispatched=false;state.facultyReviewIssues={}}
-function autoClassTeachers(){let used=new Set();divisions().forEach(d=>{let c=classTeacherCandidates(d).filter(x=>!used.has(x.id)).sort((a,b)=>(teachableSubjects(b).length-teachableSubjects(a).length));if(c[0]){state.classTeachers[d.id]=c[0].id;used.add(c[0].id)}});invalidateOwnershipOnly();save();renderAll()}
+function autoClassTeachers(){let used=new Set();divisions().forEach(d=>{let c=classTeacherCandidates(d).filter(x=>!used.has(x.id)).sort((a,b)=>(teachableSubjects(b).length-teachableSubjects(a).length));if(c[0]){state.classTeachers[d.id]=c[0].id;used.add(c[0].id)}});invalidateOwnershipOnly();save();syncAcademicClassTeachersToPortalAssignments();renderAll()}
 
 function capabilityRank(t,subject){
   let n=norm(subject);
