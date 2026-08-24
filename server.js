@@ -220,6 +220,9 @@ let timetableReview = null;
 let communicationMessages = [];
 let chatMessages = [];
 let communicationAuditLog = [];
+let portalPresence = {};
+let dailyPortionProgress = [];
+let facultyNotificationSettings = {};
 let pushSubscriptions = [];
 const VAPID_PUBLIC_KEY=process.env.VAPID_PUBLIC_KEY||'';
 const VAPID_PRIVATE_KEY=process.env.VAPID_PRIVATE_KEY||'';
@@ -242,7 +245,7 @@ async function hydrateSharedStateFromCloud() {
     'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
     'pius_additional_duty_assignments','pius_digital_library_resources',
     'pius_attendance_settings','pius_attendance_records','pius_leave_records',
-    'pius_communication_messages','pius_chat_messages','pius_communication_audit_log'
+    'pius_communication_messages','pius_chat_messages','pius_communication_audit_log','pius_faculty_notification_settings'
   ];
   const { data, error } = await supabase.from('portal_state').select('state_key,state_value').in('state_key',keys);
   if (error) { console.error('Supabase shared-state hydration failed:', error.message); return; }
@@ -263,6 +266,7 @@ async function hydrateSharedStateFromCloud() {
   if (Array.isArray(value('pius_communication_messages'))) communicationMessages=value('pius_communication_messages');
   if (Array.isArray(value('pius_chat_messages'))) chatMessages=value('pius_chat_messages');
   if (Array.isArray(value('pius_communication_audit_log'))) communicationAuditLog=value('pius_communication_audit_log');
+  if (value('pius_faculty_notification_settings') && typeof value('pius_faculty_notification_settings')==='object') facultyNotificationSettings=value('pius_faculty_notification_settings');
 }
 
 function upsertById(list, item) {
@@ -347,6 +351,10 @@ async function persistRuntimeState(key,value){
 function commId(prefix='MSG'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}
 function requestNo(prefix='REQ'){const d=new Date(),stamp=d.toISOString().slice(0,10).replace(/-/g,'');return `${prefix}-${stamp}-${String(Date.now()).slice(-7)}-${Math.random().toString(36).slice(2,5).toUpperCase()}`}
 function ensureRequestNo(obj,prefix='REQ'){if(!obj)return '';if(!obj.requestNo)obj.requestNo=obj.id||requestNo(prefix);return obj.requestNo}
+function presenceKey(role,id){return `${role||''}|${id||''}`}
+function setPresence(role,id,name,online=true){if(!role||!id)return;const k=presenceKey(role,id);portalPresence[k]={role,id:String(id),name:name||String(id),online:!!online,lastSeen:new Date().toISOString()};broadcast({type:'PRESENCE_UPDATED',payload:portalPresence[k]})}
+function presenceList(){return Object.values(portalPresence)}
+
 function auditCommunication(action,item,actor={}){const row={id:commId('AUD'),requestNo:item?.requestNo||item?.id||'',messageId:item?.id||'',action,actorRole:actor.role||actor.actorRole||'',actorId:actor.id||actor.actorId||'',actorName:actor.name||actor.actorName||'',status:item?.status||'',at:new Date().toISOString()};communicationAuditLog.unshift(row);communicationAuditLog=communicationAuditLog.slice(0,10000);persistRuntimeState('pius_communication_audit_log',communicationAuditLog);broadcast({type:'COMMUNICATION_AUDIT_UPDATED',payload:row});return row}
 function addCommunication(msg){
   const item={id:msg.id||commId('MAIL'),requestNo:msg.requestNo||requestNo(msg.type&&/REQUEST|PROFILE|LEAVE|TIMETABLE/.test(msg.type)?'REQ':'MSG'),kind:'official',status:msg.status||'New',createdAt:msg.createdAt||new Date().toISOString(),readBy:Array.isArray(msg.readBy)?msg.readBy:[],deletedFor:Array.isArray(msg.deletedFor)?msg.deletedFor:[],...msg};
@@ -397,8 +405,20 @@ async function telegramSend(chatId,text){
     return r.ok;
   }catch(e){return false}
 }
-async function notifyFaculty(empIds,title,body){
-  const ids=new Set((empIds||[]).map(String));
+async function notifyFaculty(empIds,title,body,category='general'){
+  const requested=new Set((empIds||[]).map(String));
+  const allowed=[...requested].filter(id=>{
+    const p=facultyNotificationSettings[String(id)];
+    if(!p)return true;
+    if(category==='timetable')return p.timetable!==false;
+    if(category==='notices')return p.notices!==false;
+    if(category==='approvals')return p.approvals!==false;
+    if(category==='leave')return p.leave!==false;
+    if(category==='duties')return p.duties!==false;
+    if(category==='academic')return p.academic!==false;
+    return true;
+  });
+  const ids=new Set(allowed);
   const push=await sendWebPushToEmpIds([...ids],title,body);
   let telegram=0;
   for(const staff of portalStaff.filter(s=>ids.has(String(s.empId))&&s.telegramChatId)){
@@ -419,7 +439,7 @@ app.post('/api/push/subscribe',(req,res)=>{
 });
 app.post('/api/notify/timetable-review',async(req,res)=>{
   if(!timetableReview)return res.status(400).json({ok:false,error:'No active timetable review.'});
-  const result=await notifyFaculty(timetableReview.teacherIds||[],'Timetable waiting for review',`Timetable V${timetableReview.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`);
+  const result=await notifyFaculty(timetableReview.teacherIds||[],'Timetable waiting for review',`Timetable V${timetableReview.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`,'timetable');
   res.json({ok:true,...result});
 });
 app.post('/api/telegram/test',async(req,res)=>{
@@ -485,6 +505,9 @@ wss.on('connection', async (ws) => {
       ,communicationMessages
       ,chatMessages
       ,communicationAuditLog
+      ,portalPresence: presenceList()
+      ,dailyPortionProgress
+      ,facultyNotificationSettings
       ,portionProgress
       ,additionalDutyAssignments
       ,libraryResources
@@ -544,7 +567,7 @@ wss.on('connection', async (ws) => {
           timetableReview={version:r.version,folders:r.folders,teacherIds:r.teacherIds,teacherReviews:{},sentAt:r.sentAt||new Date().toISOString()};
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
-          notifyFaculty(r.teacherIds,'Timetable waiting for review',`Timetable V${r.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`).catch(()=>{});
+          notifyFaculty(r.teacherIds,'Timetable waiting for review',`Timetable V${r.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`,'timetable').catch(()=>{});
           (r.teacherIds||[]).forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===String(tid));addCommunication({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(tid),toName:t?.name||String(tid),type:'TIMETABLE_REVIEW_SENT',title:`Timetable V${r.version} awaiting review`,body:'Review your personal timetable and select Accept Timetable or Raise Issue.',actionRef:`TIMETABLE:${r.version}`})});
           break;
         }
@@ -561,6 +584,24 @@ wss.on('connection', async (ws) => {
           break;
         }
 
+        case 'SYNC_DAILY_PORTION_PROGRESS': {
+          const r=data.payload||{},rows=Array.isArray(r.records)?r.records:[];
+          rows.forEach(row=>{const i=dailyPortionProgress.findIndex(x=>x.id===row.id);if(i>=0)dailyPortionProgress[i]=row;else dailyPortionProgress.unshift(row)});
+          persistRuntimeState('pius_daily_portion_progress',dailyPortionProgress);
+          broadcast({type:'DAILY_PORTION_PROGRESS_UPDATED',payload:dailyPortionProgress});
+          break;
+        }
+        case 'FACULTY_NOTIFICATION_SETTINGS_UPDATE': {
+          const r=data.payload||{};if(!r.empId)break;
+          facultyNotificationSettings[String(r.empId)]={...r,empId:String(r.empId),updatedAt:r.updatedAt||new Date().toISOString()};
+          persistRuntimeState('pius_faculty_notification_settings',facultyNotificationSettings);
+          broadcast({type:'FACULTY_NOTIFICATION_SETTINGS_UPDATED',payload:facultyNotificationSettings[String(r.empId)]});
+          break;
+        }
+
+        case 'PRESENCE_HEARTBEAT': {
+          const r=data.payload||{};setPresence(r.role,r.id,r.name,true);break;
+        }
         case 'COMMUNICATION_MESSAGE_ACTION': {
           const r=data.payload||{},item=communicationMessages.find(x=>String(x.id)===String(r.messageId));
           if(!item)break;
