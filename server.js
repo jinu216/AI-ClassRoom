@@ -4,6 +4,8 @@ const WebSocket = require('ws');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,7 +35,19 @@ function cloudUnavailable(res) {
 
 // Serve the public folder through both URL styles used by the project.
 const publicDir = path.join(__dirname, 'public');
+const uploadsDir = path.join(__dirname,'uploads');
+if(!fs.existsSync(uploadsDir))fs.mkdirSync(uploadsDir,{recursive:true});
+const upload = multer({
+  dest: uploadsDir,
+  limits:{fileSize:5*1024*1024},
+  fileFilter:(req,file,cb)=>{
+    const ok=/^(application\/(pdf|msword|vnd\.openxmlformats-officedocument\.|vnd\.ms-excel|vnd\.ms-powerpoint)|image\/|text\/)/i.test(file.mimetype||'');
+    cb(ok?null:new Error('Unsupported document type'),ok);
+  }
+});
+
 app.use('/public', express.static(publicDir));
+app.use('/uploads', express.static(uploadsDir));
 app.use(express.static(publicDir));
 app.get('/', (req, res) => res.redirect('/public/principal.html'));
 
@@ -203,6 +217,8 @@ let studentMailbox = [];
 let classTeacherAssignments = {};
 let timetableFolders = [];
 let timetableReview = null;
+let communicationMessages = [];
+let chatMessages = [];
 let pushSubscriptions = [];
 const VAPID_PUBLIC_KEY=process.env.VAPID_PUBLIC_KEY||'';
 const VAPID_PRIVATE_KEY=process.env.VAPID_PRIVATE_KEY||'';
@@ -224,7 +240,8 @@ async function hydrateSharedStateFromCloud() {
     'pius_student_profile_requests','pius_student_leave_records',
     'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
     'pius_additional_duty_assignments','pius_digital_library_resources',
-    'pius_attendance_settings','pius_attendance_records','pius_leave_records'
+    'pius_attendance_settings','pius_attendance_records','pius_leave_records',
+    'pius_communication_messages','pius_chat_messages'
   ];
   const { data, error } = await supabase.from('portal_state').select('state_key,state_value').in('state_key',keys);
   if (error) { console.error('Supabase shared-state hydration failed:', error.message); return; }
@@ -242,6 +259,8 @@ async function hydrateSharedStateFromCloud() {
   if (value('pius_attendance_settings') && typeof value('pius_attendance_settings') === 'object') attendanceSettings=value('pius_attendance_settings');
   if (Array.isArray(value('pius_attendance_records'))) attendanceRecords=value('pius_attendance_records');
   if (Array.isArray(value('pius_leave_records'))) leaveRecords=value('pius_leave_records');
+  if (Array.isArray(value('pius_communication_messages'))) communicationMessages=value('pius_communication_messages');
+  if (Array.isArray(value('pius_chat_messages'))) chatMessages=value('pius_chat_messages');
 }
 
 function upsertById(list, item) {
@@ -314,6 +333,46 @@ function broadcast(data) {
     }
   });
 }
+
+async function persistRuntimeState(key,value){
+  if(!supabase)return;
+  try{
+    const {data:existing}=await supabase.from('portal_state').select('version').eq('state_key',key).maybeSingle();
+    const version=Number(existing?.version||0)+1;
+    await supabase.from('portal_state').upsert({state_key:key,state_value:value,version,updated_by:'server-runtime',updated_at:new Date().toISOString()},{onConflict:'state_key'});
+  }catch(e){console.error('Runtime state persistence failed:',key,e.message)}
+}
+function commId(prefix='MSG'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}
+function addCommunication(msg){
+  const item={id:msg.id||commId('MAIL'),kind:'official',status:msg.status||'New',createdAt:msg.createdAt||new Date().toISOString(),...msg};
+  communicationMessages.unshift(item);communicationMessages=communicationMessages.slice(0,5000);
+  persistRuntimeState('pius_communication_messages',communicationMessages);
+  broadcast({type:'COMMUNICATION_UPDATED',payload:item});
+  return item;
+}
+function addChat(msg){
+  const item={id:msg.id||commId('CHAT'),kind:'chat',createdAt:msg.createdAt||new Date().toISOString(),...msg};
+  chatMessages.push(item);chatMessages=chatMessages.slice(-10000);
+  persistRuntimeState('pius_chat_messages',chatMessages);
+  broadcast({type:'CHAT_MESSAGE_UPDATED',payload:item});
+  return item;
+}
+function studentPortalId(s){return String(s.rollId||s.admissionNo||s.studentId||'')}
+function classEqualsStudent(folder,s){
+  const grade=String(s.grade||s.className||'').trim().toLowerCase();
+  const div=String(s.section||s.division||'').replace(/^div\s*/i,'').trim().toLowerCase();
+  const fg=String(folder.className||'').trim().toLowerCase();
+  const fd=String(folder.division||'').replace(/^div\s*/i,'').trim().toLowerCase();
+  return grade===fg && (!div||div===fd);
+}
+app.post('/api/communications/upload',upload.single('file'),(req,res)=>{
+  if(!req.file)return res.status(400).json({ok:false,error:'No file uploaded.'});
+  const ext=path.extname(req.file.originalname||'').slice(0,12);
+  const finalName=`${req.file.filename}${ext}`;
+  const finalPath=path.join(uploadsDir,finalName);
+  fs.renameSync(req.file.path,finalPath);
+  res.json({ok:true,attachment:{name:req.file.originalname,size:req.file.size,mime:req.file.mimetype,url:`/uploads/${finalName}`}});
+});
 
 async function sendWebPushToEmpIds(empIds,title,body,url='/public/faculty.html'){
   if(!VAPID_PUBLIC_KEY||!VAPID_PRIVATE_KEY)return {sent:0,reason:'VAPID not configured'};
@@ -416,6 +475,8 @@ wss.on('connection', async (ws) => {
       ,classTeacherAssignments
       ,timetableFolders
       ,timetableReview
+      ,communicationMessages
+      ,chatMessages
       ,portionProgress
       ,additionalDutyAssignments
       ,libraryResources
@@ -476,6 +537,7 @@ wss.on('connection', async (ws) => {
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
           notifyFaculty(r.teacherIds,'Timetable waiting for review',`Timetable V${r.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`).catch(()=>{});
+          (r.teacherIds||[]).forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===String(tid));addCommunication({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(tid),toName:t?.name||String(tid),type:'TIMETABLE_REVIEW_SENT',title:`Timetable V${r.version} awaiting review`,body:'Review your personal timetable and select Accept Timetable or Raise Issue.',actionRef:`TIMETABLE:${r.version}`})});
           break;
         }
 
@@ -485,6 +547,41 @@ wss.on('connection', async (ws) => {
           timetableReview.teacherReviews=timetableReview.teacherReviews||{};
           timetableReview.teacherReviews[String(r.teacherId)]=r;
           broadcast({type:'FACULTY_TIMETABLE_REVIEW_UPDATED',payload:r});
+          addCommunication({fromRole:'Faculty',fromId:String(r.teacherId),fromName:r.teacherName||String(r.teacherId),toRole:'Principal',toId:'principal',toName:'Principal',type:r.status==='Accepted'?'TIMETABLE_ACCEPTED':'TIMETABLE_ISSUE',title:`${r.teacherName||r.teacherId} — timetable ${r.status}`,body:r.status==='Accepted'?`Timetable V${r.version} accepted.`:`Timetable V${r.version} issue: ${r.reason||'No reason supplied'}`,status:r.status,actionRef:`TIMETABLE:${r.version}`});
+          addCommunication({fromRole:'System',fromId:'system',fromName:'School System',toRole:'Faculty',toId:String(r.teacherId),toName:r.teacherName||String(r.teacherId),type:'TIMETABLE_RESPONSE_RECORDED',title:`Timetable V${r.version} — ${r.status}`,body:r.status==='Accepted'?'Your timetable is confirmed and is now active in your Faculty Portal.':'Your issue has been sent to the Principal.',status:r.status,actionRef:`TIMETABLE:${r.version}`});
+          persistRuntimeState('pius_communication_messages',communicationMessages);
+          break;
+        }
+
+        case 'COMMUNICATION_MESSAGE_CREATE': {
+          const r=data.payload||{};
+          if(!r.toRole||!r.title)break;
+          addCommunication(r);
+          break;
+        }
+
+        case 'CHAT_MESSAGE_CREATE': {
+          const r=data.payload||{};
+          if(!r.fromRole||!r.toRole||!String(r.body||'').trim()&&!r.attachment)break;
+          addChat(r);
+          break;
+        }
+
+        case 'FACULTY_PUBLISH_CLASS':
+        case 'PUBLISH_CLASS_TIMETABLE': {
+          const r=data.payload||{};
+          const folder=timetableFolders.find(x=>String(x.id)===String(r.folderId)||String(x.academicDivisionId)===String(r.divisionId));
+          if(!folder)break;
+          if(data.type==='FACULTY_PUBLISH_CLASS' && String(folder.classTeacherEmpId||'')!==String(r.teacherId||''))break;
+          const reviewers=folder.recipientTeacherEmpIds||[];
+          const allAccepted=reviewers.length&&reviewers.every(id=>timetableReview?.teacherReviews?.[String(id)]?.status==='Accepted');
+          if(!allAccepted && !r.principalOverride)break;
+          folder.published=true;folder.reviewOnly=false;folder.status='Published to Students';folder.publishedAt=new Date().toISOString();folder.publishedBy=r.teacherName||r.teacherId||'Principal';
+          broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
+          broadcast({type:'CLASS_TIMETABLE_PUBLISHED',payload:folder});
+          persistRuntimeState('pius_timetable_folders',timetableFolders);
+          addCommunication({fromRole:data.type==='FACULTY_PUBLISH_CLASS'?'Faculty':'Principal',fromId:String(r.teacherId||'principal'),fromName:r.teacherName||'Principal',toRole:'Principal',toId:'principal',toName:'Principal',type:'CLASS_TIMETABLE_PUBLISHED',title:`${folder.className} — ${folder.division} timetable published`,body:`The confirmed timetable was published to the Student Portal by ${r.teacherName||'Principal'}.`,status:'Published',actionRef:folder.id});
+          portalStudents.filter(x=>classEqualsStudent(folder,x)).forEach(stu=>addCommunication({fromRole:'School',fromId:'school',fromName:'School',toRole:'Student',toId:studentPortalId(stu),toName:stu.name||studentPortalId(stu),type:'TIMETABLE_PUBLISHED',title:'Class timetable published',body:`Your ${folder.className} — ${folder.division} timetable is now active in the Student Portal.`,status:'Published',actionRef:folder.id}));
           break;
         }
 

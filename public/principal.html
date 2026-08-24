@@ -1221,7 +1221,9 @@
       .dash-modal-body{ padding:14px 16px 16px; }
     }
 
-  </style>
+  
+.comm-tabs{display:flex;gap:8px;margin-bottom:14px}.comm-message{padding:12px;border:1px solid var(--hairline);border-radius:10px;margin:8px 0;background:var(--panel-soft)}.comm-message.unread{border-color:rgba(201,162,75,.6);background:rgba(201,162,75,.07)}.comm-message small{color:var(--text-muted)}.chat-bubble{max-width:82%;padding:10px 12px;border-radius:12px;margin:7px 0;border:1px solid var(--hairline);background:var(--panel-soft)}.chat-bubble.mine{margin-left:auto;background:rgba(201,162,75,.1)}
+</style>
 
 <style id="academicEngineIntegratedStyles">
 #academicEngineV31{--line:rgba(201,162,75,.18);--green:#62c98f;--red:#e97986;--amber:#e5b75d;--blue:#79aee8;position:relative;margin-top:18px}
@@ -3013,9 +3015,13 @@
 
       <div id="principalMailboxTab" class="tab-content">
         <p class="section-eyebrow">Principal Communications</p>
-        <h3 class="section-title"><i class="fa-solid fa-inbox"></i> Faculty & Student Approval Mailbox</h3>
-        <p class="section-help">New faculty and student profile requests appear here like email. Opening the mailbox marks displayed messages as read. Student corrections can be approved or rejected with a reason.</p>
-        <div class="editor-card"><div id="principalMailboxList"></div></div>
+        <h3 class="section-title"><i class="fa-solid fa-comments"></i> Communication Center</h3>
+        <p class="section-help">The mailbox is the official audit trail for timetable reviews, approvals, notices and portal actions. Chat is the real-time conversation layer for Principal, Faculty and Students.</p>
+        <div class="editor-card" data-no-collapse>
+          <div class="comm-tabs"><button class="btn-secondary" onclick="showPrincipalCommPane('official')">Official Mailbox</button><button class="btn-secondary" onclick="showPrincipalCommPane('chat')">Chat & Documents</button></div>
+          <div id="principalOfficialPane"><h4 class="roster-header">Official System & Portal Messages</h4><div id="principalOfficialCommList"></div><h4 class="roster-header">Profile / Approval Requests</h4><div id="principalMailboxList"></div></div>
+          <div id="principalChatPane" style="display:none"><div class="form-grid" style="grid-template-columns:1.2fr 2fr auto"><div class="form-group"><label>Recipient</label><select id="principalChatRecipient"></select></div><div class="form-group"><label>Message</label><input id="principalChatText" placeholder="Type a message..."></div><div style="align-self:end"><button class="btn-primary" onclick="sendPrincipalChat()"><i class="fa-solid fa-paper-plane"></i> Send</button></div></div><div class="form-group"><label>Document (optional, max 5 MB)</label><input id="principalChatFile" type="file"></div><div id="principalChatThread"></div></div>
+        </div>
       </div>
 
       <!-- ====================================================================
@@ -3704,7 +3710,20 @@
     function getPrincipalMailboxItems(){return [...getProfileVerifyRequests().filter(r=>r.source!=='Principal Edit').map(r=>({...r,mailKind:'faculty'})),...getStudentProfileRequests().map(r=>({...r,mailKind:'student'}))].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));}
     function getPrincipalReadIds(){try{return JSON.parse(localStorage.getItem(PRINCIPAL_MAIL_READ_KEY)||'[]')}catch(e){return []}}
     function markPrincipalMailboxRead(){localStorage.setItem(PRINCIPAL_MAIL_READ_KEY,JSON.stringify(getPrincipalMailboxItems().map(r=>r.id)));renderPrincipalMailbox();}
-    function renderPrincipalMailbox(){
+    const COMM_KEY='pius_communication_messages',CHAT_KEY='pius_chat_messages';
+function principalCommMessages(){try{return JSON.parse(localStorage.getItem(COMM_KEY)||'[]')}catch(e){return[]}}
+function principalChatMessages(){try{return JSON.parse(localStorage.getItem(CHAT_KEY)||'[]')}catch(e){return[]}}
+function upsertCommLocal(key,item){let a=[];try{a=JSON.parse(localStorage.getItem(key)||'[]')}catch(e){}const i=a.findIndex(x=>x.id===item.id);if(i>=0)a[i]={...a[i],...item};else a.push(item);localStorage.setItem(key,JSON.stringify(a))}
+function principalOfficialMessages(){return principalCommMessages().filter(m=>m.toRole==='Principal'||m.toId==='principal'||m.fromRole==='Principal').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
+function renderPrincipalOfficialComm(){const el=document.getElementById('principalOfficialCommList');if(!el)return;const a=principalOfficialMessages();el.innerHTML=a.length?a.map(m=>`<div class="comm-message"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${escapeHtml(m.title||m.type||'Message')}</strong><span class="badge-tag">${escapeHtml(m.status||m.type||'Message')}</span></div><small>${escapeHtml(m.fromName||m.fromRole||'System')} → ${escapeHtml(m.toName||m.toRole||'Principal')} • ${m.createdAt?new Date(m.createdAt).toLocaleString():''}</small><div style="margin-top:6px">${escapeHtml(m.body||'')}</div>${m.attachment?`<div style="margin-top:7px"><a href="${escapeHtml(m.attachment.url)}" target="_blank">📎 ${escapeHtml(m.attachment.name)}</a></div>`:''}</div>`).join(''):'<div class="leave-empty">No official communication records yet.</div>';}
+function populatePrincipalChatRecipients(){const el=document.getElementById('principalChatRecipient');if(!el)return;let opts=['<option value="">Select recipient</option>'];(staffStore||[]).filter(x=>x.portalAccess!==false).forEach(x=>opts.push(`<option value="Faculty|${escapeHtml(x.empId)}|${escapeHtml(x.name||x.empId)}">Faculty · ${escapeHtml(x.name||x.empId)}</option>`));(studentStore||[]).filter(x=>x.portalAccess!==false).forEach(x=>{let id=x.rollId||x.admissionNo||x.studentId||'';if(id)opts.push(`<option value="Student|${escapeHtml(id)}|${escapeHtml(x.name||id)}">Student · ${escapeHtml(x.name||id)}</option>`)});el.innerHTML=opts.join('')}
+function showPrincipalCommPane(pane){document.getElementById('principalOfficialPane').style.display=pane==='official'?'block':'none';document.getElementById('principalChatPane').style.display=pane==='chat'?'block':'none';if(pane==='chat'){populatePrincipalChatRecipients();renderPrincipalChat()}}
+async function uploadPrincipalChatFile(){const f=document.getElementById('principalChatFile')?.files?.[0];if(!f)return null;const fd=new FormData();fd.append('file',f);const r=await fetch('/api/communications/upload',{method:'POST',body:fd});const j=await r.json();if(!r.ok)throw new Error(j.error||'Upload failed');return j.attachment}
+async function sendPrincipalChat(){const raw=document.getElementById('principalChatRecipient')?.value||'',body=(document.getElementById('principalChatText')?.value||'').trim();if(!raw)return alert('Select a recipient.');let attachment=null;try{attachment=await uploadPrincipalChatFile()}catch(e){return alert(e.message)}if(!body&&!attachment)return alert('Enter a message or attach a document.');const [toRole,toId,toName]=raw.split('|');const msg={fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole,toId,toName,body,attachment,createdAt:new Date().toISOString()};sendPortalServer('CHAT_MESSAGE_CREATE',msg);document.getElementById('principalChatText').value='';document.getElementById('principalChatFile').value='';setTimeout(renderPrincipalChat,150)}
+function renderPrincipalChat(){const el=document.getElementById('principalChatThread'),raw=document.getElementById('principalChatRecipient')?.value||'';if(!el)return;if(!raw){el.innerHTML='<div class="leave-empty">Select a recipient to open the conversation.</div>';return}const [role,id]=raw.split('|');const a=principalChatMessages().filter(m=>(m.fromRole==='Principal'&&String(m.toId)===String(id))||(m.toRole==='Principal'&&String(m.fromId)===String(id))).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));el.innerHTML=a.length?a.map(m=>`<div class="chat-bubble ${m.fromRole==='Principal'?'mine':''}"><strong>${escapeHtml(m.fromName||m.fromRole)}</strong><div>${escapeHtml(m.body||'')}</div>${m.attachment?`<a href="${escapeHtml(m.attachment.url)}" target="_blank">📎 ${escapeHtml(m.attachment.name)}</a>`:''}<small style="display:block">${m.createdAt?new Date(m.createdAt).toLocaleString():''}</small></div>`).join(''):'<div class="leave-empty">No messages yet.</div>';el.scrollTop=el.scrollHeight}
+function attachPrincipalCommunicationSocket(){if(!portalSocket||portalSocket._commAttached)return;portalSocket._commAttached=true;portalSocket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.communicationMessages))localStorage.setItem(COMM_KEY,JSON.stringify(m.payload.communicationMessages));if(Array.isArray(m.payload.chatMessages))localStorage.setItem(CHAT_KEY,JSON.stringify(m.payload.chatMessages));}if(m.type==='COMMUNICATION_UPDATED'&&m.payload)upsertCommLocal(COMM_KEY,m.payload);if(m.type==='CHAT_MESSAGE_UPDATED'&&m.payload)upsertCommLocal(CHAT_KEY,m.payload);if(m.type==='CLASS_TIMETABLE_PUBLISHED'&&m.payload){try{renderAll()}catch(e){}}renderPrincipalOfficialComm();renderPrincipalChat();});}
+setInterval(attachPrincipalCommunicationSocket,500);
+function renderPrincipalMailbox(){
       const el=document.getElementById('principalMailboxList'),badge=document.getElementById('principalMailboxBadge'),items=getPrincipalMailboxItems(),read=new Set(getPrincipalReadIds()),unread=items.filter(r=>!read.has(r.id)).length;
       if(badge){badge.textContent=unread;badge.style.display=unread?'inline-block':'none';}
       if(!el)return;
@@ -3893,7 +3912,7 @@
       if (tabId === 'staffTab' || tabId === 'studentsTab') { initializePeopleWorkspace(tabId); refreshPeopleWorkspaceStats(); }
       if (tabId === 'attendanceTab') { mountAttendancePage(); renderFacultyAttendanceCenter(); }
       if (tabId === 'cameraTab') renderCameraControlCenter();
-      if (tabId === 'principalMailboxTab') markPrincipalMailboxRead();
+      if (tabId === 'principalMailboxTab') {markPrincipalMailboxRead();renderPrincipalOfficialComm();populatePrincipalChatRecipients();}
       if (tabId === 'healthTab') runSystemHealthChecks();
       if (tabId === 'settingsTab') populateSelectiveDeleteClasses();
       if (window.matchMedia('(max-width:980px)').matches) toggleMobileNavigation(false);
@@ -10168,8 +10187,12 @@ function classReady(divId){
 }
 function publishClass(divId){
  if(!classReady(divId))return bot('This class cannot be published until all concerned subject teachers have accepted the timetable.');
- state.classPublish[divId]=true;save();renderAll();
- bot(`<b>${esc(divId)} published and locked.</b><br>The Student Portal can now receive this class timetable. Future changes require Principal-controlled impact analysis, a new timetable version and fresh notification to affected users.`);
+ const folder=(timetableFoldersStore||[]).find(f=>String(f.academicDivisionId)===String(divId));
+ if(!folder)return bot('The class review folder is not available on the server yet.');
+ state.classPublish[divId]=true;save();
+ sendPortalServer('PUBLISH_CLASS_TIMETABLE',{folderId:folder.id,divisionId:divId,principalOverride:true,teacherName:'Principal'});
+ renderAll();
+ bot(`<b>${esc(divId)} publication sent.</b><br>The server will mark the confirmed class timetable as published and the Student Portal will receive it.`,[],{success:true});
 }
 function renderOperations(){let issues=state.availabilityIssues.map((x,i)=>`<tr><td>${esc(staffName(x.teacherId))}</td><td>${esc(x.day)} P${x.period}</td><td>${esc(x.reason)}</td><td>${x.status}</td><td><button class="btn primary" onclick="analyseLocalRepair(${i})">Ask Assistant / Analyse</button></td></tr>`).join('');document.getElementById('operations').innerHTML=`<div class="card"><div class="card-head"><div><h2>Teacher Availability / Timetable Issue</h2><div class="sub">After faculty review, a teacher can report a recurring issue (e.g. unavailable Friday after lunch). The system analyses the smallest local repair; it does not regenerate the whole school.</div></div></div><div class="grid g4"><div class="field"><label>Teacher</label><select id="issueTeacher">${state.staff.map(t=>`<option value="${t.id}">${esc(academicTeacherName(t))}</option>`).join('')}</select></div><div class="field"><label>Day</label><select id="issueDay">${DAYS.map(d=>`<option>${d}</option>`).join('')}</select></div><div class="field"><label>Period</label><input id="issuePeriod" type="number" min="1" max="${state.periodsPerDay}" value="4"></div><div class="field"><label>Reason</label><input id="issueReason" placeholder="Unavailable / prayer / duty"></div></div><button class="btn primary" onclick="addAvailabilityIssue()">Submit to Principal</button>${issues?`<div class="table-wrap" style="margin-top:12px"><table class="table"><thead><tr><th>Teacher</th><th>Slot</th><th>Reason</th><th>Status</th><th></th></tr></thead><tbody>${issues}</tbody></table></div>`:''}</div>
 <div class="card"><div class="card-head"><div><h2>Daily Absence & Smart Period Reallocation</h2><div class="sub">An absent teacher's subject is not taught by a random substitute. Free teachers already teaching that class are invited to take <b>their own subject</b>. If multiple accept, portion progress decides the recommendation. The lost subject becomes recovery debt.</div></div></div><div class="row"><select id="absTeacher">${state.staff.map(t=>`<option value="${t.id}">${esc(academicTeacherName(t))}</option>`).join('')}</select><select id="absDay">${DAYS.map(d=>`<option>${d}</option>`).join('')}</select><button class="btn bad" onclick="createAbsence()">Mark Absent & Find Coverage</button></div><div id="absenceHost" style="margin-top:12px">${renderAbsenceEvents()}</div></div>
