@@ -365,6 +365,27 @@ function addCommunication(msg){
   broadcast({type:'COMMUNICATION_UPDATED',payload:item});
   return item;
 }
+
+function addSenderReceipt(source,overrides={}){
+  if(!source||!source.fromRole||!source.fromId||source.fromRole==='System')return null;
+  const receipt={
+    requestNo:source.requestNo||source.id||requestNo('RCT'),
+    fromRole:'System',fromId:'system',fromName:'School Communication Log',
+    toRole:source.fromRole,toId:String(source.fromId),toName:source.fromName||String(source.fromId),
+    type:'SENT_RECEIPT',
+    title:overrides.title||`Receipt — ${source.title||source.type||'Portal action'}`,
+    body:overrides.body||`Your ${source.type||'message'} was recorded and sent to ${source.toName||source.toRole||'the recipient'}.`,
+    status:overrides.status||source.status||'Sent',
+    actionRef:source.actionRef||source.id||'',
+    details:{originalType:source.type||'',originalTitle:source.title||'',recipientRole:source.toRole||'',recipientId:source.toId||'',recipientName:source.toName||'',originalBody:source.body||'',originalDetails:source.details||{},originalCreatedAt:source.createdAt||new Date().toISOString(),...(overrides.details||{})}
+  };
+  return addCommunication(receipt);
+}
+function addCommunicationWithReceipt(msg,receiptOverrides={}){
+  const item=addCommunication(msg);
+  if(msg?.fromRole&&msg?.fromId&&msg?.fromRole!=='System'&&!msg?.noSenderReceipt)addSenderReceipt(item,receiptOverrides);
+  return item;
+}
 function addChat(msg){
   const item={id:msg.id||commId('CHAT'),kind:'chat',createdAt:msg.createdAt||new Date().toISOString(),...msg};
   chatMessages.push(item);chatMessages=chatMessages.slice(-10000);
@@ -373,6 +394,29 @@ function addChat(msg){
   return item;
 }
 function studentPortalId(s){return String(s.rollId||s.admissionNo||s.studentId||'')}
+
+function normClassPart(v){return String(v||'').replace(/^grade\s*/i,'').replace(/^class\s*/i,'').replace(/^div(ision)?\s*/i,'').trim().toLowerCase()}
+function studentClassKey(s){return `${normClassPart(s.grade||s.className)}|||${normClassPart(s.section||s.division)}`}
+function classTeacherIdForStudent(s){
+  const key=studentClassKey(s);
+  const direct=classTeacherAssignments[key]||classTeacherAssignments[`${String(s.grade||s.className||'').trim()}|||${String(s.section||s.division||'').trim()}`];
+  if(direct)return String(direct);
+  const folder=timetableFolders.find(f=>normClassPart(f.className)===normClassPart(s.grade||s.className)&&normClassPart(f.division)===normClassPart(s.section||s.division)&&f.classTeacherEmpId);
+  return folder?.classTeacherEmpId?String(folder.classTeacherEmpId):'';
+}
+function classTeacherNameForStudent(s){
+  const id=classTeacherIdForStudent(s),t=portalStaff.find(x=>String(x.empId)===id);return t?.name||id||'Class Teacher';
+}
+function teacherCanMessageStudent(teacherId,student){
+  const id=String(teacherId||'');if(!id||!student)return false;
+  if(classTeacherIdForStudent(student)===id)return true;
+  return timetableFolders.some(f=>normClassPart(f.className)===normClassPart(student.grade||student.className)&&normClassPart(f.division)===normClassPart(student.section||student.division)&&(f.recipientTeacherEmpIds||[]).map(String).includes(id));
+}
+function teacherStudents(teacherId){
+  const seen=new Set();return portalStudents.filter(stu=>{
+    const sid=studentPortalId(stu);if(!sid||seen.has(sid)||!teacherCanMessageStudent(teacherId,stu))return false;seen.add(sid);return true;
+  });
+}
 function classEqualsStudent(folder,s){
   const grade=String(s.grade||s.className||'').trim().toLowerCase();
   const div=String(s.section||s.division||'').replace(/^div\s*/i,'').trim().toLowerCase();
@@ -568,7 +612,7 @@ wss.on('connection', async (ws) => {
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
           notifyFaculty(r.teacherIds,'Timetable waiting for review',`Timetable V${r.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`,'timetable').catch(()=>{});
-          (r.teacherIds||[]).forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===String(tid));addCommunication({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(tid),toName:t?.name||String(tid),type:'TIMETABLE_REVIEW_SENT',title:`Timetable V${r.version} awaiting review`,body:'Review your personal timetable and select Accept Timetable or Raise Issue.',actionRef:`TIMETABLE:${r.version}`})});
+          (r.teacherIds||[]).forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===String(tid));addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(tid),toName:t?.name||String(tid),type:'TIMETABLE_REVIEW_SENT',title:`Timetable V${r.version} awaiting review`,body:'Review your personal timetable and select Accept Timetable or Raise Issue.',actionRef:`TIMETABLE:${r.version}`})});
           break;
         }
 
@@ -578,7 +622,7 @@ wss.on('connection', async (ws) => {
           timetableReview.teacherReviews=timetableReview.teacherReviews||{};
           timetableReview.teacherReviews[String(r.teacherId)]=r;
           broadcast({type:'FACULTY_TIMETABLE_REVIEW_UPDATED',payload:r});
-          addCommunication({fromRole:'Faculty',fromId:String(r.teacherId),fromName:r.teacherName||String(r.teacherId),toRole:'Principal',toId:'principal',toName:'Principal',type:r.status==='Accepted'?'TIMETABLE_ACCEPTED':'TIMETABLE_ISSUE',title:`${r.teacherName||r.teacherId} — timetable ${r.status}`,body:r.status==='Accepted'?`Timetable V${r.version} accepted.`:`Timetable V${r.version} issue: ${r.reason||'No reason supplied'}`,status:r.status,actionRef:`TIMETABLE:${r.version}`});
+          addCommunicationWithReceipt({fromRole:'Faculty',fromId:String(r.teacherId),fromName:r.teacherName||String(r.teacherId),toRole:'Principal',toId:'principal',toName:'Principal',type:r.status==='Accepted'?'TIMETABLE_ACCEPTED':'TIMETABLE_ISSUE',title:`${r.teacherName||r.teacherId} — timetable ${r.status}`,body:r.status==='Accepted'?`Timetable V${r.version} accepted.`:`Timetable V${r.version} issue: ${r.reason||'No reason supplied'}`,status:r.status,actionRef:`TIMETABLE:${r.version}`});
           addCommunication({fromRole:'System',fromId:'system',fromName:'School System',toRole:'Faculty',toId:String(r.teacherId),toName:r.teacherName||String(r.teacherId),type:'TIMETABLE_RESPONSE_RECORDED',title:`Timetable V${r.version} — ${r.status}`,body:r.status==='Accepted'?'Your timetable is confirmed and is now active in your Faculty Portal.':'Your issue has been sent to the Principal.',status:r.status,actionRef:`TIMETABLE:${r.version}`});
           persistRuntimeState('pius_communication_messages',communicationMessages);
           break;
@@ -591,6 +635,137 @@ wss.on('connection', async (ws) => {
           broadcast({type:'DAILY_PORTION_PROGRESS_UPDATED',payload:dailyPortionProgress});
           break;
         }
+        case 'PRINCIPAL_STUDENT_PROFILE_UPDATE': {
+          const r=data.payload||{},sid=String(r.studentId||r.rollId||'');
+          if(!sid)break;
+          const i=portalStudents.findIndex(x=>studentPortalId(x)===sid);
+          if(i<0)break;
+          const before={...portalStudents[i]},changes=r.changes||{};
+          portalStudents[i]={...portalStudents[i],...changes,updatedAt:new Date().toISOString(),updatedBy:'Principal'};
+          broadcast({type:'PORTAL_STUDENTS_UPDATED',payload:portalStudents});
+          persistRuntimeState('pius_students_data',portalStudents);
+          addCommunicationWithReceipt({
+            fromRole:'Principal',fromId:'principal',fromName:'Principal',
+            toRole:'Student',toId:sid,toName:portalStudents[i].name||sid,
+            type:'PRINCIPAL_PROFILE_UPDATE',title:'Your student profile was updated by the Principal',
+            body:r.note||'The Principal updated information in your student profile.',
+            status:'Updated',
+            details:{previous:before,proposed:portalStudents[i],note:r.note||'',changedFields:Object.keys(changes)},
+            actionRef:`STUDENT:${sid}`
+          });
+          break;
+        }
+
+        case 'PRINCIPAL_STUDENT_NOTICE': {
+          const r=data.payload||{},ids=(r.studentIds||[]).map(String);
+          const targets=portalStudents.filter(stu=>ids.includes(studentPortalId(stu)));
+          targets.forEach(stu=>addCommunicationWithReceipt({
+            fromRole:'Principal',fromId:'principal',fromName:'Principal',
+            toRole:'Student',toId:studentPortalId(stu),toName:stu.name||studentPortalId(stu),
+            type:'PRINCIPAL_STUDENT_NOTICE',title:r.title||'Principal Notice',
+            body:r.body||'',status:'New',details:{priority:r.priority||'Standard',audience:'Selected Student'},actionRef:r.noticeId||''
+          }));
+          break;
+        }
+
+        case 'STUDENT_REQUEST_CREATE':
+        case 'STUDENT_PROFILE_REQUEST_CREATE': {
+          const r=data.payload||{},sid=String(r.studentId||r.rollId||'');
+          const stu=portalStudents.find(x=>studentPortalId(x)===sid);
+          if(!stu)break;
+          ensureRequestNo(r,'SR');
+          const ctId=classTeacherIdForStudent(stu);
+          if(!ctId){
+            r.status='Pending Class Teacher Assignment';
+            upsertStudentProfileRequest(r);
+            broadcast({type:'STUDENT_PROFILE_REQUEST_CREATED',payload:r});
+            addCommunicationWithReceipt({
+              requestNo:r.requestNo,fromRole:'Student',fromId:sid,fromName:stu.name||sid,
+              toRole:'Principal',toId:'principal',toName:'Principal',
+              type:'STUDENT_REQUEST_UNROUTED',title:r.title||'Student request awaiting Class Teacher assignment',
+              body:r.reason||r.note||'A student request could not be routed because no Class Teacher is assigned.',
+              status:'Pending Class Teacher Assignment',details:r.details||r,actionRef:r.id
+            });
+            break;
+          }
+          r.classTeacherId=ctId;r.status='Pending Class Teacher Approval';
+          upsertStudentProfileRequest(r);
+          broadcast({type:'STUDENT_PROFILE_REQUEST_CREATED',payload:r});
+          addCommunicationWithReceipt({
+            requestNo:r.requestNo,fromRole:'Student',fromId:sid,fromName:stu.name||sid,
+            toRole:'Faculty',toId:ctId,toName:classTeacherNameForStudent(stu),
+            type:r.type||'STUDENT_APPROVAL_REQUEST',title:r.title||'Student approval request',
+            body:r.reason||r.note||'A student has submitted a request for your approval.',
+            status:'Pending Class Teacher Approval',
+            details:{studentId:sid,studentName:stu.name||sid,className:stu.grade||stu.className||'',division:stu.section||stu.division||'',request:r.details||r},
+            actionRef:r.id
+          });
+          break;
+        }
+
+        case 'CLASS_TEACHER_STUDENT_REQUEST_DECISION': {
+          const r=data.payload||{},req=studentProfileRequests.find(x=>String(x.id)===String(r.requestId));
+          if(!req)break;
+          const sid=String(req.studentId||req.rollId||''),stu=portalStudents.find(x=>studentPortalId(x)===sid);
+          if(!stu)break;
+          const ctId=classTeacherIdForStudent(stu);
+          if(String(r.teacherId)!==String(ctId))break;
+          req.status=r.decision==='Approved'?'Approved':'Rejected';
+          req.decisionBy=r.teacherName||classTeacherNameForStudent(stu);
+          req.decisionById=String(r.teacherId);req.decisionAt=new Date().toISOString();req.decisionReason=r.reason||'';
+          if(req.status==='Approved'&&r.appliedChanges&&typeof r.appliedChanges==='object'){
+            const i=portalStudents.findIndex(x=>studentPortalId(x)===sid);
+            portalStudents[i]={...portalStudents[i],...r.appliedChanges,updatedAt:new Date().toISOString(),updatedBy:req.decisionBy};
+            broadcast({type:'PORTAL_STUDENTS_UPDATED',payload:portalStudents});
+            persistRuntimeState('pius_students_data',portalStudents);
+          }
+          broadcast({type:'STUDENT_PROFILE_REQUEST_UPDATED',payload:req});
+          persistRuntimeState('pius_student_profile_requests',studentProfileRequests);
+          addCommunicationWithReceipt({
+            requestNo:req.requestNo||req.id,fromRole:'Faculty',fromId:String(r.teacherId),fromName:req.decisionBy,
+            toRole:'Student',toId:sid,toName:stu.name||sid,
+            type:'STUDENT_REQUEST_DECISION',title:`Student request ${req.status}`,
+            body:req.status==='Approved'?'Your Class Teacher approved your request.':`Your Class Teacher rejected your request.${r.reason?' Reason: '+r.reason:''}`,
+            status:req.status,details:{requestId:req.id,reason:r.reason||'',decidedAt:req.decisionAt},actionRef:req.id
+          });
+          addCommunication({
+            requestNo:req.requestNo||req.id,fromRole:'System',fromId:'system',fromName:'School Communication Log',
+            toRole:'Principal',toId:'principal',toName:'Principal',
+            type:'STUDENT_REQUEST_DECISION_COPY',title:`${stu.name||sid} — request ${req.status}`,
+            body:`${req.decisionBy} ${req.status.toLowerCase()} the student request.`,
+            status:req.status,details:{studentId:sid,teacherId:r.teacherId,requestId:req.id,reason:r.reason||''},actionRef:req.id,noSenderReceipt:true
+          });
+          break;
+        }
+
+        case 'FACULTY_STUDENT_NOTICE': {
+          const r=data.payload||{},teacherId=String(r.teacherId||''),ids=(r.studentIds||[]).map(String);
+          const requested=portalStudents.filter(stu=>ids.includes(studentPortalId(stu)));
+          requested.filter(stu=>teacherCanMessageStudent(teacherId,stu)).forEach(stu=>{
+            const sid=studentPortalId(stu),ctId=classTeacherIdForStudent(stu);
+            addCommunicationWithReceipt({
+              fromRole:'Faculty',fromId:teacherId,fromName:r.teacherName||teacherId,
+              toRole:'Student',toId:sid,toName:stu.name||sid,
+              type:'FACULTY_STUDENT_NOTICE',title:r.title||'Teacher Notice',
+              body:r.body||'',status:'New',
+              details:{className:stu.grade||stu.className||'',division:stu.section||stu.division||'',priority:r.priority||'Standard'},
+              actionRef:r.noticeId||''
+            });
+            if(ctId&&ctId!==teacherId){
+              addCommunication({
+                fromRole:'System',fromId:'system',fromName:'School Communication Log',
+                toRole:'Faculty',toId:ctId,toName:classTeacherNameForStudent(stu),
+                type:'SUBJECT_TEACHER_NOTICE_COPY',title:`Copy: ${r.title||'Teacher Notice'} → ${stu.name||sid}`,
+                body:`${r.teacherName||teacherId} sent information to ${stu.name||sid}. ${r.body||''}`,
+                status:'Copy',
+                details:{studentId:sid,subjectTeacherId:teacherId,subjectTeacherName:r.teacherName||teacherId,className:stu.grade||stu.className||'',division:stu.section||stu.division||''},
+                actionRef:r.noticeId||'',noSenderReceipt:true
+              });
+            }
+          });
+          break;
+        }
+
         case 'FACULTY_NOTIFICATION_SETTINGS_UPDATE': {
           const r=data.payload||{};if(!r.empId)break;
           facultyNotificationSettings[String(r.empId)]={...r,empId:String(r.empId),updatedAt:r.updatedAt||new Date().toISOString()};
@@ -624,7 +799,7 @@ wss.on('connection', async (ws) => {
         case 'COMMUNICATION_MESSAGE_CREATE': {
           const r=data.payload||{};
           if(!r.toRole||!r.title)break;
-          addCommunication(r);
+          addCommunicationWithReceipt(r);
           break;
         }
 
@@ -648,7 +823,7 @@ wss.on('connection', async (ws) => {
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'CLASS_TIMETABLE_PUBLISHED',payload:folder});
           persistRuntimeState('pius_timetable_folders',timetableFolders);
-          addCommunication({fromRole:data.type==='FACULTY_PUBLISH_CLASS'?'Faculty':'Principal',fromId:String(r.teacherId||'principal'),fromName:r.teacherName||'Principal',toRole:'Principal',toId:'principal',toName:'Principal',type:'CLASS_TIMETABLE_PUBLISHED',title:`${folder.className} — ${folder.division} timetable published`,body:`The confirmed timetable was published to the Student Portal by ${r.teacherName||'Principal'}.`,status:'Published',actionRef:folder.id});
+          addCommunicationWithReceipt({fromRole:data.type==='FACULTY_PUBLISH_CLASS'?'Faculty':'Principal',fromId:String(r.teacherId||'principal'),fromName:r.teacherName||'Principal',toRole:'Principal',toId:'principal',toName:'Principal',type:'CLASS_TIMETABLE_PUBLISHED',title:`${folder.className} — ${folder.division} timetable published`,body:`The confirmed timetable was published to the Student Portal by ${r.teacherName||'Principal'}.`,status:'Published',actionRef:folder.id});
           portalStudents.filter(x=>classEqualsStudent(folder,x)).forEach(stu=>addCommunication({fromRole:'School',fromId:'school',fromName:'School',toRole:'Student',toId:studentPortalId(stu),toName:stu.name||studentPortalId(stu),type:'TIMETABLE_PUBLISHED',title:'Class timetable published',body:`Your ${folder.className} — ${folder.division} timetable is now active in the Student Portal.`,status:'Published',actionRef:folder.id}));
           break;
         }
@@ -805,7 +980,7 @@ wss.on('connection', async (ws) => {
           upsertVerification(r);
           broadcast({ type: 'PROFILE_VERIFICATION_CREATED', payload: r });
           const existing=communicationMessages.find(x=>x.type==='FACULTY_PROFILE_REQUEST'&&String(x.requestNo)===String(r.requestNo));
-          if(!existing)addCommunication({requestNo:r.requestNo,fromRole:'Faculty',fromId:String(r.empId||''),fromName:r.teacherName||r.empId||'Faculty',toRole:'Principal',toId:'principal',toName:'Principal',type:'FACULTY_PROFILE_REQUEST',title:'Faculty profile update request',body:r.note||'Faculty requested a profile update.',status:'Pending Principal Approval',details:{previous:r.previousSnapshot||{},proposed:r.snapshot||r.proposedChanges||{},note:r.note||'',source:r.source||'Teacher Profile Edit'},actionRef:r.id});
+          if(!existing)addCommunicationWithReceipt({requestNo:r.requestNo,fromRole:'Faculty',fromId:String(r.empId||''),fromName:r.teacherName||r.empId||'Faculty',toRole:'Principal',toId:'principal',toName:'Principal',type:'FACULTY_PROFILE_REQUEST',title:'Faculty profile update request',body:r.note||'Faculty requested a profile update.',status:'Pending Principal Approval',details:{previous:r.previousSnapshot||{},proposed:r.snapshot||r.proposedChanges||{},note:r.note||'',source:r.source||'Teacher Profile Edit'},actionRef:r.id});
           break;
         }
 

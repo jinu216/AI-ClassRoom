@@ -4020,12 +4020,14 @@ function upsertCommLocal(key,item){let a=[];try{a=JSON.parse(localStorage.getIte
 let principalMailFolder='inbox';
 function principalActorKey(){return 'Principal|principal'}
 function principalAllOfficial(){return principalCommMessages().filter(m=>!(m.deletedFor||[]).includes(principalActorKey())).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
-function principalInbox(){return principalAllOfficial().filter(m=>m.toRole==='Principal'||m.toId==='principal')}
-function principalSent(){return principalAllOfficial().filter(m=>m.fromRole==='Principal'||m.fromId==='principal')}
+function principalInbox(){return principalAllOfficial().filter(m=>(m.toRole==='Principal'||m.toId==='principal')&&m.type!=='SENT_RECEIPT')}
+function principalSent(){return principalAllOfficial().filter(m=>m.fromRole==='Principal'||m.fromId==='principal'||(m.type==='SENT_RECEIPT'&&String(m.toId)==='principal'))}
 function principalAudit(){try{return JSON.parse(localStorage.getItem('pius_communication_audit_log')||'[]')}catch(e){return[]}}
 function setPrincipalMailFolder(folder){principalMailFolder=folder;['Inbox','Sent','Log'].forEach(x=>document.getElementById('pMail'+x+'Btn')?.classList.toggle('active',folder===x.toLowerCase()));renderPrincipalOfficialComm()}
 function principalRequestDetails(m){
-  const d=m.details||{},prev=d.previous||{},prop=d.proposed||{},keys=[...new Set([...Object.keys(prev),...Object.keys(prop)])].filter(k=>JSON.stringify(prev[k]??null)!==JSON.stringify(prop[k]??null));
+  const d=m.details||{};
+  if(m.type==='SENT_RECEIPT')return `<div class="calculation-badge"><strong><i class="fa-solid fa-receipt"></i> Communication Receipt</strong><div style="margin-top:8px;font-size:11px;line-height:1.7">Request / Message No: <b>${escapeHtml(m.requestNo||m.id||'—')}</b><br>Recipient: ${escapeHtml(d.recipientName||d.recipientRole||'—')}<br>Original action: ${escapeHtml(d.originalType||'—')}<br>Sent: ${d.originalCreatedAt?new Date(d.originalCreatedAt).toLocaleString():'—'}<br>Status: ${escapeHtml(m.status||'Sent')}</div></div>${d.originalTitle?`<p><b>Subject:</b> ${escapeHtml(d.originalTitle)}</p>`:''}${d.originalBody?`<p><b>Content:</b> ${escapeHtml(d.originalBody)}</p>`:''}`;
+  const prev=d.previous||{},prop=d.proposed||{},keys=[...new Set([...Object.keys(prev),...Object.keys(prop)])].filter(k=>JSON.stringify(prev[k]??null)!==JSON.stringify(prop[k]??null));
   if(keys.length)return `<table class="change-table"><thead><tr><th>Field</th><th>Current</th><th>Requested</th></tr></thead><tbody>${keys.map(k=>`<tr><td>${escapeHtml(k)}</td><td class="change-old">${escapeHtml(typeof prev[k]==='object'?JSON.stringify(prev[k]):String(prev[k]??'—'))}</td><td class="change-new">${escapeHtml(typeof prop[k]==='object'?JSON.stringify(prop[k]):String(prop[k]??'—'))}</td></tr>`).join('')}</tbody></table>${d.note?`<p><b>Request note:</b> ${escapeHtml(d.note)}</p>`:''}`;
   if(d.field||d.currentValue||d.proposedValue)return `<table class="change-table"><tr><th>Field</th><td>${escapeHtml(d.field||'Profile information')}</td></tr><tr><th>Current</th><td class="change-old">${escapeHtml(d.currentValue||'—')}</td></tr><tr><th>Requested</th><td class="change-new">${escapeHtml(d.proposedValue||'—')}</td></tr></table>${d.reason?`<p><b>Reason:</b> ${escapeHtml(d.reason)}</p>`:''}`;
   return m.body?`<p>${escapeHtml(m.body)}</p>`:'<p>No additional details supplied.</p>';
