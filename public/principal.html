@@ -1250,6 +1250,24 @@
 .floating-chat{display:none!important}
 
 #facultyKpiTab,#dailyPortionKpiCard{display:none!important}
+
+/* ===== V23 Compact Faculty / Student Folder Workspace ===== */
+.people-workflow{display:none!important}
+.compact-people-folders{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0 18px}
+.compact-people-folder{min-height:132px;padding:16px;border:1px solid var(--hairline-strong);border-radius:14px;background:linear-gradient(145deg,rgba(13,31,48,.96),rgba(7,20,33,.96));cursor:pointer;transition:.18s ease;position:relative;overflow:hidden;text-align:left;color:var(--text-primary)}
+.compact-people-folder:before{content:'';position:absolute;inset:auto -30px -45px auto;width:110px;height:110px;border-radius:50%;background:rgba(201,162,75,.045)}
+.compact-people-folder:hover{transform:translateY(-2px);border-color:var(--brass);box-shadow:0 14px 32px rgba(0,0,0,.24)}
+.compact-people-folder .folder-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(201,162,75,.12);color:var(--brass-bright);font-size:17px;margin-bottom:14px}
+.compact-people-folder strong{display:block;font-family:'Fraunces',serif;font-size:15px;color:var(--text-primary);margin-bottom:5px}.compact-people-folder small{display:block;font-size:10px;line-height:1.5;color:var(--text-muted);max-width:92%}.compact-people-folder .folder-open{position:absolute;right:13px;top:13px;color:var(--text-faint);font-size:11px}
+.people-folder-modal{position:fixed;inset:0;z-index:10050;background:rgba(2,8,15,.82);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px}.people-folder-modal.open{display:flex}
+.people-folder-dialog{width:min(1240px,97vw);height:min(900px,95vh);background:#0b1827;border:1px solid rgba(201,162,75,.32);border-radius:18px;box-shadow:0 30px 100px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+.people-folder-head{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--hairline);background:linear-gradient(180deg,rgba(201,162,75,.055),transparent)}.people-folder-head h3{margin:0;font-family:'Fraunces',serif;color:var(--brass-bright);font-size:20px}.people-folder-head p{margin:4px 0 0;color:var(--text-muted);font-size:10px}.people-folder-close-x{width:38px;height:38px;border-radius:10px;border:1px solid var(--hairline);background:var(--panel-soft);color:var(--text-primary);cursor:pointer;font-size:20px}
+.people-folder-body{flex:1;overflow:auto;padding:18px}.people-folder-body>.editor-card,.people-folder-body>.people-admin-workspace{display:block!important;margin:0 0 16px!important;animation:none!important}.people-folder-body .people-panel-hidden{display:block!important}
+.people-folder-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px 18px;border-top:1px solid var(--hairline);background:#081522}.people-folder-foot .foot-note{font-size:10px;color:var(--text-muted)}.people-folder-foot-actions{display:flex;gap:8px;flex-wrap:wrap}
+#staffTab.compact-people-ready>:scope.editor-card,#studentsTab.compact-people-ready>:scope.editor-card{display:none!important}
+#staffTab.compact-people-ready>.people-admin-workspace,#studentsTab.compact-people-ready>.people-admin-workspace{display:none!important}
+@media(max-width:1000px){.compact-people-folders{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.compact-people-folders{grid-template-columns:1fr}.people-folder-modal{padding:7px}.people-folder-dialog{height:97vh}.people-folder-foot{align-items:flex-start;flex-direction:column}.people-folder-foot-actions{width:100%}.people-folder-foot-actions button{flex:1}}
+
 </style>
 
 <style id="academicEngineIntegratedStyles">
@@ -10300,5 +10318,60 @@ window.FACULTY_STAFF_FIELD_MAP={"Employee ID":"empId","Full Name":"fullName","Ge
  new MutationObserver(hide).observe(document.documentElement,{childList:true,subtree:true});setTimeout(hide,50);
 })();
 </script>
+
+<div id="peopleFolderModal" class="people-folder-modal" aria-hidden="true"><div class="people-folder-dialog"><div class="people-folder-head"><div><h3 id="peopleFolderTitle">Management Folder</h3><p id="peopleFolderDescription">Review and manage information.</p></div><button class="people-folder-close-x" onclick="closePeopleFolderModal()" aria-label="Close">×</button></div><div id="peopleFolderBody" class="people-folder-body"></div><div class="people-folder-foot"><span class="foot-note" id="peopleFolderFootNote">Changes use the same existing Principal Portal records and validation rules.</span><div class="people-folder-foot-actions"><button class="btn-secondary" onclick="closePeopleFolderModal()"><i class="fa-solid fa-xmark"></i> Close</button><button id="peopleFolderSaveBtn" class="btn-primary" onclick="savePeopleFolderAndClose()"><i class="fa-solid fa-floppy-disk"></i> Save & Close</button></div></div></div></div>
+
+
+<script>
+/* V23 compact Faculty / Student management folders. Existing cards/functions are reused. */
+const PEOPLE_COMPACT_CONFIG={
+ staffTab:{label:'Faculty & Staff',folders:[
+  {key:'profile',title:'Profile Management',description:'Add a new staff member or open an existing profile and edit the complete faculty record.',icon:'fa-user-pen',indices:[0],saveMode:'profile'},
+  {key:'admin',title:'Administration & Customization',description:'Custom fields, Employee ID rules, workload settings and other faculty-wide administration.',icon:'fa-gears',indices:[1,4],saveMode:'settings'},
+  {key:'data',title:'Data Import & Export',description:'Import faculty records from Excel and export/download the official faculty master data.',icon:'fa-file-excel',indices:[2,5],saveMode:'none'},
+  {key:'directory',title:'Directory & Profiles',description:'Search faculty, review records, edit profiles and manage portal/profile status.',icon:'fa-address-book',indices:[3],saveMode:'none'}]},
+ studentsTab:{label:'Students',folders:[
+  {key:'profile',title:'Profile Management',description:'Add a student or open an existing student profile and edit the complete record.',icon:'fa-user-graduate',indices:[0],saveMode:'profile'},
+  {key:'admin',title:'Administration & Customization',description:'Custom student fields, roll-number rules, division-allocation settings and student-wide administration.',icon:'fa-sliders',indices:[1,4],saveMode:'settings'},
+  {key:'data',title:'Data Import & Export',description:'Import student records from Excel and export/download the official student master data.',icon:'fa-file-arrow-up',indices:[2,5],saveMode:'none'},
+  {key:'directory',title:'Directory & Profiles',description:'Search students, review profiles, edit details and manage portal/profile status.',icon:'fa-users-viewfinder',indices:[3],saveMode:'none'}]}
+};
+let peopleFolderSession=null;
+function peopleDirectCards(tab){installAdministrationWorkflowPanels();return [...tab.children].filter(el=>el.classList?.contains('editor-card')||el.classList?.contains('people-admin-workspace'))}
+function ensureCompactPeopleFolders(tabId){
+ const tab=document.getElementById(tabId),cfg=PEOPLE_COMPACT_CONFIG[tabId];if(!tab||!cfg)return;
+ installAdministrationWorkflowPanels();
+ let grid=tab.querySelector(':scope > .compact-people-folders');
+ if(!grid){grid=document.createElement('div');grid.className='compact-people-folders';grid.setAttribute('aria-label',cfg.label+' management folders');grid.innerHTML=cfg.folders.map(f=>`<button type="button" class="compact-people-folder" onclick="openPeopleFolder('${tabId}','${f.key}')"><span class="folder-open"><i class="fa-solid fa-up-right-from-square"></i></span><span class="folder-icon"><i class="fa-solid ${f.icon}"></i></span><strong>${f.title}</strong><small>${f.description}</small></button>`).join('');const overview=tab.querySelector(':scope > .people-overview');overview?.insertAdjacentElement('afterend',grid)}
+ tab.classList.add('compact-people-ready');
+}
+function restorePeopleFolderCards(){if(!peopleFolderSession)return;const {tab,items}=peopleFolderSession;items.sort((a,b)=>a.order-b.order).forEach(x=>{const marker=x.marker;if(marker?.parentNode)marker.parentNode.insertBefore(x.card,marker);marker?.remove()});peopleFolderSession=null}
+function openPeopleFolder(tabId,key){
+ closePeopleFolderModal(false);ensureCompactPeopleFolders(tabId);
+ const tab=document.getElementById(tabId),cfg=PEOPLE_COMPACT_CONFIG[tabId],folder=cfg?.folders.find(x=>x.key===key);if(!tab||!folder)return;
+ const cards=peopleDirectCards(tab),body=document.getElementById('peopleFolderBody'),items=[];body.innerHTML='';
+ folder.indices.forEach(index=>{const card=cards[index];if(!card)return;const marker=document.createComment(`people-folder-${tabId}-${index}`);card.parentNode.insertBefore(marker,card);items.push({card,marker,order:index});card.classList.remove('people-panel-hidden','people-panel-active');body.appendChild(card)});
+ peopleFolderSession={tabId,key,tab,folder,items};document.getElementById('peopleFolderTitle').innerHTML=`<i class="fa-solid ${folder.icon}"></i> ${folder.title}`;document.getElementById('peopleFolderDescription').textContent=folder.description;
+ const save=document.getElementById('peopleFolderSaveBtn');save.style.display=folder.saveMode==='none'?'none':'';document.getElementById('peopleFolderFootNote').textContent=folder.saveMode==='none'?'Use the action buttons inside this folder, then close when finished.':'Review all changes before Save & Close. Existing validation and synchronization rules remain active.';
+ const modal=document.getElementById('peopleFolderModal');modal.classList.add('open');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+ if(key==='directory'){if(tabId==='staffTab')renderStaffRoster();else renderStudents()}
+}
+function closePeopleFolderModal(restore=true){const modal=document.getElementById('peopleFolderModal');if(!modal)return;if(restore)restorePeopleFolderCards();modal.classList.remove('open');modal.setAttribute('aria-hidden','true');document.body.style.overflow='';}
+function clickPeopleFolderSaveButtons(){const body=document.getElementById('peopleFolderBody');if(!body)return;const buttons=[...body.querySelectorAll('button')].filter(b=>b.offsetParent!==null&&!b.disabled&&/save/i.test((b.textContent||'').trim())&&!/save & close/i.test((b.textContent||'').trim()));buttons.forEach(b=>{try{b.click()}catch(e){console.warn(e)}})}
+function savePeopleFolderAndClose(){
+ if(!peopleFolderSession)return closePeopleFolderModal();const {tabId,folder}=peopleFolderSession;
+ if(folder.saveMode==='profile'){
+   const form=document.getElementById(tabId==='staffTab'?'staffForm':'studentForm');if(form){if(!form.reportValidity())return;form.requestSubmit();setTimeout(()=>closePeopleFolderModal(),80);return}
+ }
+ if(folder.saveMode==='settings')clickPeopleFolderSaveButtons();closePeopleFolderModal();
+}
+/* Existing calls such as Edit from Directory continue to work, but now open the corresponding popup folder. */
+const showPeopleStepLegacy=window.showPeopleStep;
+window.showPeopleStep=function(tabId,index,button,scroll=true){ensureCompactPeopleFolders(tabId);const map={0:'profile',1:'admin',2:'data',3:'directory',4:'admin',5:'data'};openPeopleFolder(tabId,map[index]||'profile')};
+window.initializePeopleWorkspace=function(tabId){installAdministrationWorkflowPanels();ensureCompactPeopleFolders(tabId);updatePreviewControlLabels();refreshPeopleWorkspaceStats();if(tabId==='staffTab')loadFacultyWorkloadPolicy()};
+setTimeout(()=>{ensureCompactPeopleFolders('staffTab');ensureCompactPeopleFolders('studentsTab');},80);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('peopleFolderModal')?.classList.contains('open'))closePeopleFolderModal()});
+</script>
+
 </body>
 </html>
