@@ -5852,7 +5852,8 @@ function requireMainAdmin(){if(currentAccessProfile?.id!=='main-admin'){alert('O
 
     function saveClassTeacherAssignments(assignments) {
       localStorage.setItem('pius_class_teacher_assignments', JSON.stringify(assignments || {}));
-      try { syncPortalAssignmentsToAcademicEngine(assignments || {}); } catch(e) {}
+      /* Academic Schedule is authoritative. Do not push Student Directory
+         values back into the Academic engine during normal saves. */
     }
 
     function getClassTeacherAssignmentKey(className, division) {
@@ -7885,7 +7886,13 @@ state.classExtras=state.classExtras||{};
 state.resources=Array.isArray(state.resources)?state.resources:[];
 state.staff=state.staff||[];
 state.classTeachers=state.classTeachers||{};
-try{syncPortalAssignmentsToAcademicEngine(getClassTeacherAssignments())}catch(e){}
+/* V34: Academic Schedule is the authoritative Class Teacher source.
+   Legacy portal assignments are imported only for Academic divisions that
+   genuinely have no Academic Class Teacher saved. */
+setTimeout(()=>{try{
+  migrateLegacyPortalClassTeachersOnlyWhenMissing();
+  syncAcademicClassTeachersToPortalAssignments({notify:true,render:true});
+}catch(e){console.warn('Initial Class Teacher authority sync',e)}},0);
 state.ownership=state.ownership||{};
 state.overloadApprovals=state.overloadApprovals||{};
 state.facultyReviews=state.facultyReviews||{};
@@ -8046,15 +8053,32 @@ function syncAcademicClassTeachersToPortalAssignments({notify=true,render=true}=
   if(typeof state==='undefined'||!state?.classTeachers)return false;
   const current=getClassTeacherAssignments(),next={...current};
   let changed=false;
+
+  /* Use the Student/Principal division engine as the exact destination key map.
+     Academic IDs such as 1-A map to portal keys such as "1|||Div A". */
+  const portalDivisions=typeof buildAutoClassDivisions==='function'?buildAutoClassDivisions():[];
+
   divisions().forEach(d=>{
-    const className=academicStudentClassName(d.grade),division=academicPortalDivisionName(d.division);
-    const key=getClassTeacherAssignmentKey(className,division),empId=String(state.classTeachers[d.id]||'');
+    const portalMatch=portalDivisions.find(pd=>{
+      const pc=String(pd.className||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
+      const pdv=String(pd.division||'').replace(/^Div\s*/i,'').trim().toLowerCase();
+      const ag=String(d.grade||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
+      const adv=String(d.division||'').replace(/^Div\s*/i,'').trim().toLowerCase();
+      return pc===ag&&pdv===adv;
+    });
+    const className=portalMatch?.className||academicStudentClassName(d.grade);
+    const division=portalMatch?.division||academicPortalDivisionName(d.division);
+    const key=getClassTeacherAssignmentKey(className,division);
+    const empId=String(state.classTeachers[d.id]||'').trim();
+
     if(empId){
       if(String(next[key]||'')!==empId){next[key]=empId;changed=true}
     }else if(next[key]){
+      /* Academic explicitly has no Class Teacher: remove stale Directory value. */
       delete next[key];changed=true;
     }
   });
+
   if(!changed)return false;
   localStorage.setItem('pius_class_teacher_assignments',JSON.stringify(next));
   if(notify)try{sendPortalServer('SYNC_CLASS_TEACHER_ASSIGNMENTS',next)}catch(e){}
@@ -8066,20 +8090,57 @@ function syncAcademicClassTeachersToPortalAssignments({notify=true,render=true}=
   }
   return true;
 }
-function syncPortalAssignmentsToAcademicEngine(assignments=getClassTeacherAssignments()){
+
+function migrateLegacyPortalClassTeachersOnlyWhenMissing(assignments=getClassTeacherAssignments()){
   if(typeof state==='undefined'||!state)return false;
   state.classTeachers=state.classTeachers||{};
   let changed=false;
   divisions().forEach(d=>{
+    /* Existing Academic assignment always wins. */
+    if(String(state.classTeachers[d.id]||'').trim())return;
+
+    /* Prefer a previously generated Academic timetable record because it came
+       from the Academic engine itself. */
+    const timetableFolder=(timetableFoldersStore||[]).find(f=>{
+      const fg=String(f.className||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
+      const fd=String(f.division||'').replace(/^Div\s*/i,'').trim().toLowerCase();
+      return fg===String(d.grade).replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase()
+        && fd===String(d.division).replace(/^Div\s*/i,'').trim().toLowerCase()
+        && f.classTeacherEmpId;
+    });
+    if(timetableFolder?.classTeacherEmpId){
+      state.classTeachers[d.id]=String(timetableFolder.classTeacherEmpId);
+      changed=true;
+      return;
+    }
+
+    /* Final legacy fallback: old Student Directory assignment. */
     const className=academicStudentClassName(d.grade),division=academicPortalDivisionName(d.division);
-    const empId=String(assignments[getClassTeacherAssignmentKey(className,division)]||'');
-    if(empId&&String(state.classTeachers[d.id]||'')!==empId){state.classTeachers[d.id]=empId;changed=true}
-    if(!empId&&state.classTeachers[d.id]){delete state.classTeachers[d.id];changed=true}
+    const empId=String(assignments[getClassTeacherAssignmentKey(className,division)]||'').trim();
+    if(empId){state.classTeachers[d.id]=empId;changed=true}
   });
-  if(changed)localStorage.setItem('pius_timetable_engine_v2',JSON.stringify(state));
+  if(changed){
+    localStorage.setItem('pius_timetable_engine_v2',JSON.stringify(state));
+    syncAcademicClassTeachersToPortalAssignments({notify:true,render:true});
+  }
   return changed;
 }
 
+/* Kept as compatibility alias for old code, but it is now migration-only and
+   can never replace a populated Academic assignment. */
+function syncPortalAssignmentsToAcademicEngine(assignments=getClassTeacherAssignments()){
+  return migrateLegacyPortalClassTeachersOnlyWhenMissing(assignments);
+}
+
+window.debugClassTeacherSync=function(){
+  const assignments=getClassTeacherAssignments(),portalDivs=buildAutoClassDivisions();
+  const rows=divisions().map(d=>{
+    const pd=portalDivs.find(x=>String(x.className||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase()===String(d.grade).trim().toLowerCase()&&String(x.division||'').replace(/^Div\s*/i,'').trim().toLowerCase()===String(d.division).trim().toLowerCase());
+    const key=pd?getClassTeacherAssignmentKey(pd.className,pd.division):'NO PORTAL DIVISION';
+    return {academicDivision:d.id,academicTeacher:state.classTeachers[d.id]||'',portalClass:pd?.className||'',portalDivision:pd?.division||'',portalKey:key,portalTeacher:key!=='NO PORTAL DIVISION'?(assignments[key]||''):''};
+  });
+  console.table(rows);return rows;
+};
 function subjectsForDivision(div){
   let base=((state.subjects||{})[div.tier]||[]).map(x=>({
     name:x[0],
