@@ -1454,6 +1454,79 @@
   .people-folder-foot-actions{width:100%}
   .people-folder-foot-actions button{flex:1}
 }
+
+/* ===== V25 Administration Folder Cards + One-click Portal Control ===== */
+.admin-folder-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin:0 0 16px;
+}
+.admin-folder-card{
+  position:relative;
+  padding:16px;
+  border:1px solid rgba(201,162,75,.18);
+  border-radius:15px;
+  background:
+    radial-gradient(circle at 92% 10%,rgba(225,189,104,.08),transparent 30%),
+    linear-gradient(145deg,rgba(15,34,52,.95),rgba(7,21,34,.96));
+  box-shadow:0 10px 25px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.03);
+}
+.admin-folder-card:hover{
+  border-color:rgba(225,189,104,.42);
+  box-shadow:0 16px 34px rgba(0,0,0,.30);
+}
+.admin-folder-card .admin-folder-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:12px;
+}
+.admin-folder-card .admin-folder-icon{
+  width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+  background:rgba(201,162,75,.12);border:1px solid rgba(201,162,75,.18);
+  color:var(--brass-bright);font-size:17px;flex:0 0 auto;
+}
+.admin-folder-card h5{margin:0;color:var(--brass-bright);font-family:'Fraunces',serif;font-size:15px}
+.admin-folder-card p{margin:4px 0 0;color:var(--text-muted);font-size:10.5px;line-height:1.5}
+.portal-master-control{
+  border-color:rgba(74,222,128,.24);
+  background:
+    radial-gradient(circle at 92% 10%,rgba(74,222,128,.09),transparent 30%),
+    linear-gradient(145deg,rgba(15,39,43,.95),rgba(7,24,30,.96));
+}
+.portal-master-state{
+  display:flex;align-items:center;gap:8px;margin:9px 0 13px;
+  padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);font-size:11px
+}
+.portal-master-state i{font-size:9px}
+.portal-master-actions{display:flex;gap:8px;flex-wrap:wrap}
+.portal-master-actions button{flex:1 1 170px}
+.people-admin-settings-body{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:14px!important;
+}
+.people-admin-settings-body > .editor-card{
+  border-radius:15px!important;
+  background:
+    radial-gradient(circle at 92% 8%,rgba(225,189,104,.07),transparent 28%),
+    linear-gradient(145deg,rgba(15,34,52,.94),rgba(7,21,34,.95))!important;
+  border:1px solid rgba(201,162,75,.17)!important;
+  box-shadow:0 10px 25px rgba(0,0,0,.22)!important;
+  padding:16px!important;
+}
+.people-admin-settings-body > .editor-card:hover{
+  border-color:rgba(225,189,104,.38)!important;
+  box-shadow:0 15px 34px rgba(0,0,0,.28)!important;
+}
+#studentsTab .people-admin-settings-body{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+@media(max-width:850px){
+  .admin-folder-grid,.people-admin-settings-body,#studentsTab .people-admin-settings-body{grid-template-columns:1fr!important}
+}
+
 </style>
 
 <style id="academicEngineIntegratedStyles">
@@ -4093,13 +4166,57 @@ function renderDashboard(){setTimeout(renderDailyPortionKPI,0);
       renderExecutiveDashboard();
     }
 
-    function installAdministrationWorkflowPanels(){
+    
+function installPortalMasterControls(){
+  const setup=(tabId,type)=>{
+    const panel=document.querySelector(`#${tabId} > .people-admin-workspace`);
+    if(!panel||panel.querySelector('.portal-master-control'))return;
+    const body=panel.querySelector('.people-admin-settings-body');
+    if(!body)return;
+    const card=document.createElement('div');
+    card.className='admin-folder-card portal-master-control';
+    card.innerHTML=`<div class="admin-folder-head"><div style="display:flex;gap:11px"><div class="admin-folder-icon"><i class="fa-solid fa-power-off"></i></div><div><h5>${type==='faculty'?'Faculty':'Student'} Portal Access</h5><p>Enable or disable portal access for every ${type==='faculty'?'faculty/staff':'student'} profile in one action.</p></div></div><span class="badge-tag">Master Control</span></div><div id="${type}PortalMasterState" class="portal-master-state"></div><div class="portal-master-actions"><button type="button" class="btn-success" onclick="setAllPortalAccess('${type}',true)"><i class="fa-solid fa-toggle-on"></i> Enable All ${type==='faculty'?'Faculty':'Students'}</button><button type="button" class="btn-secondary" onclick="setAllPortalAccess('${type}',false)"><i class="fa-solid fa-toggle-off"></i> Disable All ${type==='faculty'?'Faculty':'Students'}</button></div>`;
+    body.prepend(card);
+    refreshPortalMasterState(type);
+  };
+  setup('staffTab','faculty');setup('studentsTab','student');
+}
+function refreshPortalMasterState(type){
+  const records=type==='faculty'?(Array.isArray(staffStore)?staffStore:[]):(Array.isArray(studentStore)?studentStore:[]);
+  const el=document.getElementById(type+'PortalMasterState');if(!el)return;
+  const enabled=records.filter(x=>x.portalAccess!==false&&x.profileActive!==false).length,total=records.length;
+  const all=total>0&&enabled===total,none=enabled===0;
+  el.innerHTML=`<i class="fa-solid fa-circle" style="color:${all?'#4ade80':none?'#f87171':'#facc15'}"></i><strong>${enabled}/${total}</strong> profile${total===1?'':'s'} portal enabled${all?' • All active':none?' • All disabled':' • Mixed status'}`;
+}
+function setAllPortalAccess(type,enabled){
+  if(!requireMainAdmin())return;
+  const records=type==='faculty'?(Array.isArray(staffStore)?staffStore:[]):(Array.isArray(studentStore)?studentStore:[]);
+  if(!records.length)return alert(`No ${type==='faculty'?'faculty':'student'} records are available.`);
+  const label=type==='faculty'?'faculty/staff':'student';
+  if(!confirm(`${enabled?'Enable':'Disable'} portal access for ALL ${records.length} ${label} profiles?`))return;
+  if(type==='faculty'){
+    staffStore=staffStore.map(x=>({...x,profileActive:enabled,portalAccess:enabled}));
+    StorageAdapter.saveStaff(staffStore);
+    try{renderStaffRoster()}catch(e){}
+    try{sendPortalServer('SYNC_PORTAL_STAFF',staffStore)}catch(e){}
+  }else{
+    studentStore=studentStore.map(x=>({...x,profileActive:enabled,portalAccess:enabled}));
+    StorageAdapter.saveStudents(studentStore);
+    try{renderStudents()}catch(e){}
+    try{sendPortalServer('SYNC_PORTAL_STUDENTS',studentStore)}catch(e){}
+  }
+  refreshPortalMasterState(type);
+  refreshPeopleWorkspaceStats();
+  try{logAction(`${enabled?'Enabled':'Disabled'} portal access for all ${label} profiles`)}catch(e){}
+  alert(`${records.length} ${label} profile${records.length===1?'':'s'} ${enabled?'enabled':'disabled'} for portal access.`);
+}
+function installAdministrationWorkflowPanels(){
       const install=(tabId,title,description,settings)=>{const tab=document.getElementById(tabId);if(!tab||tab.querySelector(':scope > .people-admin-workspace'))return;const cards=[...tab.querySelectorAll(':scope > .editor-card')],exportCard=cards[cards.length-1];if(!exportCard||!settings.length)return;const panel=document.createElement('div');panel.className='editor-card people-admin-workspace people-panel-hidden';panel.setAttribute('data-no-collapse','true');panel.innerHTML=`<div class="people-admin-workspace-head"><div><h4><i class="fa-solid fa-gears"></i> ${title}</h4><p>${description}</p></div><button type="button" class="btn-secondary people-admin-close" onclick="closePeopleAdministration('${tabId}')"><i class="fa-solid fa-xmark"></i> Close Settings</button></div><div class="people-admin-settings-body"></div>`;const body=panel.querySelector('.people-admin-settings-body');settings.forEach(card=>{card.classList.remove('people-panel-hidden','people-panel-active','collapsible-section','is-expanded');card.removeAttribute('data-collapsible-ready');card.querySelectorAll(':scope > .collapsible-section-body').forEach(section=>{while(section.firstChild)card.insertBefore(section.firstChild,section);section.remove()});card.querySelector(':scope > .collapsible-section-header')?.classList.remove('collapsible-section-header');body.appendChild(card)});tab.insertBefore(panel,exportCard)};
       const staffTab=document.getElementById('staffTab'),studentTab=document.getElementById('studentsTab');
       const staffWorkload=[...(staffTab?.querySelectorAll(':scope > .editor-card')||[])].find(card=>card.querySelector('#workloadFreeValue'));
       install('staffTab','Faculty Administration Settings','Manage faculty workload capacity and Employee ID rules. These controls are separate from individual staff profiles.',[staffWorkload,staffTab?.querySelector(':scope > .id-policy-card')].filter(Boolean));
       install('studentsTab','Student Administration Settings','Manage school-wide Student ID, alphabetical distribution and division-allocation policies.',[studentTab?.querySelector(':scope > .id-policy-card')].filter(Boolean));
-    }
+    installPortalMasterControls();}
     function closePeopleAdministration(tabId){showPeopleStep(tabId,0,null,false);document.querySelector(`#${tabId} > .people-workflow`)?.scrollIntoView({behavior:'smooth',block:'start'})}
     installAdministrationWorkflowPanels();
 
@@ -4108,7 +4225,10 @@ function renderDashboard(){setTimeout(renderDailyPortionKPI,0);
     function updatePreviewControlLabels(){[['facultyPortalPerson','Preview Faculty Portal'],['studentPortalPerson','Preview Student Portal']].forEach(([id,label])=>{const select=document.getElementById(id),card=select?.closest('.bulk-control-card');if(!card)return;const title=card.querySelector('h6'),button=card.querySelector('button');if(title)title.innerHTML='<i class="fa-solid fa-eye"></i> Read-Only Portal Preview';if(button)button.innerHTML='<i class="fa-solid fa-arrow-up-right-from-square"></i> '+label;const note=card.querySelector('.bulk-security-note span');if(note)note.textContent='Opens directly without OTP. Editing and operational actions are blocked.'})}
     function initializePeopleWorkspace(tabId){installAdministrationWorkflowPanels();const tab=document.getElementById(tabId);if(!tab||tab.dataset.workspaceReady)return;tab.dataset.workspaceReady='true';showPeopleStep(tabId,0,tab.querySelector('.people-step'),false);updatePreviewControlLabels();if(tabId==='staffTab')loadFacultyWorkloadPolicy()}
     function refreshPeopleWorkspaceStats(){const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};const staff=Array.isArray(staffStore)?staffStore:[],students=Array.isArray(studentStore)?studentStore:[];set('staffWorkspaceTotal',staff.length);set('staffWorkspaceTeaching',staff.filter(x=>String(x.category||'').toLowerCase()==='teaching').length);set('staffWorkspaceNonTeaching',staff.filter(x=>String(x.category||'').toLowerCase()!=='teaching').length);set('staffWorkspacePortal',staff.filter(x=>x.portalAccess!==false&&x.portalMobile).length);set('studentWorkspaceTotal',students.length);set('studentWorkspaceClasses',new Set(students.map(x=>String(x.grade||x.className||x.class||'').trim()).filter(Boolean)).size);set('studentWorkspacePortal',students.filter(x=>x.portalAccess!==false&&x.portalMobile).length);set('studentWorkspacePhotos',students.filter(x=>x.photoUrl||x.photoDataUrl||x.photo).length);populatePeoplePortalSelectors();populateStudentBulkClasses();updateBulkCommandCounts()}
-    function requireMainAdmin(){if(currentAccessProfile?.id!=='main-admin'){alert('Only Main Admin can perform this action.');return false}return true}
+    
+const refreshPeopleWorkspaceStatsV25=refreshPeopleWorkspaceStats;
+refreshPeopleWorkspaceStats=function(){refreshPeopleWorkspaceStatsV25();refreshPortalMasterState('faculty');refreshPortalMasterState('student')};
+function requireMainAdmin(){if(currentAccessProfile?.id!=='main-admin'){alert('Only Main Admin can perform this action.');return false}return true}
     function staffCategoryOf(s){return String(s.category||'').toLowerCase()==='teaching'?'Teaching':'Non-Teaching'}
     function studentClassOf(s){return String(s.grade||s.className||s.class||'').trim()}
     function studentDivisionOf(s){return String(s.section||s.division||'').trim()}
@@ -10556,6 +10676,7 @@ const showPeopleStepLegacy=window.showPeopleStep;
 window.showPeopleStep=function(tabId,index,button,scroll=true){ensureCompactPeopleFolders(tabId);const map={0:'profile',1:'admin',2:'data',3:'directory',4:'admin',5:'data'};openPeopleFolder(tabId,map[index]||'profile')};
 window.initializePeopleWorkspace=function(tabId){installAdministrationWorkflowPanels();ensureCompactPeopleFolders(tabId);updatePreviewControlLabels();refreshPeopleWorkspaceStats();if(tabId==='staffTab')loadFacultyWorkloadPolicy()};
 setTimeout(()=>{ensureCompactPeopleFolders('staffTab');ensureCompactPeopleFolders('studentsTab');},80);
+setTimeout(installPortalMasterControls,140);
 const peopleFolderVisibilityObserver=new MutationObserver(()=>{['staffTab','studentsTab'].forEach(id=>{const tab=document.getElementById(id);if(tab&&tab.querySelector(':scope > .compact-people-folders'))tab.classList.add('compact-people-ready')})});
 setTimeout(()=>{['staffTab','studentsTab'].forEach(id=>{const tab=document.getElementById(id);if(tab)peopleFolderVisibilityObserver.observe(tab,{childList:true})})},180);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('peopleFolderModal')?.classList.contains('open'))closePeopleFolderModal()});
