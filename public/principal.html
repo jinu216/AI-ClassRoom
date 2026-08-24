@@ -2383,6 +2383,14 @@
             <input id="aiBotQuestion" placeholder="Ask about staffing, timetable, workload…">
             <button type="button" onclick="askPortalAI()">Ask</button>
           </div>
+          <div class="ai-bot-quick" style="margin-top:8px">
+            <span style="font-size:9px;color:#888">AI:</span>
+            <select id="portalAIProvider" onchange="localStorage.setItem('pius_ai_provider',this.value)" style="background:#101219;color:#ddd;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:6px;font-size:9px">
+              <option value="rules">Rules only</option>
+              <option value="gemini">Gemini</option>
+              <option value="openai">OpenAI</option>
+            </select>
+          </div>
         </div>
 
         <div class="ai-bot-footer">
@@ -3622,7 +3630,15 @@
             applyIncomingAttendanceData(msg.payload);
           }
           if(msg.type==='ATTENDANCE_DATA_SYNCED'&&msg.payload)applyIncomingAttendanceData(msg.payload);
-          if(msg.type==='TIMETABLE_FOLDERS_UPDATED'&&Array.isArray(msg.payload)){timetableFoldersStore=msg.payload;localSaveTimetableFolders(timetableFoldersStore);renderClassFolders();renderTimetableAnalysis();}
+          if(msg.type==='TIMETABLE_FOLDERS_UPDATED'&&Array.isArray(msg.payload)){timetableFoldersStore=msg.payload;localSaveTimetableFolders(timetableFoldersStore);renderClassFolders();renderTimetableAnalysis();}if(msg.type==='FACULTY_TIMETABLE_REVIEW_UPDATED'&&msg.payload){
+              const r=msg.payload,tid=String(r.teacherId||r.empId||'');
+              if(tid){
+                state.facultyReviews[tid]=r.status||'Pending';
+                if(r.status==='Issue')state.facultyReviewIssues[tid]=r.reason||'Faculty raised a timetable issue';else delete state.facultyReviewIssues[tid];
+                save();try{renderAll()}catch(e){}
+                bot(`<b>${esc(staffName(tid))} timetable response received.</b><br>Status: ${esc(r.status||'Pending')}${r.reason?'<br>Reason: '+esc(r.reason):''}`,[],{open:false,badgeCount:1});
+              }
+            }
           if(msg.type==='PORTION_PROGRESS_UPDATED'&&Array.isArray(msg.payload)){portionProgressStore=msg.payload;try{localStorage.setItem('pius_portion_progress',JSON.stringify(portionProgressStore))}catch(e){}renderTimetableAnalysis();}
           if(msg.type==='INIT_DATA'&&Array.isArray(msg.payload?.portionProgress)){portionProgressStore=msg.payload.portionProgress;try{localStorage.setItem('pius_portion_progress',JSON.stringify(portionProgressStore))}catch(e){}}
           if(msg.type==='ATTENDANCE_SETTINGS_UPDATED'&&msg.payload){attendanceSettingsStore={...attendanceSettingsStore,...msg.payload};localStorage.setItem(ATT_SETTINGS_KEY,JSON.stringify(attendanceSettingsStore));renderFacultyAttendanceCenter();}
@@ -8205,19 +8221,46 @@ function botQuickAction(type){
   return bot('<b>No critical risk detected from this quick check.</b><br>I will continue monitoring the current page.');
 }
 
-function askPortalAI(){
+async function askPortalAI(){
   const input=document.getElementById('aiBotQuestion');
-  let q=String(input?.value||'').trim().toLowerCase();
-  if(!q)return;
+  let original=String(input?.value||'').trim();
+  if(!original)return;
   if(input)input.value='';
-  aiBotThink('Thinking about your question…');
+  const q=original.toLowerCase();
+  const provider=document.getElementById('portalAIProvider')?.value||localStorage.getItem('pius_ai_provider')||'rules';
+  localStorage.setItem('pius_ai_provider',provider);
+  aiBotThink(provider==='rules'?'Checking school rules…':`Asking ${provider==='gemini'?'Gemini':'OpenAI'}…`);
 
+  if(provider!=='rules'){
+    try{
+      const w=workforceManagementSnapshot();
+      const payload={
+        provider,
+        question:original,
+        context:{
+          page:portalAICurrentContext,
+          timetableStatus:state.generatorStatus,
+          workforce:{demand:w.demand,faculty:w.teachers.length,average:Number(w.avg||0).toFixed(1),underUtilised:w.under?.map(x=>({teacher:academicTeacherName(x.t),load:x.load,main:x.t.main,backup:x.t.secondary})).slice(0,20),arithmeticFloor:w.arithmeticMin},
+          ownershipValidation:state.ownershipValidation||null,
+          solverDiagnostics:state.generatorStatus?.diagnostics||null
+        }
+      };
+      const res=await fetch('/api/ai/analyse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.error||'AI server unavailable');
+      aiBotDone(`${data.provider||provider} response ready`);
+      return bot(`<b>${data.providerLabel||'External AI'} analysis</b><br>${esc(data.text||'No response.').replace(/\\n/g,'<br>')}`,[],{badge:false});
+    }catch(e){
+      bot(`<b>External AI unavailable.</b><br>${esc(e.message)}<br><br>I will use the built-in school rules instead.`,[],{badge:false});
+    }
+  }
+
+  aiBotThink('Checking deterministic school data…');
   setTimeout(()=>{
     if(q.includes('staff')||q.includes('manpower')||q.includes('human resource')||q.includes('reduce')||q.includes('remove')||q.includes('workload')||q.includes('utilis')||q.includes('utiliz')){
-      aiBotDone('Workforce analysis ready');
-      return renderWorkforceBotInsight();
+      aiBotDone('Workforce analysis ready');return renderWorkforceBotInsight();
     }
-    if(q.includes('why')&&q.includes('fail')||q.includes('timetable')||q.includes('solver')||q.includes('generation')){
+    if((q.includes('why')&&q.includes('fail'))||q.includes('timetable')||q.includes('solver')||q.includes('generation')){
       aiBotDone('Timetable analysis ready');
       if(state.generatorStatus?.state==='failed'||scheduleFeasible().length)return explainCurrentFailure();
       return bot('<b>Timetable status</b><br>The current pre-generation checks are passing. Generate the timetable to let the CSP solver prove actual slot feasibility.');
@@ -8226,13 +8269,15 @@ function askPortalAI(){
     if(q.includes('compare')){aiBotDone('Options ready');return compareSolverOptions()}
     if(q.includes('simulate')||q.includes('what if')){aiBotDone('Simulation ready');return simulateBestFix()}
     aiBotDone('Response ready');
-    return bot('<b>I can help with this from the school data currently available.</b><br>For the strongest result, ask me about workforce efficiency, teacher reduction, timetable blockers, ownership, workload, or what-if simulations.');
-  },380);
+    return bot('<b>Built-in analysis</b><br>Ask about workforce efficiency, teacher reduction, timetable blockers, ownership, workload, or what-if simulations.');
+  },220);
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
-  setTimeout(mountGlobalAIBot,0);
+  const sel=document.getElementById('portalAIProvider');
+  if(sel)sel.value=localStorage.getItem('pius_ai_provider')||'rules';
 });
+
 function bot(message,actions=[],options={}){
   const assistant=document.getElementById('assistant');
   const msg=document.getElementById('botmsg');
@@ -10006,13 +10051,78 @@ function auditData(schedule=state.timetable){let errors=[],warnings=[];if(!sched
 function auditTimetable(){let a=auditData();bot(`<b>Audit ${a.errors.length?'FAILED':'PASSED'}.</b><br>${a.errors.length?'<br>'+a.errors.slice(0,12).map(esc).join('<br>'):'No hard conflicts detected.'}${a.warnings.length?'<br><br><b>Warnings:</b><br>'+a.warnings.slice(0,8).map(esc).join('<br>'):''}`)}
 function renderDivisionTimetable(divId){if(!state.timetable)return'';let d=divisions().find(x=>x.id===divId)||divisions()[0];let rows='';for(let p=1;p<=state.periodsPerDay;p++){rows+=`<tr><th>P${p}</th>`+DAYS.map(day=>{let e=state.timetable.find(x=>x.divisionId===d.id&&x.day===day&&x.period===p);return `<td>${e?`<div class="cell ${state.classPublish[d.id]?'locked':''}"><b>${esc(e.subject)}</b><small>${esc(staffName(e.teacherId))}</small>${e.resource?`<small>${esc(e.resource)}</small>`:''}</div>`:'—'}</td>`}).join('')+`</tr>`}return `<div class="card"><div class="card-head"><h3>${d.label} Timetable</h3><span class="badge ${state.classPublish[d.id]?'ok':'info'}">${state.classPublish[d.id]?'LOCKED / PUBLISHED':'DRAFT REVIEW'}</span></div><div class="table-wrap"><table class="tt"><thead><tr><th>Period</th>${DAYS.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>`}
 function teacherSchedule(tid){return (state.timetable||[]).filter(e=>e.teacherId===tid)}
+function cspReviewFolders(){
+  if(!state.timetable)return [];
+  const dayMap={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
+  const workingDays=DAYS.map(d=>dayMap[d]||d);
+  let slots=[];
+  try{
+    const built=buildDailySlots(academicSettingsStore).filter(s=>s.type==='period');
+    slots=built.slice(0,state.periodsPerDay).map((s,i)=>({...s,index:i+1,type:'period'}));
+  }catch(e){}
+  if(slots.length<state.periodsPerDay){
+    const dur=Number(academicSettingsStore?.periodDuration||45),start=timeToMinutes(academicSettingsStore?.startTime||'08:00');
+    slots=Array.from({length:state.periodsPerDay},(_,i)=>({type:'period',index:i+1,start:minutesToTime(start+i*dur),end:minutesToTime(start+(i+1)*dur),duration:dur}));
+  }
+
+  return divisions().map((d,i)=>{
+    const ctId=state.classTeachers[d.id]||'';
+    const grid={};workingDays.forEach(day=>grid[day]={});
+    (state.timetable||[]).filter(e=>e.divisionId===d.id).forEach(e=>{
+      const day=dayMap[e.day]||e.day;
+      if(!grid[day])grid[day]={};
+      grid[day][e.period]={
+        subject:e.subject,
+        teacherEmpId:e.teacherId,
+        teacherName:staffName(e.teacherId),
+        resource:e.resource||''
+      };
+    });
+    const tids=[...new Set((state.timetable||[]).filter(e=>e.divisionId===d.id).map(e=>e.teacherId).concat(ctId).filter(Boolean))];
+    return {
+      id:`CSP-REVIEW-${state.timetableVersion}-${d.id}`,
+      classKey:d.id,
+      className:String(d.grade),
+      division:`Div ${d.division}`,
+      academicDivisionId:d.id,
+      classTeacher:staffName(ctId),
+      classTeacherEmpId:ctId,
+      recipientTeacherEmpIds:tids,
+      recipientStudentIds:[],
+      settings:{...academicSettingsStore,workingDays},
+      slots,
+      grid,
+      createdAt:new Date().toISOString(),
+      published:false,
+      reviewOnly:true,
+      status:'Faculty Review',
+      timetableVersion:state.timetableVersion
+    };
+  });
+}
+
+async function sendTimetableReviewNotification(){
+  try{
+    await fetch('/api/notify/timetable-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:state.timetableVersion})});
+  }catch(e){console.warn('Notification dispatch skipped',e)}
+}
+
 function approvePrincipalDraftAndSend(){
  if(!state.timetable)return;
  let audit=auditData();if(audit.errors.length)return bot(`<b>Cannot send to faculty.</b><br>${audit.errors.map(esc).join('<br>')}`);
+ const folders=cspReviewFolders();
+ if(!folders.length)return bot('<b>Cannot send.</b><br>No faculty review folders could be created from the generated timetable.');
  state.principalReviewApproved=true;state.reviewDispatched=true;
- teachersInTimetable().forEach(tid=>{if(!state.facultyReviews[tid])state.facultyReviews[tid]='Pending'});
- save();renderAll();
- bot(`<b>Timetable V${state.timetableVersion} sent for Faculty Review.</b><br>In the integrated Faculty Portal, each teacher receives only their own timetable with Accept / Raise Issue. Student publication remains blocked until the relevant teachers confirm.`);
+ state.facultyReviews={};state.facultyReviewIssues={};
+ teachersInTimetable().forEach(tid=>state.facultyReviews[tid]='Pending');
+ save();
+ // Existing portal transport + dedicated review event.
+ timetableFoldersStore=folders;
+ StorageAdapter.saveTimetableFolders(timetableFoldersStore);
+ sendPortalServer('SYNC_TIMETABLE_FOLDERS',folders);
+ sendPortalServer('SUBMIT_TIMETABLE_REVIEW',{version:state.timetableVersion,folders,teacherIds:teachersInTimetable(),sentAt:new Date().toISOString()});
+ renderAll();
+ bot(`<b>Timetable V${state.timetableVersion} sent for real Faculty Review.</b><br>Concerned teachers will receive their personal schedule through the Faculty Portal. Mobile Web Push / Telegram are sent when those channels are linked. Student publication remains blocked until the teachers confirm.`,[],{success:true});
 }
 function renderReview(){
  if(!state.timetable){document.getElementById('review').innerHTML='<div class="empty">Generate the timetable first.</div>';return}

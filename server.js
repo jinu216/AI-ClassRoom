@@ -3,6 +3,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const webpush = require('web-push');
 
 const app = express();
 const server = http.createServer(app);
@@ -201,6 +202,14 @@ let studentLeaveRecords = [];
 let studentMailbox = [];
 let classTeacherAssignments = {};
 let timetableFolders = [];
+let timetableReview = null;
+let pushSubscriptions = [];
+const VAPID_PUBLIC_KEY=process.env.VAPID_PUBLIC_KEY||'';
+const VAPID_PRIVATE_KEY=process.env.VAPID_PRIVATE_KEY||'';
+const VAPID_SUBJECT=process.env.VAPID_SUBJECT||'mailto:admin@example.com';
+if(VAPID_PUBLIC_KEY&&VAPID_PRIVATE_KEY)webpush.setVapidDetails(VAPID_SUBJECT,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY);
+const TELEGRAM_BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN||'';
+
 let portionProgress = [];
 let additionalDutyAssignments = [];
 let libraryResources = [];
@@ -306,6 +315,78 @@ function broadcast(data) {
   });
 }
 
+async function sendWebPushToEmpIds(empIds,title,body,url='/public/faculty.html'){
+  if(!VAPID_PUBLIC_KEY||!VAPID_PRIVATE_KEY)return {sent:0,reason:'VAPID not configured'};
+  const ids=new Set((empIds||[]).map(String));let sent=0;
+  for(const item of pushSubscriptions.filter(x=>ids.has(String(x.empId)))){
+    try{await webpush.sendNotification(item.subscription,JSON.stringify({title,body,url}));sent++}
+    catch(e){if([404,410].includes(e.statusCode))pushSubscriptions=pushSubscriptions.filter(x=>x!==item)}
+  }
+  return {sent};
+}
+async function telegramSend(chatId,text){
+  if(!TELEGRAM_BOT_TOKEN||!chatId)return false;
+  try{
+    const r=await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chatId,text})});
+    return r.ok;
+  }catch(e){return false}
+}
+async function notifyFaculty(empIds,title,body){
+  const ids=new Set((empIds||[]).map(String));
+  const push=await sendWebPushToEmpIds([...ids],title,body);
+  let telegram=0;
+  for(const staff of portalStaff.filter(s=>ids.has(String(s.empId))&&s.telegramChatId)){
+    if(await telegramSend(staff.telegramChatId,`${title}\n${body}`))telegram++;
+  }
+  return {push:push.sent||0,telegram};
+}
+function aiSystemPrompt(){
+  return `You are the advisory intelligence layer for a school ERP. Use only supplied structured facts. Never invent teacher capabilities, workloads, ownership, rules or timetable feasibility. Deterministic school rules and CSP results are authoritative. Give concise management-friendly analysis: issue, reason, impact, best options, risks, and what requires Principal approval. Never claim a staffing reduction is safe unless supplied simulation data proves it.`;
+}
+app.get('/api/push/public-key',(req,res)=>res.json({publicKey:VAPID_PUBLIC_KEY||''}));
+app.post('/api/push/subscribe',(req,res)=>{
+  const {empId,mobile,subscription}=req.body||{};
+  if(!empId||!subscription?.endpoint)return res.status(400).json({ok:false,error:'empId and push subscription are required.'});
+  pushSubscriptions=pushSubscriptions.filter(x=>x.subscription?.endpoint!==subscription.endpoint);
+  pushSubscriptions.push({empId:String(empId),mobile:String(mobile||''),subscription,createdAt:new Date().toISOString()});
+  res.json({ok:true});
+});
+app.post('/api/notify/timetable-review',async(req,res)=>{
+  if(!timetableReview)return res.status(400).json({ok:false,error:'No active timetable review.'});
+  const result=await notifyFaculty(timetableReview.teacherIds||[],'Timetable waiting for review',`Timetable V${timetableReview.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`);
+  res.json({ok:true,...result});
+});
+app.post('/api/telegram/test',async(req,res)=>{
+  const {chatId,message}=req.body||{};const ok=await telegramSend(chatId,message||'School ERP Telegram test notification.');
+  res.status(ok?200:400).json({ok});
+});
+app.post('/api/ai/analyse',async(req,res)=>{
+  const provider=String(req.body?.provider||'').toLowerCase();
+  const question=String(req.body?.question||'').slice(0,4000);
+  const context=req.body?.context||{};
+  if(!question)return res.status(400).json({ok:false,error:'Question is required.'});
+  const input=`${aiSystemPrompt()}\n\nQuestion:\n${question}\n\nStructured school facts:\n${JSON.stringify(context)}`;
+  try{
+    if(provider==='openai'){
+      const key=process.env.OPENAI_API_KEY;if(!key)return res.status(503).json({ok:false,error:'OPENAI_API_KEY is not configured.'});
+      const model=process.env.OPENAI_MODEL||'gpt-5.6';
+      const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},body:JSON.stringify({model,input})});
+      const j=await r.json();if(!r.ok)return res.status(r.status).json({ok:false,error:j.error?.message||'OpenAI request failed.'});
+      const text=j.output_text||j.output?.flatMap(x=>x.content||[]).map(x=>x.text||'').join('')||'';
+      return res.json({ok:true,provider:'openai',providerLabel:'OpenAI',text});
+    }
+    if(provider==='gemini'){
+      const key=process.env.GEMINI_API_KEY;if(!key)return res.status(503).json({ok:false,error:'GEMINI_API_KEY is not configured.'});
+      const model=process.env.GEMINI_MODEL||'gemini-2.5-flash';
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:input}]}]})});
+      const j=await r.json();if(!r.ok)return res.status(r.status).json({ok:false,error:j.error?.message||'Gemini request failed.'});
+      const text=(j.candidates||[]).flatMap(c=>c.content?.parts||[]).map(x=>x.text||'').join('');
+      return res.json({ok:true,provider:'gemini',providerLabel:'Gemini',text});
+    }
+    return res.status(400).json({ok:false,error:'Choose openai or gemini.'});
+  }catch(e){return res.status(502).json({ok:false,error:'AI provider could not be reached.'})}
+});
+
 // ====================================================================
 // 2. WEBSOCKET REAL-TIME ENGINE
 // ====================================================================
@@ -334,6 +415,7 @@ wss.on('connection', async (ws) => {
       ,studentMailbox
       ,classTeacherAssignments
       ,timetableFolders
+      ,timetableReview
       ,portionProgress
       ,additionalDutyAssignments
       ,libraryResources
@@ -385,6 +467,33 @@ wss.on('connection', async (ws) => {
           timetableFolders = data.payload;
           broadcast({ type:'TIMETABLE_FOLDERS_UPDATED', payload:timetableFolders });
           break;
+
+        case 'SUBMIT_TIMETABLE_REVIEW': {
+          const r=data.payload||{};
+          if(!Array.isArray(r.folders)||!Array.isArray(r.teacherIds))break;
+          timetableFolders=r.folders;
+          timetableReview={version:r.version,folders:r.folders,teacherIds:r.teacherIds,teacherReviews:{},sentAt:r.sentAt||new Date().toISOString()};
+          broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
+          broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
+          notifyFaculty(r.teacherIds,'Timetable waiting for review',`Timetable V${r.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`).catch(()=>{});
+          break;
+        }
+
+        case 'FACULTY_TIMETABLE_DECISION': {
+          const r=data.payload||{};
+          if(!timetableReview||String(r.version)!==String(timetableReview.version))break;
+          timetableReview.teacherReviews=timetableReview.teacherReviews||{};
+          timetableReview.teacherReviews[String(r.teacherId)]=r;
+          broadcast({type:'FACULTY_TIMETABLE_REVIEW_UPDATED',payload:r});
+          break;
+        }
+
+        case 'FACULTY_TELEGRAM_LINK': {
+          const r=data.payload||{};
+          const staff=portalStaff.find(x=>String(x.empId)===String(r.empId));
+          if(staff){staff.telegramChatId=String(r.chatId||'').trim();broadcast({type:'PORTAL_STAFF_UPDATED',payload:portalStaff})}
+          break;
+        }
 
         case 'SYNC_PORTION_PROGRESS':
           if (!Array.isArray(data.payload)) break;

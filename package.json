@@ -1,8 +1,9 @@
 {
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.3",
+    "@supabase/supabase-js": "^2.112.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "web-push": "^3.6.7",
     "ws": "^8.21.3"
   },
   "name": "student-diary",
