@@ -10651,18 +10651,49 @@ function ensureCompactPeopleFolders(tabId){
  if(!grid){grid=document.createElement('div');grid.className='compact-people-folders';grid.setAttribute('aria-label',cfg.label+' management folders');grid.innerHTML=cfg.folders.map(f=>`<button type="button" class="compact-people-folder" onclick="openPeopleFolder('${tabId}','${f.key}')"><span class="folder-open"><i class="fa-solid fa-up-right-from-square"></i></span><span class="folder-icon"><i class="fa-solid ${f.icon}"></i></span><strong>${f.title}</strong><small>${f.description}</small></button>`).join('');const overview=tab.querySelector(':scope > .people-overview');overview?.insertAdjacentElement('afterend',grid)}
  tab.classList.add('compact-people-ready');
 }
-function restorePeopleFolderCards(){if(!peopleFolderSession)return;const {tab,items}=peopleFolderSession;items.sort((a,b)=>a.order-b.order).forEach(x=>{const marker=x.marker;if(marker?.parentNode)marker.parentNode.insertBefore(x.card,marker);marker?.remove()});tab?.classList.add('compact-people-ready');peopleFolderSession=null}
+function restorePeopleFolderCards(){
+ if(!peopleFolderSession)return;
+ const session=peopleFolderSession;peopleFolderSession=null;
+ const {tab,items}=session;
+ items.slice().sort((a,b)=>a.order-b.order).forEach(x=>{
+   const marker=x.marker;
+   if(marker?.parentNode){marker.parentNode.insertBefore(x.card,marker);marker.remove()}
+   else if(tab&&!tab.contains(x.card)){tab.appendChild(x.card)}
+ });
+ tab?.classList.add('compact-people-ready');
+ /* Administration moves selected settings into its own stable wrapper only once.
+    Calling this after restore is safe and guarantees the six logical workspace
+    modules are back in their correct hierarchy. */
+ try{installAdministrationWorkflowPanels()}catch(e){console.warn('People workspace restore check',e)}
+}
 function openPeopleFolder(tabId,key){
- closePeopleFolderModal(false);ensureCompactPeopleFolders(tabId);
+ /* V28: A folder may call another folder (Directory -> Edit Profile). The previous
+    implementation cleared the modal before returning its live DOM cards to their
+    original page, which permanently removed/reordered modules. Always restore first. */
+ if(peopleFolderSession) closePeopleFolderModal(true);
+ else closePeopleFolderModal(false);
+ ensureCompactPeopleFolders(tabId);
  const tab=document.getElementById(tabId),cfg=PEOPLE_COMPACT_CONFIG[tabId],folder=cfg?.folders.find(x=>x.key===key);if(!tab||!folder)return;
- const cards=peopleDirectCards(tab),body=document.getElementById('peopleFolderBody'),items=[];body.innerHTML='';
+ const cards=peopleDirectCards(tab),body=document.getElementById('peopleFolderBody'),items=[];
+ if(!body)return;
+ /* Expected logical order after Administration grouping:
+    Profile, Custom Fields, Import, Directory, Administration, Export. */
+ if(cards.length<6){console.warn('People workspace structure incomplete; rebuilding administration wrapper.',tabId,cards.length);try{installAdministrationWorkflowPanels()}catch(e){}}
+ body.replaceChildren();
  folder.indices.forEach(index=>{const card=cards[index];if(!card)return;const marker=document.createComment(`people-folder-${tabId}-${index}`);card.parentNode.insertBefore(marker,card);items.push({card,marker,order:index});card.classList.remove('people-panel-hidden','people-panel-active');body.appendChild(card)});
  peopleFolderSession={tabId,key,tab,folder,items};document.getElementById('peopleFolderTitle').innerHTML=`<i class="fa-solid ${folder.icon}"></i> ${folder.title}`;document.getElementById('peopleFolderDescription').textContent=folder.description;
  const save=document.getElementById('peopleFolderSaveBtn');save.style.display=folder.saveMode==='none'?'none':'';document.getElementById('peopleFolderFootNote').textContent=folder.saveMode==='none'?'Use the action buttons inside this folder, then close when finished.':'Review all changes before Save & Close. Existing validation and synchronization rules remain active.';
  const modal=document.getElementById('peopleFolderModal');modal.classList.add('open');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
  if(key==='directory'){if(tabId==='staffTab')renderStaffRoster();else renderStudents()}
 }
-function closePeopleFolderModal(restore=true){const modal=document.getElementById('peopleFolderModal');if(!modal)return;if(restore)restorePeopleFolderCards();modal.classList.remove('open');modal.setAttribute('aria-hidden','true');document.body.style.overflow='';}
+function closePeopleFolderModal(restore=true){
+ const modal=document.getElementById('peopleFolderModal');
+ if(restore&&peopleFolderSession)restorePeopleFolderCards();
+ if(!modal)return;
+ modal.classList.remove('open');modal.setAttribute('aria-hidden','true');document.body.style.overflow='';
+ const body=document.getElementById('peopleFolderBody');if(body&&!peopleFolderSession)body.replaceChildren();
+ setTimeout(()=>{verifyPeopleFolderIntegrity('staffTab');verifyPeopleFolderIntegrity('studentsTab')},0);
+}
 function clickPeopleFolderSaveButtons(){const body=document.getElementById('peopleFolderBody');if(!body)return;const buttons=[...body.querySelectorAll('button')].filter(b=>b.offsetParent!==null&&!b.disabled&&/save/i.test((b.textContent||'').trim())&&!/save & close/i.test((b.textContent||'').trim()));buttons.forEach(b=>{try{b.click()}catch(e){console.warn(e)}})}
 function savePeopleFolderAndClose(){
  if(!peopleFolderSession)return closePeopleFolderModal();const {tabId,folder}=peopleFolderSession;
@@ -10670,6 +10701,12 @@ function savePeopleFolderAndClose(){
    const form=document.getElementById(tabId==='staffTab'?'staffForm':'studentForm');if(form){if(!form.reportValidity())return;form.requestSubmit();setTimeout(()=>closePeopleFolderModal(),80);return}
  }
  if(folder.saveMode==='settings')clickPeopleFolderSaveButtons();closePeopleFolderModal();
+}
+function verifyPeopleFolderIntegrity(tabId){
+ const tab=document.getElementById(tabId);if(!tab)return true;
+ const cards=peopleDirectCards(tab),ok=cards.length>=6;
+ if(!ok)console.warn('People folder integrity warning:',tabId,'logical cards:',cards.length);
+ return ok;
 }
 /* Existing calls such as Edit from Directory continue to work, but now open the corresponding popup folder. */
 const showPeopleStepLegacy=window.showPeopleStep;
