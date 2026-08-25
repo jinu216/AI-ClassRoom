@@ -214,6 +214,7 @@ let portalStudents = [];
 let studentProfileRequests = [];
 let studentLeaveRecords = [];
 let studentMailbox = [];
+let studentAttendanceRecords = [];
 let classTeacherAssignments = {};
 let timetableFolders = [];
 let timetableReview = null;
@@ -241,7 +242,7 @@ async function hydrateSharedStateFromCloud() {
   if (!supabase) return;
   const keys = [
     'pius_staff_data','pius_students_data','pius_profile_verification_requests',
-    'pius_student_profile_requests','pius_student_leave_records',
+    'pius_student_profile_requests','pius_student_leave_records','pius_student_attendance_records',
     'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
     'pius_additional_duty_assignments','pius_digital_library_resources',
     'pius_attendance_settings','pius_attendance_records','pius_leave_records',
@@ -255,6 +256,7 @@ async function hydrateSharedStateFromCloud() {
   if (Array.isArray(value('pius_profile_verification_requests'))) profileVerificationRequests=value('pius_profile_verification_requests');
   if (Array.isArray(value('pius_student_profile_requests'))) studentProfileRequests=value('pius_student_profile_requests');
   if (Array.isArray(value('pius_student_leave_records'))) studentLeaveRecords=value('pius_student_leave_records');
+  if (Array.isArray(value('pius_student_attendance_records'))) studentAttendanceRecords=value('pius_student_attendance_records');
   if (value('pius_class_teacher_assignments') && typeof value('pius_class_teacher_assignments') === 'object') classTeacherAssignments=value('pius_class_teacher_assignments');
   if (Array.isArray(value('pius_timetable_folders'))) timetableFolders=value('pius_timetable_folders');
   if (Array.isArray(value('pius_portion_progress'))) portionProgress=value('pius_portion_progress');
@@ -359,7 +361,7 @@ async function clearPersistentSchoolState(){
 }
 function clearInMemorySchoolState(){
   portalStaff=[];profileVerificationRequests=[];portalStudents=[];studentProfileRequests=[];
-  studentLeaveRecords=[];studentMailbox=[];classTeacherAssignments={};timetableFolders=[];
+  studentLeaveRecords=[];studentMailbox=[];studentAttendanceRecords=[];classTeacherAssignments={};timetableFolders=[];
   portionProgress=[];additionalDutyAssignments=[];libraryResources=[];attendanceRecords=[];
   leaveRecords=[];communicationMessages=[];chatMessages=[];communicationAuditLog=[];
   facultyNotificationSettings={};dailyPortionProgress=[];portalPresence={};
@@ -804,6 +806,14 @@ wss.on('connection', async (ws) => {
           clearInMemorySchoolState();
           clearPersistentSchoolState().catch(e=>console.error('Reset persistence error:',e.message));
           broadcast({type:'ALL_SCHOOL_DATA_RESET',payload:{at:new Date().toISOString(),by:r.actorName||r.actorRole||'User'}});
+          break;
+        }
+
+        case 'SYNC_STUDENT_ATTENDANCE': {
+          const r=data.payload||{},rows=Array.isArray(r.records)?r.records:Array.isArray(r)?r:[];
+          rows.forEach(row=>{const key=`${row.studentId||row.rollId||row.admissionNo||''}|${row.date||''}`,i=studentAttendanceRecords.findIndex(x=>`${x.studentId||x.rollId||x.admissionNo||''}|${x.date||''}`===key);if(i>=0)studentAttendanceRecords[i]=row;else studentAttendanceRecords.unshift(row)});
+          persistRuntimeState('pius_student_attendance_records',studentAttendanceRecords);
+          broadcast({type:'STUDENT_ATTENDANCE_UPDATED',payload:studentAttendanceRecords});
           break;
         }
 
