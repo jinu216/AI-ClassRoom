@@ -1,3 +1,15 @@
+<!--
+================================================================================
+POPE PIUS SCHOOL ERP - STUDENT PORTAL - DEVELOPER COMMENTED VERSION
+================================================================================
+ROLE IN THE SYSTEM
+- Each student sees only his/her own master profile and class-related information.
+- The student's Class + Division comes from Principal-managed student data.
+- The Class Teacher is resolved from the authoritative Class Teacher assignment map.
+- Student timetable becomes visible only after the assigned Class Teacher publishes it.
+- Student requests route to the assigned Class Teacher for approval where required.
+================================================================================
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -127,17 +139,51 @@ button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:poin
 <section id="login" class="login"><div class="login-card"><div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Secure Student Access</div><h1>Student Portal</h1><p class="muted">Use the mobile number registered by the Principal to access your official student record.</p><div class="field"><label>Registered Mobile Number</label><input id="loginMobile" inputmode="tel" placeholder="Enter registered mobile"></div><button class="primary" style="width:100%" onclick="requestOtp()"><i class="fa-solid fa-paper-plane"></i> Generate Login OTP</button><div id="otpArea" class="hidden"><div class="otp" style="margin-top:14px">Prototype OTP: <strong id="otpText"></strong></div><div class="field"><label>Enter OTP</label><input id="otpInput" maxlength="6" inputmode="numeric" placeholder="6-digit OTP"></div><button class="primary" style="width:100%" onclick="loginStudent()"><i class="fa-solid fa-right-to-bracket"></i> Login</button></div><p class="demo-note">The OTP is displayed only for local testing. Production should send it through an authenticated SMS service.</p></div></section>
 <div id="app" class="shell hidden"><div class="portal-backdrop" onclick="togglePortalMenu(false)"></div><aside class="sidebar"><button class="sidebar-close" aria-label="Close menu" onclick="togglePortalMenu(false)"><i class="fa-solid fa-xmark"></i></button><div class="brand"><div class="mark"><i class="fa-solid fa-graduation-cap"></i></div><div><h2>Pope Pius Academy</h2><small>Student Portal</small></div></div><nav>
 <button class="active" onclick="openPage('dashboard',this)"><i class="fa-solid fa-house"></i> Dashboard</button><button onclick="openPage('profile',this)"><i class="fa-solid fa-id-card"></i> My Profile</button><button onclick="openPage('attendance',this)"><i class="fa-solid fa-calendar-check"></i> Attendance</button><button onclick="openPage('timetable',this)"><i class="fa-solid fa-clock"></i> Timetable & Periods</button><button onclick="openPage('teachers',this)"><i class="fa-solid fa-person-chalkboard"></i> My Teachers</button><button onclick="openPage('academics',this)"><i class="fa-solid fa-chart-line"></i> Academics & Results</button><button onclick="openPage('assignments',this)"><i class="fa-solid fa-book-open"></i> Assignments</button><button onclick="openPage('leave',this)"><i class="fa-solid fa-file-circle-check"></i> Leave Requests</button><button onclick="openPage('circulars',this)"><i class="fa-solid fa-bullhorn"></i> Circulars</button><button onclick="openPage('mailbox',this)"><i class="fa-solid fa-inbox"></i> Mailbox <span id="mailBadge" class="badge-count hidden">0</span></button><button onclick="openPage('settings',this)"><i class="fa-solid fa-gear"></i> Settings</button></nav><div class="student-mini"><strong id="sideName">Student</strong><span id="sideCode">—</span><span id="sideClass">—</span><button class="danger" style="width:100%;margin-top:11px" onclick="logout()">Logout</button></div></aside>
-<main class="main"><header class="topbar"><div><button class="mobile-menu" aria-label="Open menu" onclick="togglePortalMenu(true)"><i class="fa-solid fa-bars"></i></button><span><h1 id="pageTitle">Dashboard</h1><p id="pageSub">Your academic day at a glance</p></span></div><div id="serverState" class="server"><span id="serverDot" class="dot"></span><span id="serverText">Connecting</span></div></header><div id="workspaceNav" class="workspace-nav" aria-label="Student quick navigation"></div>
-<section id="dashboard" class="view active"><div class="hero"><div><div class="eyebrow">Student Workspace</div><h2 id="welcomeName">Welcome</h2><p id="welcomeLine">Your official profile, attendance, timetable and learning information are available here.</p></div><div id="heroPhoto" class="hero-photo"><i class="fa-solid fa-user-graduate"></i></div></div><div class="kpis"><div class="kpi"><div class="label">Attendance</div><div id="dashAttendance" class="value">—</div><small id="dashAttendanceSub">No records</small></div><div class="kpi"><div class="label">Today</div><div id="dashToday" class="value">Not Marked</div><small>Official status</small></div><div class="kpi"><div class="label">Pending Work</div><div id="dashPending" class="value">0</div><small>Assignments due</small></div><div class="kpi"><div class="label">Unread Mail</div><div id="dashUnread" class="value">0</div><small>New messages</small></div></div><div class="grid"><div class="card"><div class="section-head"><h3>Today’s Periods</h3><span class="badge info">Live timetable</span></div><div id="todayPeriods"></div></div><div class="card"><div class="section-head"><h3>Action & Information</h3><span class="badge warn">Student attention</span></div><div id="dashboardActions"></div></div></div></section>
-<section id="profile" class="view"><div class="card"><div class="section-head"><h3>Official Student Profile</h3><span class="badge ok">Controlled by Principal</span></div><div class="profile-grid"><div id="profilePhoto" class="photo"><i class="fa-solid fa-user-graduate"></i></div><div id="profileDetails" class="details"></div></div><div class="notice" style="margin-top:18px"><strong>Found incorrect information?</strong><span>You cannot directly overwrite official school records. Submit the correct information for verification and approval.</span><button class="secondary" style="margin-top:10px" onclick="openCorrection()"><i class="fa-solid fa-pen-to-square"></i> Request Profile Correction</button></div></div></section>
-<section id="attendance" class="view"><div class="kpis"><div class="kpi"><div class="label">Present</div><div id="attPresent" class="value">0</div></div><div class="kpi"><div class="label">Absent</div><div id="attAbsent" class="value">0</div></div><div class="kpi"><div class="label">Late</div><div id="attLate" class="value">0</div></div><div class="kpi"><div class="label">Percentage</div><div id="attPercent" class="value">—</div></div></div><div class="card"><div class="section-head"><h3>Attendance History</h3><span class="badge info">Day and period records</span></div><div id="attendanceHistory"></div></div></section>
-<section id="timetable" class="view"><div class="card"><div class="section-head"><h3>Class Timetable & Period Details</h3><span id="classBadge" class="badge info">My class</span></div><div id="timetableBody"></div></div></section>
+<main class="main"><header class="topbar"><div><button class="mobile-menu" aria-label="Open menu" onclick="togglePortalMenu(true)"><i class="fa-solid fa-bars"></i></button><span><h1 id="pageTitle">Dashboard</h1><p id="pageSub">Your academic day at a glance</p></span></div><div id="serverState" class="server"><span id="serverDot" class="dot"></span><span id="serverText">Connecting</span></div></header><!-- DEVELOPER UI SECTION: workspaceNav
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="workspaceNav" class="workspace-nav" aria-label="Student quick navigation"></div>
+<!-- DEVELOPER UI SECTION: dashboard
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="dashboard" class="view active"><div class="hero"><div><div class="eyebrow">Student Workspace</div><h2 id="welcomeName">Welcome</h2><p id="welcomeLine">Your official profile, attendance, timetable and learning information are available here.</p></div><div id="heroPhoto" class="hero-photo"><i class="fa-solid fa-user-graduate"></i></div></div><div class="kpis"><div class="kpi"><div class="label">Attendance</div><!-- DEVELOPER UI SECTION: dashAttendance
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="dashAttendance" class="value">—</div><small id="dashAttendanceSub">No records</small></div><div class="kpi"><div class="label">Today</div><div id="dashToday" class="value">Not Marked</div><small>Official status</small></div><div class="kpi"><div class="label">Pending Work</div><div id="dashPending" class="value">0</div><small>Assignments due</small></div><div class="kpi"><div class="label">Unread Mail</div><div id="dashUnread" class="value">0</div><small>New messages</small></div></div><div class="grid"><div class="card"><div class="section-head"><h3>Today’s Periods</h3><span class="badge info">Live timetable</span></div><div id="todayPeriods"></div></div><div class="card"><div class="section-head"><h3>Action & Information</h3><span class="badge warn">Student attention</span></div><!-- DEVELOPER UI SECTION: dashboardActions
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="dashboardActions"></div></div></div></section>
+<!-- DEVELOPER UI SECTION: profile
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="profile" class="view"><div class="card"><div class="section-head"><h3>Official Student Profile</h3><span class="badge ok">Controlled by Principal</span></div><div class="profile-grid"><!-- DEVELOPER UI SECTION: profilePhoto
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="profilePhoto" class="photo"><i class="fa-solid fa-user-graduate"></i></div><!-- DEVELOPER UI SECTION: profileDetails
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="profileDetails" class="details"></div></div><div class="notice" style="margin-top:18px"><strong>Found incorrect information?</strong><span>You cannot directly overwrite official school records. Submit the correct information for verification and approval.</span><button class="secondary" style="margin-top:10px" onclick="openCorrection()"><i class="fa-solid fa-pen-to-square"></i> Request Profile Correction</button></div></div></section>
+<!-- DEVELOPER UI SECTION: attendance
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="attendance" class="view"><div class="kpis"><div class="kpi"><div class="label">Present</div><div id="attPresent" class="value">0</div></div><div class="kpi"><div class="label">Absent</div><div id="attAbsent" class="value">0</div></div><div class="kpi"><div class="label">Late</div><div id="attLate" class="value">0</div></div><div class="kpi"><div class="label">Percentage</div><div id="attPercent" class="value">—</div></div></div><div class="card"><div class="section-head"><h3>Attendance History</h3><span class="badge info">Day and period records</span></div><!-- DEVELOPER UI SECTION: attendanceHistory
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="attendanceHistory"></div></div></section>
+<!-- DEVELOPER UI SECTION: timetable
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="timetable" class="view"><div class="card"><div class="section-head"><h3>Class Timetable & Period Details</h3><span id="classBadge" class="badge info">My class</span></div><!-- DEVELOPER UI SECTION: timetableBody
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="timetableBody"></div></div></section>
 <section id="teachers" class="view"><div class="card"><div class="section-head"><h3>Teachers Assigned to My Class</h3><span class="badge ok">Verified school allocation</span></div><div id="teacherList" class="grid"></div></div></section>
-<section id="academics" class="view"><div class="grid"><div class="card"><div class="section-head"><h3>Assessment Results</h3><span class="badge info">Published results</span></div><div id="resultsList"></div></div><div class="card"><div class="section-head"><h3>Academic Summary</h3></div><div id="academicSummary"></div></div></div></section>
+<!-- DEVELOPER UI SECTION: academics
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="academics" class="view"><div class="grid"><div class="card"><div class="section-head"><h3>Assessment Results</h3><span class="badge info">Published results</span></div><div id="resultsList"></div></div><div class="card"><div class="section-head"><h3>Academic Summary</h3></div><!-- DEVELOPER UI SECTION: academicSummary
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="academicSummary"></div></div></div></section>
 <section id="assignments" class="view"><div class="card"><div class="section-head"><h3>Homework & Assignments</h3><span class="badge warn">Track due dates</span></div><div id="assignmentList"></div></div></section>
-<section id="leave" class="view"><div class="grid"><div class="card"><div class="section-head"><h3>Submit Leave Request</h3></div><div class="field"><label>From Date</label><input id="leaveFrom" type="date"></div><div class="field"><label>To Date</label><input id="leaveTo" type="date"></div><div class="field"><label>Leave Type</label><select id="leaveType"><option>Sick Leave</option><option>Medical Appointment</option><option>Family Emergency</option><option>Personal Leave</option><option>Official School Activity</option><option>Other</option></select></div><div class="field"><label>Reason</label><textarea id="leaveReason" rows="4" placeholder="Enter the reason and supporting information"></textarea></div><div class="field"><label>Guardian Contact</label><input id="guardianContact" placeholder="Guardian mobile number"></div><button class="primary" onclick="submitLeave()"><i class="fa-solid fa-paper-plane"></i> Send for Approval</button></div><div class="card"><div class="section-head"><h3>My Leave History</h3><span class="badge info">Teacher / Principal decisions</span></div><div id="leaveHistory"></div></div></div></section>
+<!-- DEVELOPER UI SECTION: leave
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="leave" class="view"><div class="grid"><div class="card"><div class="section-head"><h3>Submit Leave Request</h3></div><div class="field"><label>From Date</label><input id="leaveFrom" type="date"></div><div class="field"><label>To Date</label><input id="leaveTo" type="date"></div><div class="field"><label>Leave Type</label><select id="leaveType"><option>Sick Leave</option><option>Medical Appointment</option><option>Family Emergency</option><option>Personal Leave</option><option>Official School Activity</option><option>Other</option></select></div><div class="field"><label>Reason</label><textarea id="leaveReason" rows="4" placeholder="Enter the reason and supporting information"></textarea></div><div class="field"><label>Guardian Contact</label><input id="guardianContact" placeholder="Guardian mobile number"></div><button class="primary" onclick="submitLeave()"><i class="fa-solid fa-paper-plane"></i> Send for Approval</button></div><div class="card"><div class="section-head"><h3>My Leave History</h3><span class="badge info">Teacher / Principal decisions</span></div><!-- DEVELOPER UI SECTION: leaveHistory
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="leaveHistory"></div></div></div></section>
 <section id="circulars" class="view"><div class="card"><div class="section-head"><h3>School Circulars & Announcements</h3><span class="badge ok">Official communication</span></div><div id="circularList"></div></div></section>
-<section id="mailbox" class="view"><div class="card"><div class="section-head"><h3>Communication Center</h3><button class="secondary" onclick="markAllRead()">Mark all as read</button></div><p class="muted">Official school messages, requests and decisions are recorded in this Mailbox.</p><div class="mailbox-pro-shell" id="studentMailboxPro">
+<!-- DEVELOPER UI SECTION: mailbox
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<section id="mailbox" class="view"><div class="card"><div class="section-head"><h3>Communication Center</h3><button class="secondary" onclick="markAllRead()">Mark all as read</button></div><p class="muted">Official school messages, requests and decisions are recorded in this Mailbox.</p><!-- DEVELOPER UI SECTION: studentMailboxPro
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div class="mailbox-pro-shell" id="studentMailboxPro">
   <aside class="mailbox-pro-folders">
     <button id="sMailReceiveBtn" class="mailbox-pro-folder active" onclick="setStudentMailFolder('receive')"><span class="mf-main"><i class="fa-solid fa-inbox"></i><b>Receive</b></span><span id="sReceiveCount" class="mailbox-count zero">0</span></button>
     <button id="sMailSentBtn" class="mailbox-pro-folder sent-folder" onclick="setStudentMailFolder('sent')"><span class="mf-main"><i class="fa-solid fa-paper-plane"></i><b>Sent</b></span></button>
@@ -145,13 +191,29 @@ button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:poin
   </aside>
   <div class="mailbox-pro-main">
     <div class="mailbox-pro-head"><div><h3 id="studentMailboxFolderTitle" style="margin:0">Receive</h3><small style="color:var(--muted)">Messages, requests and shared communication</small></div><button class="secondary" onclick="renderStudentOfficialComm()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button></div>
-    <div id="studentShareComposer" style="display:none"></div>
-    <div id="studentOfficialCommList" class="mailbox-pro-list"></div>
+    <!-- DEVELOPER UI SECTION: studentShareComposer
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentShareComposer" style="display:none"></div>
+    <!-- DEVELOPER UI SECTION: studentOfficialCommList
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentOfficialCommList" class="mailbox-pro-list"></div>
   </div>
 </div>
-<div id="studentMailModal" class="mailbox-pro-modal" aria-hidden="true"><div class="mailbox-pro-dialog"><div class="mailbox-pro-modal-head"><div><small id="studentMailModalType" class="mailbox-type">MESSAGE</small><h3 id="studentMailModalTitle">Message</h3><div id="studentMailModalMeta" class="mailbox-pro-meta"></div></div><button class="secondary" onclick="closeStudentMailModal()">×</button></div><div id="studentMailModalBody" class="mailbox-pro-body"></div><div class="mailbox-pro-foot"><button class="secondary" onclick="studentDeleteOpenMail()"><i class="fa-solid fa-trash"></i> Delete</button><div id="studentMailModalActions" class="mailbox-pro-actions"></div></div></div></div><div id="mailList" style="margin-top:12px"></div></div></section>
+<!-- DEVELOPER UI SECTION: studentMailModal
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentMailModal" class="mailbox-pro-modal" aria-hidden="true"><div class="mailbox-pro-dialog"><div class="mailbox-pro-modal-head"><div><small id="studentMailModalType" class="mailbox-type">MESSAGE</small><h3 id="studentMailModalTitle">Message</h3><!-- DEVELOPER UI SECTION: studentMailModalMeta
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentMailModalMeta" class="mailbox-pro-meta"></div></div><button class="secondary" onclick="closeStudentMailModal()">×</button></div><!-- DEVELOPER UI SECTION: studentMailModalBody
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentMailModalBody" class="mailbox-pro-body"></div><div class="mailbox-pro-foot"><button class="secondary" onclick="studentDeleteOpenMail()"><i class="fa-solid fa-trash"></i> Delete</button><!-- DEVELOPER UI SECTION: studentMailModalActions
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentMailModalActions" class="mailbox-pro-actions"></div></div></div></div><!-- DEVELOPER UI SECTION: mailList
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="mailList" style="margin-top:12px"></div></div></section>
 <section id="settings" class="view"><div class="grid"><div class="card"><div class="section-head"><h3>Account Security</h3></div><div class="notice"><strong>Registered login mobile</strong><span id="settingMobile">—</span></div><div class="field"><label>New Password</label><input id="newPassword" type="password" placeholder="Minimum 6 characters"></div><div class="field"><label>Confirm Password</label><input id="confirmPassword" type="password" placeholder="Repeat password"></div><button class="primary" onclick="changePassword()">Update Password</button></div><div class="card"><div class="section-head"><h3>Notification Preferences</h3></div><label class="row"><span>Mailbox alerts<small>Show unread official messages</small></span><input id="prefMail" type="checkbox" checked></label><label class="row"><span>Assignment reminders<small>Show work approaching its due date</small></span><input id="prefAssignments" type="checkbox" checked></label><button class="secondary" style="margin-top:14px" onclick="savePreferences()">Save Preferences</button></div></div></section>
 </main></div>
+<!-- DEVELOPER UI SECTION: correctionModal
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
 <div id="correctionModal" class="modal hidden"><div class="modal-card"><div class="eyebrow">Official Record Correction</div><h2>Request Profile Update</h2><p class="muted">Select the incorrect field, enter the correct value and explain the reason. The live profile changes only after authorization.</p><div class="field"><label>Field to Correct</label><select id="correctionField"><option value="name">Student Name</option><option value="fatherName">Father / Guardian Name</option><option value="dob">Date of Birth</option><option value="address">Address</option><option value="email">Email</option><option value="phone">Registered Mobile</option><option value="photoUrl">Profile Photograph</option><option value="custom">Other Information</option></select></div><div class="field"><label>Correct Information</label><textarea id="correctionValue" rows="3"></textarea></div><div class="field"><label>Reason / Supporting Note</label><textarea id="correctionReason" rows="3"></textarea></div><div class="actions" style="justify-content:flex-end"><button class="secondary" onclick="closeCorrection()">Cancel</button><button class="primary" onclick="submitCorrection()">Send for Approval</button></div></div></div><div id="toast" class="toast"></div>
 <script>
 const K={students:'pius_students_data',staff:'pius_staff_data',attendance:'pius_student_attendance_records',timetables:'pius_timetable_folders',subjects:'pius_class_subjects',assignments:'pius_student_assignments',results:'pius_student_results',leaves:'pius_student_leave_records',notices:'pius_notices_data',requests:'pius_student_profile_requests',mail:'pius_student_mailbox',classTeachers:'pius_class_teacher_assignments',communications:'pius_communication_messages',chat:'pius_chat_messages'};
@@ -160,29 +222,138 @@ const $=id=>document.getElementById(id),get=(k,d=[])=>{try{return JSON.parse(loc
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const norm=v=>String(v||'').replace(/[^0-9+]/g,'').replace(/^00/,'+');
 const isoDate=()=>new Date().toISOString().slice(0,10),studentId=()=>student?.rollId||student?.admissionNo||student?.studentId||'';
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: wsSend
+   PURPOSE: Student-side WebSocket event sender for allowed requests/communication.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function wsSend(type,payload,extra={}){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,payload,...extra}))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: connect
+   PURPOSE: Creates the Student WebSocket connection and receives Principal/Faculty routed data such as student roster, Class Teacher map, published timetable and request decisions.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function connect(){try{socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);socket.onopen=()=>{setServer(true);markPortalLive();wsSend('PORTAL_IDENTIFY',portalIdentity());wsSend('SYNC_STUDENT_PORTAL_DATA',{studentRequests:get(K.requests,[]),studentLeaves:get(K.leaves,[])})};socket.onclose=()=>{setServer(false);setTimeout(connect,2200)};socket.onerror=()=>setServer(false);socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(handlePortalV36Message(m))return;if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.portalStudents))save(K.students,m.payload.portalStudents);if(Array.isArray(m.payload.portalStaff))save(K.staff,m.payload.portalStaff);if(m.payload.classTeacherAssignments)save(K.classTeachers,m.payload.classTeacherAssignments);if(Array.isArray(m.payload.studentProfileRequests))save(K.requests,m.payload.studentProfileRequests);if(Array.isArray(m.payload.portalStudents)&&m.payload.portalStudents.length){serverStudents=m.payload.portalStudents;save(K.students,serverStudents)}if(Array.isArray(m.payload.portalStaff)&&m.payload.portalStaff.length)save(K.staff,m.payload.portalStaff);if(Array.isArray(m.payload.notices)&&m.payload.notices.length)save(K.notices,m.payload.notices);if(Array.isArray(m.payload.timetableFolders))save(K.timetables,m.payload.timetableFolders);mergePayload(m.payload)}if(m.type==='TIMETABLE_FOLDERS_UPDATED'&&Array.isArray(m.payload)){save(K.timetables,m.payload);if(student){renderTimetable();toast('Your class timetable has been published or updated.')}}if(m.type==='CLASS_TEACHER_ASSIGNMENTS_UPDATED'&&m.payload){save(K.classTeachers,m.payload);if(student)renderAll();}if(m.type==='STUDENT_PROFILE_REQUEST_CREATED'&&m.payload){upsert(K.requests,m.payload);if(student&&String(m.payload.studentId||m.payload.rollId)===String(studentId())){renderAll();toast('Your request was sent to your Class Teacher.')}}if(m.type==='STUDENT_PROFILE_REQUEST_UPDATED'&&m.payload){upsert(K.requests,m.payload);if(student&&String(m.payload.studentId||m.payload.rollId)===String(studentId())){renderAll();toast('Your student request has been updated.')}}if(m.type==='PORTAL_STUDENTS_UPDATED'){serverStudents=m.payload||[];if(serverStudents.length)save(K.students,serverStudents);refreshCurrent()}if(m.type==='STUDENT_LOGIN_RESULT'&&m.requestId===loginRequest)finishLookup(m.payload);if(m.type==='STUDENT_PROFILE_REQUEST_UPDATED')upsertAndNotify(K.requests,m.payload,'Profile request updated');if(m.type==='STUDENT_LEAVE_UPDATED')upsertAndNotify(K.leaves,m.payload,'Leave request updated');if(m.type==='STUDENT_MAIL_RECEIVED'){upsert(K.mail,m.payload);refreshCurrent()}}}catch(e){setServer(false);setTimeout(connect,2200)}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentCommUpsert
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentCommUpsert(k,item){let a=get(k,[]),i=a.findIndex(x=>x.id===item.id);if(i>=0)a[i]={...a[i],...item};else a.push(item);save(k,a)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: attachStudentCommunicationSocket
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function attachStudentCommunicationSocket(){if(!socket||socket._commV18)return;socket._commV18=true;socket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.communicationMessages))save(K.communications,m.payload.communicationMessages);if(Array.isArray(m.payload.chatMessages))save(K.chat,m.payload.chatMessages)}if(m.type==='ALL_SCHOOL_DATA_RESET'){localStorage.clear();sessionStorage.clear();setTimeout(()=>location.reload(),250);return}if(m.type==='COMMUNICATION_UPDATED'&&m.payload)studentCommUpsert(K.communications,m.payload);if(m.type==='COMMUNICATION_MESSAGE_UPDATED'&&m.payload)studentCommUpsert(K.communications,m.payload);if(m.type==='PRESENCE_UPDATED'&&m.payload){let a=get('pius_portal_presence',[]),i=a.findIndex(x=>x.role===m.payload.role&&String(x.id)===String(m.payload.id));if(i>=0)a[i]=m.payload;else a.push(m.payload);save('pius_portal_presence',a);renderStudentPresence()}if(m.type==='CHAT_MESSAGE_UPDATED'&&m.payload){studentCommUpsert(K.chat,m.payload);if(String(m.payload.toId)===String(studentId())){const b=$('studentFloatChatBadge');if(b){b.textContent='NEW';b.style.display='flex'}}renderStudentFloatChat()}if(m.type==='PORTAL_STUDENTS_UPDATED'&&Array.isArray(m.payload)){save(K.students,m.payload);if(student){const fresh=m.payload.find(x=>String(x.rollId||x.admissionNo||x.studentId)===String(studentId()));if(fresh){student=fresh;renderAll();toast('Your student profile was updated.')}}}if(m.type==='CLASS_TIMETABLE_PUBLISHED'&&m.payload){let a=get(K.timetables,[]),i=a.findIndex(x=>x.id===m.payload.id);if(i>=0)a[i]=m.payload;else a.push(m.payload);save(K.timetables,a);if(student&&classMatch(m.payload)){renderTimetable();toast('Your confirmed class timetable is now published.')}}if(student){renderStudentOfficialComm();}})}
 setInterval(attachStudentCommunicationSocket,500);
 let studentMailFolder='receive',studentOpenMailId=null;
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentActorKey
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentActorKey(){return `Student|${studentId()}`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentOfficialAll
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentOfficialAll(){return get(K.communications,[]).filter(m=>!(m.deletedFor||[]).includes(studentActorKey())).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentIncoming
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentIncoming(){return studentOfficialAll().filter(m=>String(m.toId)===String(studentId())&&m.type!=='SENT_RECEIPT'&&m.type!=='PORTAL_SHARE')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentShares
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentShares(){return studentOfficialAll().filter(m=>m.type==='PORTAL_SHARE'&&(String(m.toId)===String(studentId())||String(m.fromId)===String(studentId())))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentSent
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentSent(){const raw=studentOfficialAll().filter(m=>m.type!=='PORTAL_SHARE'&&(String(m.fromId)===String(studentId())||(m.type==='SENT_RECEIPT'&&String(m.toId)===String(studentId()))));const map=new Map();raw.forEach(m=>{const k=String(m.requestNo||m.actionRef||m.id),old=map.get(k);if(!old||(old.type==='SENT_RECEIPT'&&m.type!=='SENT_RECEIPT'))map.set(k,m)});return [...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: setStudentMailFolder
+   PURPOSE: Sets the requested state/value.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function setStudentMailFolder(folder){studentMailFolder=folder;['Receive','Sent','Share'].forEach(x=>$('sMail'+x+'Btn')?.classList.toggle('active',folder===x.toLowerCase()));const t=$('studentMailboxFolderTitle');if(t)t.textContent=folder[0].toUpperCase()+folder.slice(1);renderStudentOfficialComm()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentMailAction
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentMailAction(id,action){if(action==='READ'){const m=get(K.communications,[]).find(x=>String(x.id)===String(id));if(m){m.readBy=[...new Set([...(m.readBy||[]),studentActorKey()])];studentCommUpsert(K.communications,m);updateStudentMailboxBadge()}}wsSend('COMMUNICATION_MESSAGE_ACTION',{messageId:id,action,actorRole:'Student',actorId:studentId(),actorName:student?.name||studentId()});if(action==='DELETE'){const m=get(K.communications,[]).find(x=>String(x.id)===String(id));if(m){m.deletedFor=[...(m.deletedFor||[]),studentActorKey()];studentCommUpsert(K.communications,m)}}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentMailRows
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentMailRows(){return studentMailFolder==='sent'?studentSent():studentMailFolder==='share'?studentShares():studentIncoming()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentMailboxCounts
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentMailboxCounts(){const actor=studentActorKey(),receive=studentIncoming(),shares=studentShares().filter(m=>String(m.toId)===String(studentId()));return {receive:receive.filter(m=>!(m.readBy||[]).includes(actor)).length,sent:studentSent().length,share:shares.filter(m=>!(m.readBy||[]).includes(actor)).length}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentSetCount
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentSetCount(id,n){const e=$(id);if(e){e.textContent=n;e.classList.toggle('zero',!n)}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: updateStudentMailboxBadge
+   PURPOSE: Updates the related state or user interface.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function updateStudentMailboxBadge(){if(!student)return;const c=studentMailboxCounts();studentSetCount('sReceiveCount',c.receive);const nav=[...document.querySelectorAll('nav button,.sidebar button')].find(b=>(b.getAttribute('onclick')||'').includes("'mailbox'"));if(nav){let b=nav.querySelector('.mailbox-nav-badge');if(!b){b=document.createElement('span');b.className='mailbox-nav-badge';nav.appendChild(b)}b.textContent=c.receive;b.style.display=c.receive?'inline-flex':'none'}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentRowHtml
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentRowHtml(m){const actor=studentActorKey(),unread=String(m.toId)===String(studentId())&&!(m.readBy||[]).includes(actor),party=studentMailFolder==='sent'?(m.toName||m.toRole):(m.fromName||m.fromRole||'School');return `<div class="mailbox-pro-row ${unread?'unread':''}" onclick="openStudentMailModal('${esc(m.id)}')"><div><strong>${esc(party)}</strong><small>${esc(m.requestNo||m.id||'')}</small></div><div><strong>${esc(m.title||m.type||'Message')} <span class="mailbox-type">${esc((m.type||'MESSAGE').replaceAll('_',' '))}</span></strong><small>${esc(m.status||'')}</small></div><div><strong>${m.createdAt?new Date(m.createdAt).toLocaleDateString():''}</strong><small>${m.createdAt?new Date(m.createdAt).toLocaleTimeString():''}</small></div></div>`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentMailDetails
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentMailDetails(m){const d=m.details||{};if(m.type==='SENT_RECEIPT')return `<div class="mailbox-pro-message">Receipt for ${esc(d.originalType||'portal action')}<br><br><b>Recipient:</b> ${esc(d.recipientName||d.recipientRole||'—')}<br><b>Original subject:</b> ${esc(d.originalTitle||'—')}<br><b>Original content:</b><br>${esc(d.originalBody||'—')}</div>`;return `<div class="mailbox-pro-message">${esc(m.body||'No additional details.')}</div>${m.details?`<div class="mailbox-pro-details"><pre style="white-space:pre-wrap;font-size:10px">${esc(JSON.stringify(m.details,null,2))}</pre></div>`:''}`}
 let studentShareSelectedRecipient=null;
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentRecipientCatalog
+   PURPOSE: Builds allowed Student Communication Centre recipients, especially Principal and the assigned Class Teacher.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentRecipientCatalog(){
  const a=[{role:'Principal',id:'principal',name:'Principal',context:'School Administration'}];
- const assignments=get(K.classTeachers,{});
+ /* LINE LOGIC: Read the shared Principal-controlled Class Teacher map; do not invent a student-local Class Teacher. */
+const assignments=get(K.classTeachers,{});
  const g=String(student?.grade||student?.className||'').trim(),d=String(student?.section||student?.division||'').trim();
  const normC=v=>String(v||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
  const normD=v=>String(v||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase();
@@ -192,75 +363,557 @@ function studentRecipientCatalog(){
  if(ctId){const t=get(K.staff,[]).find(x=>String(x.empId)===ctId);a.push({role:'Faculty',id:ctId,name:t?.name||ctId,context:`Class Teacher${t?.mainSubject?' • '+t.mainSubject:''}`})}
  return a;
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentRecipientSearch
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentRecipientSearch(q=''){const v=String(q).trim().toLowerCase(),box=$('studentRecipientSuggestions');if(!box)return;studentShareSelectedRecipient=null;if(!v){box.classList.remove('open');box.innerHTML='';return}const m=studentRecipientCatalog().filter(x=>`${x.name} ${x.id} ${x.role} ${x.context}`.toLowerCase().includes(v)).slice(0,10);box.innerHTML=m.length?m.map((x,i)=>`<div class="recipient-suggestion" onclick="selectStudentRecipient(${i})"><strong>${esc(x.name)} <span class="mailbox-type">${esc(x.role)}</span></strong><small>${esc(x.id)}${x.context?' • '+esc(x.context):''}</small></div>`).join(''):'<div class="recipient-suggestion"><small>No matching portal user</small></div>';box.dataset.items=JSON.stringify(m);box.classList.add('open')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: selectStudentRecipient
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function selectStudentRecipient(i){const box=$('studentRecipientSuggestions'),items=JSON.parse(box?.dataset.items||'[]'),x=items[i];if(!x)return;studentShareSelectedRecipient=x;$('studentShareRecipient').value=`${x.name} — ${x.role}${x.context?' • '+x.context:''}`;box.classList.remove('open')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: replyStudentMail
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function replyStudentMail(id){const m=studentOfficialAll().find(x=>String(x.id)===String(id));if(!m)return;setStudentMailFolder('share');studentShareSelectedRecipient={role:m.fromRole,id:String(m.fromId),name:m.fromName||m.fromRole,context:''};setTimeout(()=>{const inp=$('studentShareRecipient');if(inp)inp.value=`${studentShareSelectedRecipient.name} — ${studentShareSelectedRecipient.role}`;const t=$('studentShareTitle');if(t)t.value='Re: '+String(m.title||'Message').replace(/^Re:\s*/i,'');closeStudentMailModal()},60)}
-function renderStudentShareComposer(){const el=$('studentShareComposer');if(!el)return;el.style.display=studentMailFolder==='share'?'block':'none';if(studentMailFolder!=='share')return;el.innerHTML=`<div class="mailbox-share-compose"><div class="recipient-search-wrap"><label>Recipient</label><input id="studentShareRecipient" autocomplete="off" placeholder="Type Principal or Class Teacher name" oninput="studentRecipientSearch(this.value)"><div id="studentRecipientSuggestions" class="recipient-suggestions"></div></div><div><label>Subject</label><input id="studentShareTitle" placeholder="Document / message subject"></div><div class="full"><label>Message</label><textarea id="studentShareBody" placeholder="Write a message or description"></textarea></div><div class="full"><label>Document (optional, max 5 MB)</label><input id="studentShareFile" type="file"></div><div class="full"><button class="primary" onclick="sendStudentShare()"><i class="fa-solid fa-share-nodes"></i> Share</button></div></div>`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderStudentShareComposer
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function renderStudentShareComposer(){const el=$('studentShareComposer');if(!el)return;el.style.display=studentMailFolder==='share'?'block':'none';if(studentMailFolder!=='share')return;el.innerHTML=`<div class="mailbox-share-compose"><div class="recipient-search-wrap"><label>Recipient</label><input id="studentShareRecipient" autocomplete="off" placeholder="Type Principal or Class Teacher name" oninput="studentRecipientSearch(this.value)"><!-- DEVELOPER UI SECTION: studentRecipientSuggestions
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="studentRecipientSuggestions" class="recipient-suggestions"></div></div><div><label>Subject</label><input id="studentShareTitle" placeholder="Document / message subject"></div><div class="full"><label>Message</label><textarea id="studentShareBody" placeholder="Write a message or description"></textarea></div><div class="full"><label>Document (optional, max 5 MB)</label><input id="studentShareFile" type="file"></div><div class="full"><button class="primary" onclick="sendStudentShare()"><i class="fa-solid fa-share-nodes"></i> Share</button></div></div>`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: uploadStudentShareFile
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function uploadStudentShareFile(){const file=$('studentShareFile')?.files?.[0];if(!file)return null;const fd=new FormData();fd.append('file',file);const r=await fetch('/api/communications/upload',{method:'POST',body:fd}),j=await r.json();if(!r.ok)throw new Error(j.error||'Upload failed');return j.attachment}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: sendStudentShare
+   PURPOSE: Sends the related event/message/data to another portal or server.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function sendStudentShare(){const title=($('studentShareTitle')?.value||'').trim(),body=($('studentShareBody')?.value||'').trim();if(!studentShareSelectedRecipient||!title)return alert('Select a recipient from the prediction list and enter a subject.');let attachment=null;try{attachment=await uploadStudentShareFile()}catch(e){return alert(e.message)}if(!body&&!attachment)return alert('Enter a message or attach a document.');const {role:toRole,id:toId,name:toName}=studentShareSelectedRecipient;wsSend('COMMUNICATION_MESSAGE_CREATE',{fromRole:'Student',fromId:studentId(),fromName:student.name||studentId(),toRole,toId,toName,type:'PORTAL_SHARE',title,body,attachment,status:'Shared',createdAt:new Date().toISOString()});$('studentShareTitle').value='';$('studentShareBody').value='';$('studentShareFile').value='';studentShareSelectedRecipient=null;setTimeout(renderStudentOfficialComm,150)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderStudentOfficialComm
+   PURPOSE: Renders Student Communication Centre Receive/Sent/Share state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderStudentOfficialComm(){const el=$('studentOfficialCommList');if(!el||!student)return;renderStudentShareComposer();if(studentMailFolder==='share'){el.style.display='none';el.innerHTML='';updateStudentMailboxBadge();return}el.style.display='block';const a=studentMailRows();el.innerHTML=a.length?a.map(studentRowHtml).join(''):'<div class="empty" style="padding:25px">No records in this folder.</div>';updateStudentMailboxBadge()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: openStudentMailModal
+   PURPOSE: Opens the related modal, folder, detail view or workflow.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function openStudentMailModal(id){const m=studentOfficialAll().find(x=>String(x.id)===String(id));if(!m)return;studentOpenMailId=String(id);if(String(m.toId)===String(studentId()))studentMailAction(m.id,'READ');$('studentMailModalTitle').textContent=m.title||m.type||'Message';$('studentMailModalType').textContent=(m.type||'MESSAGE').replaceAll('_',' ');$('studentMailModalMeta').innerHTML=`From: <b>${esc(m.fromName||m.fromRole||'System')}</b><br>To: <b>${esc(m.toName||m.toRole||'—')}</b><br>Request / Message No: <b>${esc(m.requestNo||m.id||'—')}</b><br>${m.createdAt?new Date(m.createdAt).toLocaleString():''} · Status: ${esc(m.status||'')}`;$('studentMailModalBody').innerHTML=`${studentMailDetails(m)}${m.attachment?`<div class="mailbox-pro-details"><a href="${esc(m.attachment.url)}" target="_blank">📎 ${esc(m.attachment.name)}</a></div>`:''}`;$('studentMailModalActions').innerHTML=`<button class="secondary" onclick="replyStudentMail('${esc(m.id)}')"><i class="fa-solid fa-reply"></i> Reply</button><button class="secondary" onclick="studentSaveOpenMail()">Save</button><button class="secondary" onclick="closeStudentMailModal()">Close</button>`;$('studentMailModal').classList.add('open');$('studentMailModal').setAttribute('aria-hidden','false');setTimeout(renderStudentOfficialComm,80)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentSaveOpenMail
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentSaveOpenMail(){if(studentOpenMailId)studentMailAction(studentOpenMailId,'READ');alert('Saved in mailbox.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentDeleteOpenMail
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentDeleteOpenMail(){if(!studentOpenMailId)return;if(!confirm('Delete this message from your mailbox?'))return;studentMailAction(studentOpenMailId,'DELETE');closeStudentMailModal();renderStudentOfficialComm()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: closeStudentMailModal
+   PURPOSE: Closes the related modal/folder and restores any UI state as required.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function closeStudentMailModal(){studentOpenMailId=null;$('studentMailModal')?.classList.remove('open');$('studentMailModal')?.setAttribute('aria-hidden','true');renderStudentOfficialComm()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: showStudentCommPane
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function showStudentCommPane(){renderStudentOfficialComm()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentPresence
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentPresence(){return get('pius_portal_presence',[])}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentPresenceLabel
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentPresenceLabel(x){const t=x.lastSeen?Date.now()-new Date(x.lastSeen).getTime():Infinity;if(t<90000)return '<span class="messenger-online"></span>Online';const mins=Math.max(1,Math.round(t/60000));return `Last online ${mins<60?mins+' min ago':Math.round(mins/60)+' h ago'}`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderStudentPresence
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderStudentPresence(){const el=$('studentPresenceList');if(!el)return;const a=studentPresence().filter(x=>!(x.role==='Student'&&String(x.id)===String(studentId()))).sort((a,b)=>new Date(b.lastSeen||0)-new Date(a.lastSeen||0));el.innerHTML='<div class="messenger-presence"><b>People</b></div>'+a.slice(0,8).map(x=>`<div class="messenger-contact"><b>${esc(x.name)}</b><div class="messenger-presence">${studentPresenceLabel(x)}</div></div>`).join('')}
 setInterval(()=>{if(student&&ws?.readyState===1)wsSend('PRESENCE_HEARTBEAT',{role:'Student',id:studentId(),name:student.name||studentId()})},30000);
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: toggleStudentFloatingChat
+   PURPOSE: Toggles the related UI setting/state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function toggleStudentFloatingChat(force){const el=$('studentFloatingChat');if(!el)return;const open=force===undefined?el.classList.contains('collapsed'):!!force;el.classList.toggle('collapsed',!open);if(open){populateStudentFloatRecipients();renderStudentPresence();renderStudentFloatChat();$('studentFloatChatBadge').style.display='none'}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: populateStudentFloatRecipients
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function populateStudentFloatRecipients(){const el=$('studentFloatRecipient');if(!el)return;const prev=el.value;el.innerHTML='<option value="">Select recipient</option>'+studentChatRecipients().map(x=>`<option value="${x.role}|${esc(x.id)}|${esc(x.name)}">${x.role} · ${esc(x.name)}</option>`).join('');if([...el.options].some(o=>o.value===prev))el.value=prev}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: sendStudentFloatChat
+   PURPOSE: Sends the related event/message/data to another portal or server.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function sendStudentFloatChat(){const raw=$('studentFloatRecipient')?.value||'',body=($('studentFloatText')?.value||'').trim();if(!raw)return alert('Select recipient.');let attachment=null,file=$('studentFloatFile')?.files?.[0];if(file){const fd=new FormData();fd.append('file',file);const r=await fetch('/api/communications/upload',{method:'POST',body:fd}),j=await r.json();if(!r.ok)return alert(j.error||'Upload failed');attachment=j.attachment}if(!body&&!attachment)return;const [toRole,toId,toName]=raw.split('|');wsSend('CHAT_MESSAGE_CREATE',{fromRole:'Student',fromId:studentId(),fromName:student.name||studentId(),toRole,toId,toName,body,attachment,createdAt:new Date().toISOString()});$('studentFloatText').value='';$('studentFloatFile').value='';setTimeout(renderStudentFloatChat,120)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderStudentFloatChat
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderStudentFloatChat(){const el=$('studentFloatThread'),raw=$('studentFloatRecipient')?.value||'';if(!el)return;if(!raw){el.innerHTML='<div class="chat-notice">Select a recipient.</div>';return}const [,id]=raw.split('|'),me=String(studentId()),a=get(K.chat,[]).filter(m=>(String(m.fromId)===me&&String(m.toId)===String(id))||(String(m.toId)===me&&String(m.fromId)===String(id))).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));el.innerHTML=a.length?a.map(m=>`<div class="chat-bubble ${String(m.fromId)===me?'mine':''}"><b>${esc(m.fromName||m.fromRole)}</b><div>${esc(m.body||'')}</div>${m.attachment?`<a href="${esc(m.attachment.url)}" target="_blank">📎 ${esc(m.attachment.name)}</a>`:''}<small style="display:block">${m.createdAt?new Date(m.createdAt).toLocaleTimeString():''}</small></div>`).join(''):'<div class="chat-notice">No messages yet.</div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentChatRecipients
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentChatRecipients(){let a=[{role:'Principal',id:'principal',name:'Principal'}],ct=assignedClassTeacherId();if(ct){let t=get(K.staff,[]).find(x=>String(x.empId)===String(ct));a.push({role:'Faculty',id:String(ct),name:t?.name||String(ct)})}return a}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: populateStudentChatRecipients
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function populateStudentChatRecipients(){const el=$('studentChatRecipient');if(!el)return;let prev=el.value;el.innerHTML='<option value="">Select recipient</option>'+studentChatRecipients().map(x=>'<option value="'+x.role+'|'+esc(x.id)+'|'+esc(x.name)+'">'+x.role+' · '+esc(x.name)+'</option>').join('');if([...el.options].some(o=>o.value===prev))el.value=prev}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: showStudentCommPane
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function showStudentCommPane(p){$('studentOfficialPane').style.display=p==='official'?'block':'none';$('studentChatPane').style.display=p==='chat'?'block':'none';if(p==='chat'){populateStudentChatRecipients();renderStudentChat()}else renderStudentOfficialComm()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: uploadStudentChatFile
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function uploadStudentChatFile(){const file=$('studentChatFile')?.files?.[0];if(!file)return null;const fd=new FormData();fd.append('file',file);const r=await fetch('/api/communications/upload',{method:'POST',body:fd}),j=await r.json();if(!r.ok)throw new Error(j.error||'Upload failed');return j.attachment}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: sendStudentChat
+   PURPOSE: Sends the related event/message/data to another portal or server.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function sendStudentChat(){const raw=$('studentChatRecipient')?.value||'',body=($('studentChatText')?.value||'').trim();if(!raw)return alert('Select a recipient.');let attachment=null;try{attachment=await uploadStudentChatFile()}catch(e){return alert(e.message)}if(!body&&!attachment)return alert('Enter a message or attach a document.');const [toRole,toId,toName]=raw.split('|');wsSend('CHAT_MESSAGE_CREATE',{fromRole:'Student',fromId:studentId(),fromName:student.name||studentId(),toRole,toId,toName,body,attachment,createdAt:new Date().toISOString()});$('studentChatText').value='';$('studentChatFile').value='';setTimeout(renderStudentChat,120)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderStudentChat
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderStudentChat(){const el=$('studentChatThread'),raw=$('studentChatRecipient')?.value||'';if(!el)return;if(!raw){el.innerHTML='<div class="empty">Select a recipient.</div>';return}const [,id]=raw.split('|'),me=String(studentId()),a=get(K.chat,[]).filter(m=>(String(m.fromId)===me&&String(m.toId)===String(id))||(String(m.toId)===me&&String(m.fromId)===String(id))).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));el.innerHTML=a.length?a.map(m=>'<div class="notice" style="margin-left:'+(String(m.fromId)===me?'12%':'0')+'"><strong>'+esc(m.fromName||m.fromRole)+'</strong><span>'+esc(m.body||'')+(m.attachment?'<br><a href="'+esc(m.attachment.url)+'" target="_blank">📎 '+esc(m.attachment.name)+'</a>':'')+'<br><small>'+(m.createdAt?new Date(m.createdAt).toLocaleString():'')+'</small></span></div>').join(''):'<div class="empty">No messages yet.</div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: setServer
+   PURPOSE: Sets the requested state/value.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function setServer(on){$('serverDot')?.classList.toggle('on',on);if($('serverText'))$('serverText').textContent=on?'Server connected':'Offline / reconnecting'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: allStudents
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function allStudents(){return serverStudents.length?serverStudents:get(K.students,[])}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: requestOtp
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function requestOtp(){const mobile=norm($('loginMobile').value);if(!mobile)return alert('Please enter the registered mobile number.');const local=allStudents().find(s=>norm(s.portalMobile||s.phone||s.mobile)===mobile&&s.portalAccess!==false);if(local)return finishLookup(local);if(socket?.readyState===WebSocket.OPEN){loginRequest='STU-LOGIN-'+Date.now();wsSend('STUDENT_LOGIN_LOOKUP',null,{mobile,requestId:loginRequest});toast('Checking the registered mobile number…');setTimeout(()=>{if(loginRequest)alert('This number was not found in the current student records. Ask the Principal to register or enable it.')},2500)}else alert('School server is not connected and this number is not available on this device.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: finishLookup
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function finishLookup(record){loginRequest='';if(!record)return alert('No active student account was found for this mobile number.');student=record;otp=String(Math.floor(100000+Math.random()*900000));$('otpText').textContent=otp;$('otpArea').classList.remove('hidden');toast('Student account found.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: loginStudent
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function loginStudent(){if(!student)return alert('Generate an OTP first.');if($('otpInput').value.trim()!==otp)return alert('Invalid OTP.');$('login').classList.add('hidden');$('app').classList.remove('hidden');renderAll();toast('Welcome, '+student.name);setTimeout(checkFirstLoginProfile,200)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: logout
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function logout(){if(!confirm('Are you sure you want to logout from the Student Portal?'))return;student=null;otp='';$('app').classList.add('hidden');$('login').classList.remove('hidden');$('otpArea').classList.add('hidden');$('otpInput').value=''}
 const titles={dashboard:['Dashboard','Your academic day at a glance'],profile:['My Profile','Official identity and enrolment record'],attendance:['Attendance','Daily and period-wise attendance'],timetable:['Timetable & Periods','Your current class schedule'],teachers:['My Teachers','Faculty assigned to your class'],academics:['Academics & Results','Published assessments and progress'],assignments:['Assignments','Homework, due dates and submissions'],leave:['Leave Requests','Submit and track student leave'],circulars:['Circulars','Messages, requests and shared communication'],mailbox:['Mailbox','Approvals and personal notifications'],settings:['Settings','Security and notification preferences']};
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: togglePortalMenu
+   PURPOSE: Toggles the related UI setting/state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function togglePortalMenu(open){document.body.classList.toggle('menu-open',open===undefined?!document.body.classList.contains('menu-open'):open)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: syncWorkspaceNav
+   PURPOSE: Synchronizes the related state between local portal state and shared/server state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function syncWorkspaceNav(id){document.querySelectorAll('#workspaceNav button').forEach(x=>x.classList.toggle('active',x.dataset.view===id))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: buildWorkspaceNav
+   PURPOSE: Builds/derives the related data structure from current source data.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function buildWorkspaceNav(){const target=$('workspaceNav');if(!target)return;const names={dashboard:'Today',timetable:'Timetable',assignments:'Assignments',attendance:'Attendance',academics:'Results',mailbox:'Mailbox',profile:'Profile'};target.innerHTML=Object.keys(names).map(id=>{const source=[...document.querySelectorAll('.sidebar nav button')].find(b=>(b.getAttribute('onclick')||'').includes("'"+id+"'"));if(!source)return'';return `<button data-view="${id}" onclick="document.querySelector('.sidebar nav button[onclick*=\"${id}\"]')?.click()"><i class="${source.querySelector('i')?.className||'fa-solid fa-circle'}"></i>${names[id]}</button>`}).join('');syncWorkspaceNav('dashboard')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: openPage
+   PURPOSE: Opens the related modal, folder, detail view or workflow.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function openPage(id,btn){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));btn?.classList.add('active');syncWorkspaceNav(id);togglePortalMenu(false);$('pageTitle').textContent=titles[id][0];$('pageSub').textContent=titles[id][1];if(id==='mailbox'){renderMailbox(true);renderStudentOfficialComm();populateStudentChatRecipients();}else renderPage(id)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: searchStudentRequestStatus
+   PURPOSE: Searches the related records and returns/renders matching results.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function searchStudentRequestStatus(){
  const q=($('studentRequestSearchInput')?.value||'').trim(),out=$('studentRequestSearchResult');if(!q||!out)return;
  const all=[...studentOfficialAll(),...get(K.requests,[])],sid=String(studentId()),m=all.find(x=>String(x.requestNo||x.id||'').toLowerCase()===q.toLowerCase()&&(String(x.studentId||x.rollId||x.fromId||x.toId||'')===sid));
  out.innerHTML=m?`<div class="request-result"><b>${esc(m.requestNo||m.id)}</b><span class="request-status-pill">${esc(m.status||'Unknown')}</span><br>${esc(m.title||m.type||'Request')}<br><small>${m.createdAt?new Date(m.createdAt).toLocaleString():''}</small></div>`:'<div class="request-result">No request found with that number in your account.</div>';
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderAll
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderAll(){if(!student)return;$('sideName').textContent=student.name||'Student';$('sideCode').textContent=studentId();$('sideClass').textContent=[student.grade||student.className,student.section||student.division].filter(Boolean).join(' • ');$('settingMobile').textContent=student.portalMobile||student.phone||student.mobile||'Not registered';renderDashboard();renderProfile();renderAttendance();renderTimetable();renderTeachers();renderAcademics();renderAssignments();renderLeave();renderCirculars();renderMailbox(false);renderStudentOfficialComm()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderPage
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderPage(id){({dashboard:renderDashboard,profile:renderProfile,attendance:renderAttendance,timetable:renderTimetable,teachers:renderTeachers,academics:renderAcademics,assignments:renderAssignments,leave:renderLeave,circulars:renderCirculars,mailbox:renderMailbox}[id]||(()=>{}))()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: photoInto
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function photoInto(id){const el=$(id);el.innerHTML=student.photoUrl?'<img src="'+esc(student.photoUrl)+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">':'<i class="fa-solid fa-user-graduate"></i>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderDashboard
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderDashboard(){photoInto('heroPhoto');$('welcomeName').textContent='Welcome, '+(student.name||'Student');$('welcomeLine').textContent=[student.grade||student.className,student.section||student.division,studentId()].filter(Boolean).join(' • ');const a=myAttendance(),present=a.filter(x=>['Present','Late','Half Day'].includes(x.status)).length,pct=a.length?Math.round(present/a.length*100):null,today=a.find(x=>x.date===isoDate());$('dashAttendance').textContent=pct==null?'—':pct+'%';$('dashAttendanceSub').textContent=a.length?present+' of '+a.length+' recorded days':'No records';$('dashToday').textContent=today?.status||'Not Marked';const work=myAssignments().filter(x=>!['submitted','completed','graded'].includes(String(x.status||'').toLowerCase()));$('dashPending').textContent=work.length;const unread=mail().filter(x=>!isRead(x)).length;$('dashUnread').textContent=unread;updateMailBadge(unread);const tt=myTimetable(),day=new Date().toLocaleDateString('en-US',{weekday:'long'});let periods=extractPeriods(tt,day);$('todayPeriods').innerHTML=periods.length?periods.slice(0,8).map(p=>'<div class="row"><span><strong>'+esc(p.subject||p.title||'Period')+'</strong><small>'+esc(p.teacherName||p.teacher||'Teacher not assigned')+'</small></span><span class="badge info">'+esc(p.time||p.period||'')+'</span></div>').join(''):'<div class="empty">No timetable periods found for '+esc(day)+'.</div>';$('dashboardActions').innerHTML=(unread?'<div class="notice unread"><strong>'+unread+' unread mailbox message'+(unread===1?'':'s')+'</strong><span>Open Mailbox to review official decisions.</span></div>':'')+(work.length?'<div class="notice"><strong>'+work.length+' assignment'+(work.length===1?'':'s')+' pending</strong><span>Check due dates in Assignments.</span></div>':'')+'<div class="notice"><strong>Profile record</strong><span>Contact the school through a correction request if any information is wrong.</span></div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderProfile
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderProfile(){photoInto('profilePhoto');const fields=[['Admission / Roll ID',studentId()],['Student Name',student.name],['Father / Guardian',student.fatherName||student.guardianName],['Date of Birth',student.dob],['Class',student.grade||student.className],['Division',student.section||student.division],['Joined Year',student.joined],['Email',student.email],['Registered Mobile',student.portalMobile||student.phone||student.mobile],['Address',student.address]];Object.entries(student.customData||{}).forEach(x=>fields.push(x));$('profileDetails').innerHTML=fields.map(([k,v])=>'<div class="detail"><label>'+esc(k)+'</label><strong>'+esc(v||'—')+'</strong></div>').join('')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: myAttendance
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function myAttendance(){return get(K.attendance,[]).filter(r=>String(r.studentId||r.rollId||r.personId)===String(studentId())).sort((a,b)=>String(b.date).localeCompare(String(a.date)))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderAttendance
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderAttendance(){const a=myAttendance(),present=a.filter(x=>['Present','Late','Half Day'].includes(x.status)).length;$('attPresent').textContent=present;$('attAbsent').textContent=a.filter(x=>x.status==='Absent').length;$('attLate').textContent=a.filter(x=>x.status==='Late').length;$('attPercent').textContent=a.length?Math.round(present/a.length*100)+'%':'—';$('attendanceHistory').innerHTML=a.length?'<div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Day Status</th><th>Present Periods</th><th>Absent Periods</th><th>Marked By</th></tr></thead><tbody>'+a.map(x=>'<tr><td>'+esc(x.date)+'</td><td><span class="badge '+(x.status==='Present'?'ok':x.status==='Late'?'warn':'bad')+'">'+esc(x.status||'Not Marked')+'</span></td><td>'+esc(x.presentPeriods??'—')+'</td><td>'+esc(x.absentPeriods??'—')+'</td><td>'+esc(x.markedBy||x.source||'School')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">No student attendance records have been published.</div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: classMatch
+   PURPOSE: Normalized Class + Division comparator. It prevents Grade 1 vs 1 and Div A vs A formatting differences from breaking routing.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function classMatch(o){const nc=v=>String(v||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase(),nd=v=>String(v||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase();const g=nc(student.grade||student.className),d=nd(student.section||student.division);return nc(o.className||o.grade)===g&&(!d||nd(o.division||o.section)===d)}
-function myTimetable(){return get(K.timetables,[]).find(x=>x.published===true&&classMatch(x))||null}function extractPeriods(tt,day){if(!tt)return[];if(Array.isArray(tt.grid))return tt.grid.filter(x=>String(x.day||'').toLowerCase()===day.toLowerCase());if(tt.grid&&Array.isArray(tt.grid[day]))return tt.grid[day];if(tt.grid&&tt.grid[day]&&typeof tt.grid[day]==='object')return (tt.slots||[]).filter(s=>s.type==='period').map(s=>{const c=tt.grid[day][s.index];return c?{...c,period:'P'+s.index,time:s.start+'–'+s.end}:null}).filter(Boolean);if(Array.isArray(tt.slots))return tt.slots.filter(x=>String(x.day||'').toLowerCase()===day.toLowerCase());return[]}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: myTimetable
+   PURPOSE: Returns only the timetable folder matching the student Class+Division AND published=true. This enforces the rule that Principal sends to Faculty first and Class Teacher publishes to students.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function myTimetable(){return get(K.timetables,[]).find(x=>/* LINE LOGIC: Student sees a timetable only after Class Teacher publication AND only when Class+Division matches. */x.published===true&&classMatch(x))||null}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: extractPeriods
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function extractPeriods(tt,day){if(!tt)return[];if(Array.isArray(tt.grid))return tt.grid.filter(x=>String(x.day||'').toLowerCase()===day.toLowerCase());if(tt.grid&&Array.isArray(tt.grid[day]))return tt.grid[day];if(tt.grid&&tt.grid[day]&&typeof tt.grid[day]==='object')return (tt.slots||[]).filter(s=>s.type==='period').map(s=>{const c=tt.grid[day][s.index];return c?{...c,period:'P'+s.index,time:s.start+'–'+s.end}:null}).filter(Boolean);if(Array.isArray(tt.slots))return tt.slots.filter(x=>String(x.day||'').toLowerCase()===day.toLowerCase());return[]}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderTimetable
+   PURPOSE: Displays the Class Teacher-published timetable by working day and period.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderTimetable(){const tt=myTimetable();$('classBadge').textContent=[student.grade||student.className,student.section||student.division].filter(Boolean).join(' — ');if(!tt){$('timetableBody').innerHTML='<div class="empty">The timetable for your class has not been published.</div>';return}const days=tt.settings?.workingDays||['Monday','Tuesday','Wednesday','Thursday','Friday'];$('timetableBody').innerHTML=days.map(day=>'<div class="day"><strong>'+esc(day)+'</strong>'+((extractPeriods(tt,day).map(p=>'<div class="row"><span>'+esc(p.subject||p.title||'Period')+'<small>'+esc(p.teacherName||p.teacher||'')+'</small></span><span>'+esc(p.time||p.period||'')+'</span></div>').join(''))||'<div class="muted" style="margin-top:8px">No periods</div>')+'</div>').join('')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: assignedTeachers
+   PURPOSE: Builds the student-visible teacher list using subject/timetable/staff assignments for the student class.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function assignedTeachers(){const staff=get(K.staff,[]).filter(s=>String(s.category||'').toLowerCase()==='teaching'),tt=myTimetable(),ids=new Set(),names=new Set();if(tt)JSON.stringify(tt);const subjects=get(K.subjects,{})[student.grade||student.className]||[];subjects.forEach(s=>{if(s.teacherEmpId)ids.add(s.teacherEmpId);if(s.teacherName)names.add(s.teacherName)});if(tt){const raw=JSON.stringify(tt);staff.forEach(s=>{if(raw.includes(s.empId)||raw.includes(s.name))ids.add(s.empId)})}return staff.filter(s=>ids.has(s.empId)||names.has(s.name)||((s.assignedClass===student.grade||s.assignedClass===student.className)&&(!s.assignedDiv||s.assignedDiv===student.section||s.assignedDiv===student.division)))}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderTeachers
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderTeachers(){const arr=assignedTeachers();$('teacherList').innerHTML=arr.length?arr.map(t=>'<div class="notice"><strong>'+esc(t.name)+'</strong><span>'+esc(t.role||'Teacher')+'<br>'+esc([t.mainSubject,t.sub2,t.sub3,t.sub4].filter(Boolean).join(' • '))+'</span></div>').join(''):'<div class="empty" style="grid-column:1/-1">Teacher allocations for this class are not available yet.</div>'}
-function myResults(){return get(K.results,[]).filter(r=>String(r.studentId||r.rollId)===String(studentId()))}function renderAcademics(){const arr=myResults();$('resultsList').innerHTML=arr.length?arr.map(r=>'<div class="row"><span><strong>'+esc(r.subject||r.assessment||'Assessment')+'</strong><small>'+esc(r.term||r.exam||'Published result')+'</small></span><strong>'+esc(r.score??r.mark??'—')+(r.maxMark?' / '+esc(r.maxMark):'')+'</strong></div>').join(''):'<div class="empty">No assessment results have been published.</div>';const scored=arr.filter(r=>Number.isFinite(Number(r.score??r.mark))),avg=scored.length?Math.round(scored.reduce((n,r)=>n+Number(r.score??r.mark)/Number(r.maxMark||100)*100,0)/scored.length):null;$('academicSummary').innerHTML='<div class="kpi"><div class="label">Published Assessments</div><div class="value">'+arr.length+'</div></div><div class="notice"><strong>Current Average</strong><span>'+(avg==null?'Not available':avg+'%')+'</span></div>'}
-function myAssignments(){return get(K.assignments,[]).filter(a=>!a.studentId||String(a.studentId)===String(studentId())||classMatch(a)).sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||'')))}function renderAssignments(){const arr=myAssignments();$('assignmentList').innerHTML=arr.length?arr.map(a=>'<div class="notice"><div class="row"><span><strong>'+esc(a.title||a.subject||'Assignment')+'</strong><small>'+esc(a.subject||'')+' • Due '+esc(a.dueDate||'Not specified')+'</small></span><span class="badge '+(['submitted','completed','graded'].includes(String(a.status||'').toLowerCase())?'ok':'warn')+'">'+esc(a.status||'Pending')+'</span></div><span>'+esc(a.description||a.instructions||'')+'</span></div>').join(''):'<div class="empty">No assignments are currently assigned.</div>'}
-function myLeaves(){return get(K.leaves,[]).filter(x=>String(x.studentId||x.rollId)===String(studentId())).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}function submitLeave(){const from=$('leaveFrom').value,to=$('leaveTo').value,reason=$('leaveReason').value.trim();if(!from||!to||!reason)return alert('From date, to date and reason are required.');if(to<from)return alert('To date cannot be before From date.');const r={id:'SL-'+Date.now(),studentId:studentId(),studentName:student.name,className:student.grade||student.className,division:student.section||student.division,from,to,type:$('leaveType').value,reason,guardianContact:$('guardianContact').value.trim(),status:'Pending Teacher Review',createdAt:new Date().toISOString(),source:'Student Portal'};const arr=get(K.leaves,[]);arr.unshift(r);save(K.leaves,arr);wsSend('STUDENT_LEAVE_REQUEST_CREATE',r);addMail({id:'MAIL-'+r.id,title:'Leave request submitted',body:'Your leave request from '+from+' to '+to+' is awaiting review.',createdAt:r.createdAt,type:'Leave'});$('leaveReason').value='';renderLeave();toast('Leave request sent for approval.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: myResults
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function myResults(){return get(K.results,[]).filter(r=>String(r.studentId||r.rollId)===String(studentId()))}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderAcademics
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function renderAcademics(){const arr=myResults();$('resultsList').innerHTML=arr.length?arr.map(r=>'<div class="row"><span><strong>'+esc(r.subject||r.assessment||'Assessment')+'</strong><small>'+esc(r.term||r.exam||'Published result')+'</small></span><strong>'+esc(r.score??r.mark??'—')+(r.maxMark?' / '+esc(r.maxMark):'')+'</strong></div>').join(''):'<div class="empty">No assessment results have been published.</div>';const scored=arr.filter(r=>Number.isFinite(Number(r.score??r.mark))),avg=scored.length?Math.round(scored.reduce((n,r)=>n+Number(r.score??r.mark)/Number(r.maxMark||100)*100,0)/scored.length):null;$('academicSummary').innerHTML='<div class="kpi"><div class="label">Published Assessments</div><div class="value">'+arr.length+'</div></div><div class="notice"><strong>Current Average</strong><span>'+(avg==null?'Not available':avg+'%')+'</span></div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: myAssignments
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function myAssignments(){return get(K.assignments,[]).filter(a=>!a.studentId||String(a.studentId)===String(studentId())||classMatch(a)).sort((a,b)=>String(a.dueDate||'').localeCompare(String(b.dueDate||'')))}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderAssignments
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function renderAssignments(){const arr=myAssignments();$('assignmentList').innerHTML=arr.length?arr.map(a=>'<div class="notice"><div class="row"><span><strong>'+esc(a.title||a.subject||'Assignment')+'</strong><small>'+esc(a.subject||'')+' • Due '+esc(a.dueDate||'Not specified')+'</small></span><span class="badge '+(['submitted','completed','graded'].includes(String(a.status||'').toLowerCase())?'ok':'warn')+'">'+esc(a.status||'Pending')+'</span></div><span>'+esc(a.description||a.instructions||'')+'</span></div>').join(''):'<div class="empty">No assignments are currently assigned.</div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: myLeaves
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function myLeaves(){return get(K.leaves,[]).filter(x=>String(x.studentId||x.rollId)===String(studentId())).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: submitLeave
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function submitLeave(){const from=$('leaveFrom').value,to=$('leaveTo').value,reason=$('leaveReason').value.trim();if(!from||!to||!reason)return alert('From date, to date and reason are required.');if(to<from)return alert('To date cannot be before From date.');const r={id:'SL-'+Date.now(),studentId:studentId(),studentName:student.name,className:student.grade||student.className,division:student.section||student.division,from,to,type:$('leaveType').value,reason,guardianContact:$('guardianContact').value.trim(),status:'Pending Teacher Review',createdAt:new Date().toISOString(),source:'Student Portal'};const arr=get(K.leaves,[]);arr.unshift(r);save(K.leaves,arr);wsSend('STUDENT_LEAVE_REQUEST_CREATE',r);addMail({id:'MAIL-'+r.id,title:'Leave request submitted',body:'Your leave request from '+from+' to '+to+' is awaiting review.',createdAt:r.createdAt,type:'Leave'});$('leaveReason').value='';renderLeave();toast('Leave request sent for approval.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderLeave
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderLeave(){const arr=myLeaves();$('leaveHistory').innerHTML=arr.length?arr.map(x=>'<div class="notice"><strong>'+esc(x.type||'Student Leave')+' — '+esc(x.status||'Pending')+'</strong><span>'+esc(x.from)+' to '+esc(x.to)+'<br>'+esc(x.reason||'')+(x.decisionReason?'<br>Decision reason: '+esc(x.decisionReason):'')+'</span></div>').join(''):'<div class="empty">No leave requests submitted.</div>'}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderCirculars
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function renderCirculars(){const arr=get(K.notices,[]);$('circularList').innerHTML=arr.length?arr.map(n=>'<div class="notice"><div class="row"><span><strong>'+esc(n.title||'Circular')+'</strong><small>'+esc(n.date||n.createdAt||'')+'</small></span><span class="badge '+(String(n.priority).toLowerCase()==='high'?'bad':'info')+'">'+esc(n.priority||'General')+'</span></div><span>'+esc(n.body||n.message||n.description||'')+'</span></div>').join(''):'<div class="empty">No circulars have been published.</div>'}
-function mail(){return get(K.mail,[]).filter(x=>!x.studentId||String(x.studentId)===String(studentId())).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}function readKey(){return 'pius_student_mail_read_'+studentId()}function isRead(m){return get(readKey(),[]).includes(m.id)||m.read===true}function renderMailbox(mark=false){let arr=mail();if(mark&&arr.length){save(readKey(),[...new Set([...get(readKey(),[]),...arr.map(x=>x.id)])])}const unread=mail().filter(x=>!isRead(x)).length;updateMailBadge(unread);$('mailList').innerHTML=arr.length?arr.map(m=>'<div class="notice '+(!isRead(m)?'unread':'')+'"><div class="row"><span><strong>'+esc(m.title||'School Message')+'</strong><small>'+new Date(m.createdAt||Date.now()).toLocaleString()+'</small></span><span class="badge '+(m.status==='Rejected'?'bad':'info')+'">'+esc(m.type||m.status||'Message')+'</span></div><span>'+esc(m.body||m.message||m.reason||'')+(m.decidedBy?'<br>By: '+esc(m.decidedBy):'')+'</span></div>').join(''):'<div class="empty">Your mailbox is empty.</div>'}function updateMailBadge(n){$('mailBadge').textContent=n;$('mailBadge').classList.toggle('hidden',!n);if($('dashUnread'))$('dashUnread').textContent=n}function markAllRead(){save(readKey(),mail().map(x=>x.id));renderMailbox(false);toast('All messages marked as read.')}function addMail(m){const arr=get(K.mail,[]);arr.unshift({...m,studentId:studentId()});save(K.mail,arr)}
-function openCorrection(){$('correctionModal').classList.remove('hidden')}function closeCorrection(){$('correctionModal').classList.add('hidden')}function submitCorrection(){const val=$('correctionValue').value.trim(),reason=$('correctionReason').value.trim();if(!val||!reason)return alert('Correct information and reason are required.');const r={id:'SPR-'+Date.now(),studentId:studentId(),studentName:student.name,className:student.grade||student.className,division:student.section||student.division,field:$('correctionField').value,currentValue:student[$('correctionField').value]||'',proposedValue:val,reason,status:'Pending Verification',createdAt:new Date().toISOString(),source:'Student Portal'};const arr=get(K.requests,[]);arr.unshift(r);save(K.requests,arr);wsSend('STUDENT_REQUEST_CREATE',r);addMail({id:'MAIL-'+r.id,title:'Profile correction submitted',body:'Your '+r.field+' correction is awaiting school approval.',createdAt:r.createdAt,type:'Profile'});closeCorrection();$('correctionValue').value='';$('correctionReason').value='';renderDashboard();toast('Correction request sent for approval.')}
-function upsert(key,item){if(!item?.id)return;const arr=get(key,[]),i=arr.findIndex(x=>x.id===item.id);if(i>=0)arr[i]={...arr[i],...item};else arr.unshift(item);save(key,arr)}function upsertAndNotify(key,item,title){upsert(key,item);if(item&&String(item.studentId||item.rollId)===String(studentId())){addMail({id:'MAIL-'+item.id+'-'+(item.status||'UPDATE'),title,body:(item.status||'Updated')+(item.decisionReason?' — '+item.decisionReason:''),createdAt:item.decisionAt||item.decidedAt||new Date().toISOString(),type:item.source||'Decision',status:item.status,decidedBy:item.decisionBy||item.decidedBy});refreshCurrent();toast(title+'.')}}function mergePayload(p){if(Array.isArray(p.studentAttendanceRecords))save(K.attendance,p.studentAttendanceRecords);if(Array.isArray(p.studentAssignments))save(K.assignments,p.studentAssignments);if(Array.isArray(p.studentResults))save(K.results,p.studentResults);if(Array.isArray(p.studentLeaves))save(K.leaves,p.studentLeaves);if(Array.isArray(p.studentMailbox))save(K.mail,p.studentMailbox);if(Array.isArray(p.studentProfileRequests))save(K.requests,p.studentProfileRequests);if(p.classTeacherAssignments)save(K.classTeachers,p.classTeacherAssignments)}function refreshCurrent(){if(!student)return;const fresh=allStudents().find(s=>String(s.rollId||s.admissionNo||s.studentId)===String(studentId()));if(fresh)student=fresh;renderAll()}
-function changePassword(){const a=$('newPassword').value,b=$('confirmPassword').value;if(a.length<6)return alert('Password must contain at least 6 characters.');if(a!==b)return alert('Passwords do not match.');localStorage.setItem('pius_student_password_'+studentId(),a);$('newPassword').value=$('confirmPassword').value='';toast('Password updated on this prototype device.')}function savePreferences(){save('pius_student_preferences_'+studentId(),{mail:$('prefMail').checked,assignments:$('prefAssignments').checked});toast('Preferences saved.')}function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2600)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: mail
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function mail(){return get(K.mail,[]).filter(x=>!x.studentId||String(x.studentId)===String(studentId())).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: readKey
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function readKey(){return 'pius_student_mail_read_'+studentId()}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: isRead
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function isRead(m){return get(readKey(),[]).includes(m.id)||m.read===true}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: renderMailbox
+   PURPOSE: Renders or refreshes the related user-interface section from current application state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function renderMailbox(mark=false){let arr=mail();if(mark&&arr.length){save(readKey(),[...new Set([...get(readKey(),[]),...arr.map(x=>x.id)])])}const unread=mail().filter(x=>!isRead(x)).length;updateMailBadge(unread);$('mailList').innerHTML=arr.length?arr.map(m=>'<div class="notice '+(!isRead(m)?'unread':'')+'"><div class="row"><span><strong>'+esc(m.title||'School Message')+'</strong><small>'+new Date(m.createdAt||Date.now()).toLocaleString()+'</small></span><span class="badge '+(m.status==='Rejected'?'bad':'info')+'">'+esc(m.type||m.status||'Message')+'</span></div><span>'+esc(m.body||m.message||m.reason||'')+(m.decidedBy?'<br>By: '+esc(m.decidedBy):'')+'</span></div>').join(''):'<div class="empty">Your mailbox is empty.</div>'}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: updateMailBadge
+   PURPOSE: Updates the related state or user interface.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function updateMailBadge(n){$('mailBadge').textContent=n;$('mailBadge').classList.toggle('hidden',!n);if($('dashUnread'))$('dashUnread').textContent=n}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: markAllRead
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function markAllRead(){save(readKey(),mail().map(x=>x.id));renderMailbox(false);toast('All messages marked as read.')}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: addMail
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function addMail(m){const arr=get(K.mail,[]);arr.unshift({...m,studentId:studentId()});save(K.mail,arr)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: openCorrection
+   PURPOSE: Opens the related modal, folder, detail view or workflow.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function openCorrection(){$('correctionModal').classList.remove('hidden')}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: closeCorrection
+   PURPOSE: Closes the related modal/folder and restores any UI state as required.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function closeCorrection(){$('correctionModal').classList.add('hidden')}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: submitCorrection
+   PURPOSE: Creates a student profile correction request. server.js routes the request to the current Class Teacher based on the student master Class+Division.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function submitCorrection(){const val=$('correctionValue').value.trim(),reason=$('correctionReason').value.trim();if(!val||!reason)return alert('Correct information and reason are required.');const r={id:'SPR-'+Date.now(),studentId:studentId(),studentName:student.name,className:student.grade||student.className,division:student.section||student.division,field:$('correctionField').value,currentValue:student[$('correctionField').value]||'',proposedValue:val,reason,status:'Pending Verification',createdAt:new Date().toISOString(),source:'Student Portal'};const arr=get(K.requests,[]);arr.unshift(r);save(K.requests,arr);wsSend('STUDENT_REQUEST_CREATE',r);addMail({id:'MAIL-'+r.id,title:'Profile correction submitted',body:'Your '+r.field+' correction is awaiting school approval.',createdAt:r.createdAt,type:'Profile'});closeCorrection();$('correctionValue').value='';$('correctionReason').value='';renderDashboard();toast('Correction request sent for approval.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: upsert
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function upsert(key,item){if(!item?.id)return;const arr=get(key,[]),i=arr.findIndex(x=>x.id===item.id);if(i>=0)arr[i]={...arr[i],...item};else arr.unshift(item);save(key,arr)}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: upsertAndNotify
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function upsertAndNotify(key,item,title){upsert(key,item);if(item&&String(item.studentId||item.rollId)===String(studentId())){addMail({id:'MAIL-'+item.id+'-'+(item.status||'UPDATE'),title,body:(item.status||'Updated')+(item.decisionReason?' — '+item.decisionReason:''),createdAt:item.decisionAt||item.decidedAt||new Date().toISOString(),type:item.source||'Decision',status:item.status,decidedBy:item.decisionBy||item.decidedBy});refreshCurrent();toast(title+'.')}}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: mergePayload
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function mergePayload(p){if(Array.isArray(p.studentAttendanceRecords))save(K.attendance,p.studentAttendanceRecords);if(Array.isArray(p.studentAssignments))save(K.assignments,p.studentAssignments);if(Array.isArray(p.studentResults))save(K.results,p.studentResults);if(Array.isArray(p.studentLeaves))save(K.leaves,p.studentLeaves);if(Array.isArray(p.studentMailbox))save(K.mail,p.studentMailbox);if(Array.isArray(p.studentProfileRequests))save(K.requests,p.studentProfileRequests);if(p.classTeacherAssignments)save(K.classTeachers,p.classTeacherAssignments)}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: refreshCurrent
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function refreshCurrent(){if(!student)return;const fresh=allStudents().find(s=>String(s.rollId||s.admissionNo||s.studentId)===String(studentId()));if(fresh)student=fresh;renderAll()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: changePassword
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function changePassword(){const a=$('newPassword').value,b=$('confirmPassword').value;if(a.length<6)return alert('Password must contain at least 6 characters.');if(a!==b)return alert('Passwords do not match.');localStorage.setItem('pius_student_password_'+studentId(),a);$('newPassword').value=$('confirmPassword').value='';toast('Password updated on this prototype device.')}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: savePreferences
+   PURPOSE: Persists the related data/state and may trigger synchronization.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function savePreferences(){save('pius_student_preferences_'+studentId(),{mail:$('prefMail').checked,assignments:$('prefAssignments').checked});toast('Preferences saved.')}/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: toast
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2600)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: assignedClassTeacherId
+   PURPOSE: Resolves the authoritative Class Teacher empId for the logged-in student using Class+Division assignment data, with timetable metadata only as fallback.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function assignedClassTeacherId(){const assignments=get(K.classTeachers,{}),nc=v=>String(v||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase(),nd=v=>String(v||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase(),g=nc(student?.grade||student?.className),d=nd(student?.section||student?.division);let id='';Object.entries(assignments||{}).some(([key,val])=>{const parts=String(key).split('|||');if(parts.length>=2&&nc(parts[0])===g&&nd(parts[1])===d){id=String(val||'');return true}return false});if(!id){const tt=get(K.timetables,[]).find(x=>nc(x.className)===g&&nd(x.division)===d&&x.classTeacherEmpId);if(tt)id=String(tt.classTeacherEmpId)}return id}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: checkFirstLoginProfile
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function checkFirstLoginProfile(){const req=get(K.requests,[]).filter(r=>String(r.studentId)===String(studentId())&&r.source==='Student First Login Profile').sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0];if(student.profileCompletionStatus==='Approved'||req?.status==='Approved')return;if(req&&['Pending Class Teacher Approval','Pending Class Teacher Assignment'].includes(req.status)){toast('Your completed profile is awaiting Class Teacher approval.');return}showStudentCompletionModal(req?.status==='Rejected'?(req.decisionReason||req.rejectionReason||'Please correct and resubmit.'):'')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: showStudentCompletionModal
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function showStudentCompletionModal(reason=''){let m=document.getElementById('studentFirstLoginModal');if(!m){m=document.createElement('div');m.id='studentFirstLoginModal';m.className='modal';document.body.appendChild(m)}m.classList.remove('hidden');const tid=assignedClassTeacherId(),t=get(K.staff,[]).find(x=>x.empId===tid);m.innerHTML=`<div class="modal-card"><div class="eyebrow">First Login • Mandatory Profile Completion</div><h2>Complete Your Student Profile</h2><p class="muted">The Principal created your login and class allocation. Complete the remaining information for Class Teacher approval.</p>${reason?`<div class="notice"><strong>Returned for correction</strong><span>${esc(reason)}</span></div>`:''}<div class="grid"><div class="field"><label>Father / Guardian Name</label><input id="flGuardian" value="${esc(student.fatherName||'')}"></div><div class="field"><label>Date of Birth</label><input id="flDob" type="date" value="${esc(student.dob||'')}"></div><div class="field"><label>Email</label><input id="flEmail" type="email" value="${esc(student.email||'')}"></div><div class="field"><label>Emergency Contact</label><input id="flEmergency"></div></div><div class="field"><label>Residential Address</label><textarea id="flAddress" rows="3">${esc(student.address||'')}</textarea></div><div class="grid"><div class="field"><label>Mother’s Name</label><input id="flMother"></div><div class="field"><label>Guardian Relationship</label><input id="flRelationship"></div><div class="field"><label>Blood Group</label><input id="flBlood"></div><div class="field"><label>Medical Information</label><input id="flMedical"></div><div class="field"><label>Transport / Bus Route</label><input id="flTransport"></div><div class="field"><label>Identification Information</label><input id="flIdentity"></div></div><div class="field"><label>Student Photograph</label><input id="flPhoto" type="file" accept="image/*" onchange="loadFirstLoginPhoto(event)"></div><div class="notice"><strong>Approval route</strong><span>${t?esc(t.name)+' ('+esc(tid)+')':'Waiting for the Principal to assign a Class Teacher'}</span></div><div class="actions" style="justify-content:flex-end"><button class="danger" onclick="logout()">Logout</button><button class="primary" onclick="submitFirstLoginProfile()">Submit to Class Teacher</button></div></div>`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: loadFirstLoginPhoto
+   PURPOSE: Loads the related data/settings into runtime or user interface.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function loadFirstLoginPhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=x=>firstLoginPhoto=x.target.result;r.readAsDataURL(f)}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: submitFirstLoginProfile
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function submitFirstLoginProfile(){if(!['flGuardian','flDob','flAddress','flEmergency'].every(id=>$(id)?.value.trim()))return alert('Guardian name, date of birth, address and emergency contact are required.');const proposedProfile={fatherName:$('flGuardian').value.trim(),dob:$('flDob').value,address:$('flAddress').value.trim(),email:$('flEmail').value.trim(),photoUrl:firstLoginPhoto||student.photoUrl||'',customData:{...(student.customData||{}),motherName:$('flMother').value.trim(),guardianRelationship:$('flRelationship').value.trim(),emergencyContact:$('flEmergency').value.trim(),bloodGroup:$('flBlood').value.trim(),medicalInformation:$('flMedical').value.trim(),transportRoute:$('flTransport').value.trim(),identificationInformation:$('flIdentity').value.trim()},profileCompletionStatus:'Pending Class Teacher Approval'},tid=assignedClassTeacherId(),r={id:'SPR-'+Date.now(),studentId:studentId(),studentName:student.name,className:student.grade||student.className,division:student.section||student.division,classTeacherEmpId:tid,field:'fullProfile',currentValue:'Principal-created basic profile',proposedValue:'Completed student profile',proposedProfile,reason:'Mandatory first-login profile completion',status:tid?'Pending Class Teacher Approval':'Pending Class Teacher Assignment',createdAt:new Date().toISOString(),source:'Student First Login Profile'};const a=get(K.requests,[]);a.unshift(r);save(K.requests,a);wsSend('STUDENT_PROFILE_REQUEST_CREATE',r);addMail({id:'MAIL-'+r.id,title:'Student profile submitted',body:tid?'Sent to your assigned Class Teacher.':'Waiting for Class Teacher assignment.',createdAt:r.createdAt,type:'Profile'});$('studentFirstLoginModal').classList.add('hidden');toast('Profile submitted for Class Teacher approval.')}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: applyPrincipalPortalLaunch
+   PURPOSE: Applies the related update/decision to current state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function applyPrincipalPortalLaunch(){const q=new URLSearchParams(location.search),mobile=q.get('portalMobile');if(!mobile)return;const input=$('loginMobile');if(input)input.value=mobile;const note=document.querySelector('.login-card .demo-note');if(q.get('principalLaunch')==='1'&&note)note.insertAdjacentHTML('beforebegin','<div class="otp" style="margin-bottom:12px"><i class="fa-solid fa-user-shield"></i> Account selected from the Principal Portal. Generate the normal OTP to continue securely.</div>')}
 applyPrincipalPortalLaunch();buildWorkspaceNav();document.addEventListener('keydown',e=>{if(e.key==='Escape')togglePortalMenu(false)});connect();
 </script><script>
@@ -275,40 +928,94 @@ window.resetPortalLocalData=function(){
   localStorage.clear();sessionStorage.clear();location.reload();
 };
 </script>
+<!-- DEVELOPER UI SECTION: portalLiveSync
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
 <div id="portalLiveSync" class="portal-live-sync offline">
   <span class="portal-sync-dot"></span>
   <button type="button" id="portalSyncStatusBtn" onclick="togglePortalSyncMenu(event)" style="background:none;border:0;color:inherit;cursor:pointer">Offline</button>
-  <div class="portal-sync-menu" id="portalSyncMenu">
+  <!-- DEVELOPER UI SECTION: portalSyncMenu
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div class="portal-sync-menu" id="portalSyncMenu">
     <div class="portal-sync-row"><span><b>Data synchronization</b><small id="portalSyncLast" style="display:block;color:#94a3b8">Waiting for server</small></span><button type="button" onclick="requestSafePortalRefresh()">Refresh Data</button></div>
     <div class="portal-sync-row"><span><b>Communication path</b><small style="display:block;color:#94a3b8">Principal ↔ Faculty ↔ Student</small></span><button type="button" onclick="runPortalCommunicationTest()">Test</button></div>
-    <div id="portalCommunicationResult" class="portal-sync-result">No communication test has been run yet.</div>
+    <!-- DEVELOPER UI SECTION: portalCommunicationResult
+     JavaScript addresses this container by id. Preserve the id or update all references. -->
+<div id="portalCommunicationResult" class="portal-sync-result">No communication test has been run yet.</div>
   </div>
 </div>
 <script>
 let portalQueuedUpdates=0,portalLastSyncAt=null,portalUserEditing=false,portalDiagRequestId='';
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: portalIdentity
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function portalIdentity(){return {role:'Student',id:String(studentId()||'student'),name:String(student?.name||'Student')}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: setPortalSyncState
+   PURPOSE: Sets the requested state/value.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function setPortalSyncState(state,text){
  const el=document.getElementById('portalLiveSync'),btn=document.getElementById('portalSyncStatusBtn');if(!el||!btn)return;
  el.classList.remove('live','pending','offline');el.classList.add(state);btn.textContent=text;
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: markPortalLive
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function markPortalLive(){portalLastSyncAt=new Date();portalQueuedUpdates=0;setPortalSyncState('live','🟢 Live');const l=document.getElementById('portalSyncLast');if(l)l.textContent='Synced '+portalLastSyncAt.toLocaleTimeString()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: notePortalUpdate
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function notePortalUpdate(){
  if(portalUserEditing){portalQueuedUpdates++;setPortalSyncState('pending',`🔄 ${portalQueuedUpdates} update${portalQueuedUpdates===1?'':'s'} available`)}
  else markPortalLive();
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: togglePortalSyncMenu
+   PURPOSE: Toggles the related UI setting/state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function togglePortalSyncMenu(e){e?.stopPropagation?.();document.getElementById('portalLiveSync')?.classList.toggle('open')}
 document.addEventListener('click',e=>{if(!e.target.closest('#portalLiveSync'))document.getElementById('portalLiveSync')?.classList.remove('open')})
 document.addEventListener('focusin',e=>{if(e.target.matches('input,textarea,select,[contenteditable="true"]'))portalUserEditing=true})
 document.addEventListener('focusout',()=>setTimeout(()=>{portalUserEditing=!!document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]')},60))
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: requestSafePortalRefresh
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function requestSafePortalRefresh(){
  if(portalUserEditing&&!confirm('You are currently editing. Refresh the latest server data without reloading the page? Unsaved fields will remain open, but visible data may update.'))return;
  wsSend('PORTAL_SNAPSHOT_REQUEST',portalIdentity());portalQueuedUpdates=0;setPortalSyncState('pending','🔄 Refreshing…');
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: runPortalCommunicationTest
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function runPortalCommunicationTest(){
  portalDiagRequestId='DIAG-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
  const box=document.getElementById('portalCommunicationResult');if(box)box.innerHTML='Testing live communication paths…';
  wsSend('PORTAL_DIAGNOSTIC_START',{...portalIdentity(),requestId:portalDiagRequestId});
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: handlePortalV36Message
+   PURPOSE: Handles the related event or workflow branch.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function handlePortalV36Message(m){
  if(m.type==='PORTAL_SNAPSHOT'&&m.payload){if(Array.isArray(m.payload.portalStudents)){save(K.students,m.payload.portalStudents);serverStudents=m.payload.portalStudents}if(Array.isArray(m.payload.portalStaff))save(K.staff,m.payload.portalStaff);if(m.payload.classTeacherAssignments)save(K.classTeachers,m.payload.classTeacherAssignments);if(Array.isArray(m.payload.timetableFolders))save(K.timetables,m.payload.timetableFolders);if(Array.isArray(m.payload.studentProfileRequests))save(K.requests,m.payload.studentProfileRequests);if(Array.isArray(m.payload.communicationMessages))save(K.communications,m.payload.communicationMessages);if(student)renderAll();markPortalLive();return true}
  if(m.type==='PORTAL_ROUTE_PROBE'&&m.payload?.probeId){
