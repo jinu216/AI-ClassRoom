@@ -826,6 +826,33 @@ wss.on('connection', async (ws) => {
           break;
         }
 
+        case 'FACULTY_REQUEST_CREATE': {
+          const r=data.payload||{};ensureRequestNo(r,'FR');
+          const item=addCommunicationWithReceipt({
+            requestNo:r.requestNo,fromRole:'Faculty',fromId:String(r.teacherId||r.fromId||''),fromName:r.teacherName||r.fromName||String(r.teacherId||'Faculty'),
+            toRole:'Principal',toId:'principal',toName:'Principal',type:r.type||'FACULTY_APPROVAL_REQUEST',
+            title:r.title||'Faculty approval request',body:r.body||r.reason||r.note||'',status:'Pending Principal Approval',
+            details:{...(r.details||{}),request:r},actionRef:r.id||r.requestNo
+          });
+          break;
+        }
+
+        case 'STUDENT_GENERIC_REQUEST_CREATE': {
+          const r=data.payload||{},sid=String(r.studentId||r.rollId||r.fromId||'');const stu=portalStudents.find(x=>studentPortalId(x)===sid);if(!stu)break;
+          ensureRequestNo(r,'SR');const ctId=classTeacherIdForStudent(stu);
+          if(!ctId){
+            addCommunicationWithReceipt({requestNo:r.requestNo,fromRole:'Student',fromId:sid,fromName:stu.name||sid,toRole:'Principal',toId:'principal',toName:'Principal',type:'STUDENT_REQUEST_UNROUTED',title:r.title||'Student request awaiting Class Teacher assignment',body:r.body||r.reason||r.note||'',status:'Pending Class Teacher Assignment',details:{request:r},actionRef:r.id||r.requestNo});
+            break;
+          }
+          addCommunicationWithReceipt({
+            requestNo:r.requestNo,fromRole:'Student',fromId:sid,fromName:stu.name||sid,
+            toRole:'Faculty',toId:ctId,toName:classTeacherNameForStudent(stu),type:r.type||'STUDENT_APPROVAL_REQUEST',
+            title:r.title||'Student approval request',body:r.body||r.reason||r.note||'',status:'Pending Class Teacher Approval',
+            details:{studentId:sid,studentName:stu.name||sid,className:stu.grade||stu.className||'',division:stu.section||stu.division||'',request:r},actionRef:r.id||r.requestNo
+          });
+          break;
+        }
+
         case 'FACULTY_NOTIFICATION_SETTINGS_UPDATE': {
           const r=data.payload||{};if(!r.empId)break;
           facultyNotificationSettings[String(r.empId)]={...r,empId:String(r.empId),updatedAt:r.updatedAt||new Date().toISOString()};
@@ -896,7 +923,7 @@ wss.on('connection', async (ws) => {
           if(!r.toRole||!r.title)break;
           if(r.type==='PORTAL_SHARE'){
             r.status=r.status||'Shared';
-            r.details={...(r.details||{}),shared:true,hasAttachment:!!r.attachment,sharedAt:r.createdAt||new Date().toISOString()};
+            r.details={...(r.details||{}),shared:true,hasAttachment:!!r.attachment,sharedAt:r.createdAt||new Date().toISOString(),replyTo:r.replyTo||null};
           }
           addCommunicationWithReceipt(r);
           break;

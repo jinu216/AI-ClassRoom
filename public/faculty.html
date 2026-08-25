@@ -172,6 +172,20 @@
 .mailbox-nav-badge{margin-left:auto;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#b94855;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:800}
 @media(max-width:760px){.mailbox-pro-shell{grid-template-columns:1fr}.mailbox-pro-folders{display:grid;grid-template-columns:repeat(3,1fr)}.mailbox-pro-row{grid-template-columns:1fr}.mailbox-share-compose{grid-template-columns:1fr}.mailbox-share-compose .full{grid-column:auto}}
 
+
+/* ===== V38 Mailbox Recipient Search + Request Tracking ===== */
+.recipient-search-wrap{position:relative}
+.recipient-suggestions{position:absolute;left:0;right:0;top:100%;z-index:30;max-height:240px;overflow:auto;background:#0d2032;border:1px solid rgba(201,162,75,.28);border-radius:10px;box-shadow:0 18px 42px rgba(0,0,0,.45);display:none}
+.recipient-suggestions.open{display:block}
+.recipient-suggestion{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.055);cursor:pointer}
+.recipient-suggestion:last-child{border-bottom:0}.recipient-suggestion:hover{background:rgba(201,162,75,.07)}
+.recipient-suggestion strong{display:block}.recipient-suggestion small{display:block;color:var(--muted,#9aabba);margin-top:2px}
+.request-search-card{margin:14px 0;padding:14px;border:1px solid rgba(201,162,75,.18);border-radius:14px;background:linear-gradient(145deg,rgba(17,38,58,.96),rgba(7,20,34,.98));box-shadow:0 10px 26px rgba(0,0,0,.2)}
+.request-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.request-result{margin-top:10px;padding:11px;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:rgba(255,255,255,.025);line-height:1.55}
+.request-status-pill{display:inline-flex;padding:3px 8px;border-radius:999px;border:1px solid rgba(201,162,75,.2);font-size:9px;margin-left:5px}
+@media(max-width:600px){.request-search-row{grid-template-columns:1fr}}
+
 </style></head><body>
 <div id="login" class="login"><div class="login-card">
 <div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Pope Pius Academy</div><h1>Teacher Portal</h1><p>Secure teacher access using the mobile number registered by the Principal. Your portal permissions are controlled by the school administration.</p>
@@ -276,7 +290,13 @@
   </div>
 </section>
 <section id="studentApprovals" class="view"><div class="card"><div class="section-head"><h3><i class="fa-solid fa-user-check"></i> My Class Student Approval Center</h3><span class="badge ok">Class Teacher Authority</span></div><p style="color:var(--muted);font-size:12px">Only requests from students assigned to your class/division appear here. Approvals update the official record; rejection requires a reason.</p><div id="studentApprovalList"></div></div></section>
-<section id="mailbox" class="view"><div class="card"><div class="section-head"><h3><i class="fa-solid fa-comments"></i> Communication Center</h3><span class="badge ok">Official Mailbox</span></div><p style="color:var(--muted);font-size:12px;">Official timetable, approvals, requests, notices and school actions are recorded in this Mailbox.</p><div class="mailbox-pro-shell" id="facultyMailboxPro">
+<section id="mailbox" class="view">
+<div class="request-search-card" id="facultyRequestSearchCard">
+  <div><b><i class="fa-solid fa-magnifying-glass"></i> Class Request / Approval Search</b><small style="display:block;color:var(--muted);margin-top:3px">Class Teachers can search requests belonging to their responsible class. Faculty can also check their own requests.</small></div>
+  <div class="request-search-row" style="margin-top:9px"><input id="facultyRequestSearchInput" placeholder="Enter request number"><button class="secondary" onclick="searchFacultyRequestStatus()">Search</button></div>
+  <div id="facultyRequestSearchResult"></div>
+</div>
+<div class="card"><div class="section-head"><h3><i class="fa-solid fa-comments"></i> Communication Center</h3><span class="badge ok">Official Mailbox</span></div><p style="color:var(--muted);font-size:12px;">Official timetable, approvals, requests, notices and school actions are recorded in this Mailbox.</p><div class="mailbox-pro-shell" id="facultyMailboxPro">
   <aside class="mailbox-pro-folders">
     <button id="fMailReceiveBtn" class="mailbox-pro-folder active" onclick="setFacultyMailFolder('receive')"><span class="mf-main"><i class="fa-solid fa-inbox"></i><b>Receive</b></span><span id="fReceiveCount" class="mailbox-count zero">0</span></button>
     <button id="fMailSentBtn" class="mailbox-pro-folder" onclick="setFacultyMailFolder('sent')"><span class="mf-main"><i class="fa-solid fa-paper-plane"></i><b>Sent</b></span><span id="fSentCount" class="mailbox-count zero">0</span></button>
@@ -368,6 +388,20 @@ function renderClassTeacherDashboard(){
  const a=todayStudentAttendanceForClass();metrics.style.display='grid';metrics.innerHTML=`<div class="class-teacher-metric"><span>Total Strength</span><strong>${a.total}</strong></div><div class="class-teacher-metric"><span>Present Today</span><strong>${a.present}</strong></div><div class="class-teacher-metric"><span>Absent Today</span><strong>${a.absent}</strong></div><div class="class-teacher-metric"><span>Attendance Marked</span><strong>${a.marked}/${a.total}</strong></div>`;actions.style.display='flex';
 }
 function showClassTeacherStudents(){const a=classTeacherStudents(),c=currentClassTeacherAssignment();if(!a.length)return alert('No students found for your assigned class/division.');alert(`${c.grade} ${c.division}\n\n`+a.map(x=>`${x.name||x.fullName||x.rollId||'Student'} — ${x.rollId||x.admissionNo||x.studentId||''}`).join('\n'))}
+
+function facultyRequestScopeAllows(m){
+ const own=String(m.fromId||m.teacherId||'')===String(teacher?.empId)||String(m.toId||m.classTeacherId||'')===String(teacher?.empId);
+ if(own)return true;
+ const c=currentClassTeacherAssignment?.();if(!c)return false;
+ const g=normalizeFacultyClass(c.grade),d=normalizeFacultyDiv(c.division),det=m.details||{},req=det.request||{};
+ return normalizeFacultyClass(det.className||req.className||req.grade||'')===g&&normalizeFacultyDiv(det.division||req.division||req.section||'')===d;
+}
+function searchFacultyRequestStatus(){
+ const q=(document.getElementById('facultyRequestSearchInput')?.value||'').trim(),out=document.getElementById('facultyRequestSearchResult');if(!q||!out)return;
+ const all=[...facultyOfficialAll(),...get(STUDENT_REQ_KEY,[])],m=all.find(x=>String(x.requestNo||x.id||'').toLowerCase()===q.toLowerCase()&&facultyRequestScopeAllows(x));
+ out.innerHTML=m?`<div class="request-result"><b>${esc(m.requestNo||m.id)}</b><span class="request-status-pill">${esc(m.status||'Unknown')}</span><br>${esc(m.title||m.type||'Request')}<br><small>${esc(m.studentName||m.fromName||'')} ${m.createdAt?'• '+new Date(m.createdAt).toLocaleString():''}</small></div>`:'<div class="request-result">No permitted request found with that number.</div>';
+}
+
 function renderDashboard(){
  const ls=myLeaves(),todayISOValue=new Date().toISOString().slice(0,10),approved=ls.filter(l=>String(l.status||'').toLowerCase()==='approved'),onLeave=approved.some(l=>todayISOValue>=(l.from||l.startDate||'')&&todayISOValue<=(l.to||l.endDate||''));
  document.getElementById('todayStatus').textContent=onLeave?'On Leave':'Available';
@@ -427,7 +461,7 @@ function facultyIncoming(){return facultyOfficialAll().filter(m=>String(m.toId)=
 function facultyShares(){return facultyOfficialAll().filter(m=>m.type==='PORTAL_SHARE'&&(String(m.toId)===String(teacher?.empId)||String(m.fromId)===String(teacher?.empId)))}
 function facultySent(){const raw=facultyOfficialAll().filter(m=>m.type!=='PORTAL_SHARE'&&(String(m.fromId)===String(teacher?.empId)||(m.type==='SENT_RECEIPT'&&String(m.toId)===String(teacher?.empId))));const map=new Map();raw.forEach(m=>{const k=String(m.requestNo||m.actionRef||m.id),old=map.get(k);if(!old||(old.type==='SENT_RECEIPT'&&m.type!=='SENT_RECEIPT'))map.set(k,m)});return [...map.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
 function setFacultyMailFolder(folder){facultyMailFolder=folder;['Receive','Sent','Share'].forEach(x=>document.getElementById('fMail'+x+'Btn')?.classList.toggle('active',folder===x.toLowerCase()));const t=document.getElementById('facultyMailboxFolderTitle');if(t)t.textContent=folder[0].toUpperCase()+folder.slice(1);renderFacultyOfficialComm()}
-function facultyMailAction(id,action){socketSend('COMMUNICATION_MESSAGE_ACTION',{messageId:id,action,actorRole:'Faculty',actorId:teacher.empId,actorName:teacher.name});if(action==='DELETE'){const m=commGet(COMM_KEY).find(x=>String(x.id)===String(id));if(m){m.deletedFor=[...(m.deletedFor||[]),facultyActorKey()];commUpsert(COMM_KEY,m)}}}
+function facultyMailAction(id,action){if(action==='READ'){const m=commGet(COMM_KEY).find(x=>String(x.id)===String(id));if(m){m.readBy=[...new Set([...(m.readBy||[]),facultyActorKey()])];commUpsert(COMM_KEY,m);updateFacultyMailboxBadge()}}socketSend('COMMUNICATION_MESSAGE_ACTION',{messageId:id,action,actorRole:'Faculty',actorId:teacher.empId,actorName:teacher.name});if(action==='DELETE'){const m=commGet(COMM_KEY).find(x=>String(x.id)===String(id));if(m){m.deletedFor=[...(m.deletedFor||[]),facultyActorKey()];commUpsert(COMM_KEY,m)}}}
 function facultyMailDetails(m){const d=m.details||{};if(m.type==='SENT_RECEIPT')return `<div class="mailbox-pro-message">Receipt for ${esc(d.originalType||'portal action')}<br><br><b>Recipient:</b> ${esc(d.recipientName||d.recipientRole||'—')}<br><b>Original subject:</b> ${esc(d.originalTitle||'—')}<br><b>Original content:</b><br>${esc(d.originalBody||'—')}</div>`;const prev=d.previous||{},prop=d.proposed||{},keys=[...new Set([...Object.keys(prev),...Object.keys(prop)])].filter(k=>JSON.stringify(prev[k]??null)!==JSON.stringify(prop[k]??null));if(keys.length)return `<table class="change-table"><thead><tr><th>Field</th><th>Previous</th><th>Requested</th></tr></thead><tbody>${keys.map(k=>`<tr><td>${esc(k)}</td><td class="change-old">${esc(typeof prev[k]==='object'?JSON.stringify(prev[k]):String(prev[k]??'—'))}</td><td class="change-new">${esc(typeof prop[k]==='object'?JSON.stringify(prop[k]):String(prop[k]??'—'))}</td></tr>`).join('')}</tbody></table>${d.note?`<p><b>Note:</b> ${esc(d.note)}</p>`:''}`;return `<div class="mailbox-pro-message">${esc(m.body||'No additional details.')}</div>`}
 function facultyActionable(m){return facultyMailFolder==='receive'&&/Pending|Action Required/i.test(String(m.status||''))&&(m.type==='STUDENT_APPROVAL_REQUEST'||m.type==='STUDENT_PROFILE_REQUEST'||m.type==='STUDENT_REQUEST_CREATE')}
 function facultyMailRows(){return facultyMailFolder==='sent'?facultySent():facultyMailFolder==='share'?facultyShares():facultyIncoming()}
@@ -436,173 +470,19 @@ function facultySetCount(id,n){const e=document.getElementById(id);if(e){e.textC
 function updateFacultyMailboxBadge(){if(!teacher)return;const c=facultyMailboxCounts();facultySetCount('fReceiveCount',c.receive);facultySetCount('fSentCount',c.sent);facultySetCount('fShareCount',c.share);const nav=[...document.querySelectorAll('nav button,.sidebar button')].find(b=>(b.getAttribute('onclick')||'').includes("'mailbox'"));if(nav){let b=nav.querySelector('.mailbox-nav-badge');if(!b){b=document.createElement('span');b.className='mailbox-nav-badge';nav.appendChild(b)}b.textContent=c.receive+c.share;b.style.display=(c.receive+c.share)?'inline-flex':'none'}}
 function facultyRowHtml(m){const actor=facultyActorKey(),unread=String(m.toId)===String(teacher?.empId)&&!(m.readBy||[]).includes(actor),party=facultyMailFolder==='sent'?(m.toName||m.toRole):(m.fromName||m.fromRole||'School');return `<div class="mailbox-pro-row ${unread?'unread':''}" onclick="openFacultyMailModal('${esc(m.id)}')"><div><strong>${esc(party)}</strong><small>${esc(m.requestNo||m.id||'')}</small></div><div><strong>${esc(m.title||m.type||'Message')} <span class="mailbox-type">${esc((m.type||'MESSAGE').replaceAll('_',' '))}</span></strong><small>${esc(m.status||'')}</small></div><div><strong>${m.createdAt?new Date(m.createdAt).toLocaleDateString():''}</strong><small>${m.createdAt?new Date(m.createdAt).toLocaleTimeString():''}</small></div></div>`}
 function facultyShareRecipients(){let a=[{role:'Principal',id:'principal',name:'Principal'}];staff().filter(x=>String(x.empId)!==String(teacher?.empId)&&x.portalAccess!==false).forEach(x=>a.push({role:'Faculty',id:String(x.empId),name:x.name||x.empId}));facultyEligibleStudents().forEach(x=>{const id=x.rollId||x.admissionNo||x.studentId||'';if(id&&!a.some(y=>String(y.id)===String(id)))a.push({role:'Student',id:String(id),name:x.name||id})});return a}
-function renderFacultyShareComposer(){const el=document.getElementById('facultyShareComposer');if(!el)return;el.style.display=facultyMailFolder==='share'?'block':'none';if(facultyMailFolder!=='share')return;el.innerHTML=`<div class="mailbox-share-compose"><div><label>Recipient</label><select id="facultyShareRecipient"><option value="">Select recipient</option>${facultyShareRecipients().map(x=>`<option value="${x.role}|${esc(x.id)}|${esc(x.name)}">${esc(x.role)} · ${esc(x.name)}</option>`).join('')}</select></div><div><label>Subject</label><input id="facultyShareTitle" placeholder="Document / message subject"></div><div class="full"><label>Message</label><textarea id="facultyShareBody" placeholder="Write a message or description"></textarea></div><div class="full"><label>Document (optional, max 5 MB)</label><input id="facultyShareFile" type="file"></div><div class="full"><button class="primary" onclick="sendFacultyShare()"><i class="fa-solid fa-share-nodes"></i> Share</button></div></div>`}
-async function uploadFacultyShareFile(){const file=document.getElementById('facultyShareFile')?.files?.[0];if(!file)return null;const fd=new FormData();fd.append('file',file);const r=await fetch('/api/communications/upload',{method:'POST',body:fd}),j=await r.json();if(!r.ok)throw new Error(j.error||'Upload failed');return j.attachment}
-async function sendFacultyShare(){const raw=document.getElementById('facultyShareRecipient')?.value||'',title=(document.getElementById('facultyShareTitle')?.value||'').trim(),body=(document.getElementById('facultyShareBody')?.value||'').trim();if(!raw||!title)return alert('Select a recipient and enter a subject.');let attachment=null;try{attachment=await uploadFacultyShareFile()}catch(e){return alert(e.message)}if(!body&&!attachment)return alert('Enter a message or attach a document.');const [toRole,toId,toName]=raw.split('|');socketSend('COMMUNICATION_MESSAGE_CREATE',{fromRole:'Faculty',fromId:teacher.empId,fromName:teacher.name,toRole,toId,toName,type:'PORTAL_SHARE',title,body,attachment,status:'Shared',createdAt:new Date().toISOString()});document.getElementById('facultyShareTitle').value='';document.getElementById('facultyShareBody').value='';document.getElementById('facultyShareFile').value='';setTimeout(renderFacultyOfficialComm,150)}
-function renderFacultyOfficialComm(){const el=document.getElementById('facultyOfficialCommList');if(!el||!teacher)return;renderFacultyShareComposer();const a=facultyMailRows();el.innerHTML=a.length?a.map(facultyRowHtml).join(''):'<div class="empty" style="padding:25px">No records in this folder.</div>';updateFacultyMailboxBadge()}
-function openFacultyMailModal(id){const m=facultyOfficialAll().find(x=>String(x.id)===String(id));if(!m)return;facultyOpenMailId=String(id);if(String(m.toId)===String(teacher.empId))facultyMailAction(m.id,'READ');document.getElementById('facultyMailModalTitle').textContent=m.title||m.type||'Message';document.getElementById('facultyMailModalType').textContent=(m.type||'MESSAGE').replaceAll('_',' ');document.getElementById('facultyMailModalMeta').innerHTML=`From: <b>${esc(m.fromName||m.fromRole||'System')}</b><br>To: <b>${esc(m.toName||m.toRole||'—')}</b><br>Request / Message No: <b>${esc(m.requestNo||m.id||'—')}</b><br>${m.createdAt?new Date(m.createdAt).toLocaleString():''} · Status: ${esc(m.status||'')}`;document.getElementById('facultyMailModalBody').innerHTML=`${facultyMailDetails(m)}${m.attachment?`<div class="mailbox-pro-details"><a href="${esc(m.attachment.url)}" target="_blank">📎 ${esc(m.attachment.name)}</a></div>`:''}`;const act=document.getElementById('facultyMailModalActions');act.innerHTML=`<button class="secondary" onclick="facultySaveOpenMail()">Save</button><button class="secondary" onclick="closeFacultyMailModal()">Close</button>${facultyActionable(m)?`<button class="primary" onclick="facultyApproveOpenMail(true)">Approve</button><button class="secondary" onclick="facultyApproveOpenMail(false)">Reject</button>`:''}`;document.getElementById('facultyMailModal').classList.add('open');document.getElementById('facultyMailModal').setAttribute('aria-hidden','false');setTimeout(renderFacultyOfficialComm,80)}
-function facultyApproveOpenMail(approve){const m=facultyOfficialAll().find(x=>String(x.id)===String(facultyOpenMailId));if(!m)return;const reqId=m.actionRef||m.details?.request?.id||m.details?.requestId;if(!reqId)return alert('This request has no approval reference.');decideStudentPortalRequest(reqId,approve?'Approved':'Rejected');closeFacultyMailModal()}
-function facultySaveOpenMail(){if(facultyOpenMailId)facultyMailAction(facultyOpenMailId,'READ');alert('Saved in mailbox.')}
-function facultyDeleteOpenMail(){if(!facultyOpenMailId)return;if(!confirm('Delete this message from your mailbox?'))return;facultyMailAction(facultyOpenMailId,'DELETE');closeFacultyMailModal();renderFacultyOfficialComm()}
-function closeFacultyMailModal(){facultyOpenMailId=null;document.getElementById('facultyMailModal')?.classList.remove('open');document.getElementById('facultyMailModal')?.setAttribute('aria-hidden','true');renderFacultyOfficialComm()}
-function showFacultyCommPane(){renderFacultyOfficialComm()}
-async function uploadFacultyChatFile(){const file=document.getElementById('facultyChatFile')?.files?.[0];if(!file)return null;const fd=new FormData();fd.append('file',file);const r=await fetch('/api/communications/upload',{method:'POST',body:fd}),j=await r.json();if(!r.ok)throw new Error(j.error||'Upload failed');return j.attachment}
-async function sendFacultyChat(){const raw=document.getElementById('facultyChatRecipient')?.value||'',body=(document.getElementById('facultyChatText')?.value||'').trim();if(!raw)return alert('Select a recipient.');let attachment=null;try{attachment=await uploadFacultyChatFile()}catch(e){return alert(e.message)}if(!body&&!attachment)return alert('Enter a message or attach a document.');const [toRole,toId,toName]=raw.split('|');socketSend('CHAT_MESSAGE_CREATE',{fromRole:'Faculty',fromId:teacher.empId,fromName:teacher.name,toRole,toId,toName,body,attachment,createdAt:new Date().toISOString()});document.getElementById('facultyChatText').value='';document.getElementById('facultyChatFile').value='';setTimeout(renderFacultyChat,120)}
-function renderFacultyChat(){const el=document.getElementById('facultyChatThread'),raw=document.getElementById('facultyChatRecipient')?.value||'';if(!el)return;if(!raw){el.innerHTML='<div class="empty">Select a recipient.</div>';return}const [,id]=raw.split('|');const a=commGet(CHAT_KEY).filter(m=>(String(m.fromId)===String(teacher.empId)&&String(m.toId)===String(id))||(String(m.toId)===String(teacher.empId)&&String(m.fromId)===String(id))).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));el.innerHTML=a.length?a.map(m=>`<div class="notice" style="margin-left:${String(m.fromId)===String(teacher.empId)?'12%':'0'}"><strong>${esc(m.fromName||m.fromRole)}</strong><span>${esc(m.body||'')}${m.attachment?`<br><a href="${esc(m.attachment.url)}" target="_blank">📎 ${esc(m.attachment.name)}</a>`:''}<br><small>${m.createdAt?new Date(m.createdAt).toLocaleString():''}</small></span></div>`).join(''):'<div class="empty">No messages yet.</div>';}
-function attachFacultyCommunicationSocket(){if(!portalSocket||portalSocket._commV18)return;portalSocket._commV18=true;portalSocket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.communicationMessages))localStorage.setItem(COMM_KEY,JSON.stringify(m.payload.communicationMessages));if(Array.isArray(m.payload.chatMessages))localStorage.setItem(CHAT_KEY,JSON.stringify(m.payload.chatMessages));}if(m.type==='ALL_SCHOOL_DATA_RESET'){localStorage.clear();sessionStorage.clear();setTimeout(()=>location.reload(),250);return}if(m.type==='COMMUNICATION_UPDATED'&&m.payload)commUpsert(COMM_KEY,m.payload);if(m.type==='COMMUNICATION_MESSAGE_UPDATED'&&m.payload)commUpsert(COMM_KEY,m.payload);if(m.type==='PRESENCE_UPDATED'&&m.payload){let a=get('pius_portal_presence',[]),i=a.findIndex(x=>x.role===m.payload.role&&String(x.id)===String(m.payload.id));if(i>=0)a[i]=m.payload;else a.push(m.payload);save('pius_portal_presence',a);renderFacultyPresence()}if(m.type==='CHAT_MESSAGE_UPDATED'&&m.payload){commUpsert(CHAT_KEY,m.payload);if(String(m.payload.toId)===String(teacher?.empId)){const b=document.getElementById('facultyFloatChatBadge');if(b){b.textContent='NEW';b.style.display='flex'}}renderFacultyFloatChat()}if(m.type==='CLASS_TIMETABLE_PUBLISHED'&&m.payload){let t=timetables(),i=t.findIndex(x=>x.id===m.payload.id);if(i>=0)t[i]=m.payload;else t.push(m.payload);save(TT,t);const rr=timetableReviewState();if(rr&&Array.isArray(rr.folders)){const j=rr.folders.findIndex(x=>String(x.id)===String(m.payload.id));if(j>=0)rr.folders[j]=m.payload;saveTimetableReviewState(rr)}renderTimetable();if(document.getElementById('facultyFolderModal')?.classList.contains('open')&&document.getElementById('facultyFolderModalTitle')?.textContent==='My Accepted Timetable')renderAcceptedTimetablePopup();toast('Class timetable published to students. Receipt saved in Sent.')}if(teacher){renderFacultyOfficialComm();renderFacultyTimetableReview();}})}
-setInterval(attachFacultyCommunicationSocket,500);
-function renderMailbox(){const el=document.getElementById('approvalMailbox'),badge=document.getElementById('facultyMailboxBadge');if(!teacher)return;const items=facultyMailboxItems(),read=new Set(getFacultyReadIds()),unread=items.filter(r=>!isFacultyMailRead(r,read)).length;if(badge){badge.textContent=unread;badge.style.display=unread?'inline-flex':'none';badge.title=unread+' unread message'+(unread===1?'':'s')}if(!el)return;el.innerHTML=items.length?items.map(r=>{const approved=r.status==='Approved',when=r.decisionAt||r.approvedAt||r.rejectedAt||'',by=r.decisionBy||r.approvedBy||r.rejectedBy||'Principal',messageKey=facultyMailMessageKey(r),isUnread=!isFacultyMailRead(r,read);return '<div class="notice" style="border-color:'+(isUnread?'rgba(201,162,75,.65)':approved?'rgba(52,211,153,.3)':'rgba(251,113,133,.3)')+';background:'+(isUnread?'rgba(201,162,75,.07)':'rgba(255,255,255,.02)')+'"><div style="display:flex;justify-content:space-between;gap:10px"><strong>'+(approved?'Approved':'Rejected')+': '+esc(r.source||'Profile Request')+'</strong><div>'+(isUnread?'<span class="badge warn">NEW</span> ':'')+'<span class="badge '+(approved?'ok':'bad')+'">'+esc(r.status)+'</span></div></div><span>Decision time: '+esc(when?new Date(when).toLocaleString():'—')+'<br>Decision by: '+esc(by)+'</span>'+(approved?'<p style="color:#a7f3d0">Your requested changes were approved and applied.</p>':'<p style="color:#fecdd3"><strong>Reason:</strong> '+esc(r.rejectionReason||'No reason recorded')+'</p>')+(r.note?'<p style="color:var(--muted)"><strong>Your note:</strong> '+esc(r.note)+'</p>':'')+(isUnread?'<button class="btn ghost" onclick="markFacultyMailboxRead(\''+esc(messageKey)+'\')"><i class="fa-solid fa-envelope-open"></i> Mark as read</button>':'<span style="display:block;color:var(--muted);font-size:11px"><i class="fa-solid fa-envelope-open"></i> Read</span>')+'</div>'}).join(''):'<div class="empty"><i class="fa-solid fa-inbox"></i><br>No approval decisions received yet.</div>'}
-const TT_REVIEW_KEY='pius_faculty_timetable_review';
-function timetableReviewState(){return get(TT_REVIEW_KEY,null)}
-function saveTimetableReviewState(v){save(TT_REVIEW_KEY,v)}
-function currentTeacherReview(){
-  const r=timetableReviewState();if(!r||!teacher)return null;
-  const mine=(r.teacherReviews||{})[teacher.empId]||{status:'Pending'};
-  return {...mine,version:r.version};
+
+let facultyShareSelectedRecipient=null;
+function facultyRecipientCatalog(){
+ const a=[{role:'Principal',id:'principal',name:'Principal',context:'School Administration'}];
+ staff().filter(x=>String(x.empId)!==String(teacher?.empId)&&x.portalAccess!==false).forEach(x=>a.push({role:'Faculty',id:String(x.empId),name:x.name||x.empId,context:[x.role,x.mainSubject,x.assignedClass,x.assignedDiv].filter(Boolean).join(' • ')}));
+ facultyEligibleStudents().forEach(x=>{const id=x.rollId||x.admissionNo||x.studentId||'';if(id&&!a.some(y=>String(y.id)===String(id)))a.push({role:'Student',id:String(id),name:x.name||id,context:[x.grade||x.className,x.section||x.division].filter(Boolean).join(' • ')})});
+ return a;
 }
-function renderFacultyTimetableReview(){
-  if(!teacher)return;
-  const panel=document.getElementById('facultyTimetableReviewPanel'),badge=document.getElementById('facultyTimetableReviewBadge');
-  if(!panel||!badge)return;
-  const r=timetableReviewState(),mine=currentTeacherReview();
-  const folderStatus=document.getElementById('timetableReviewFolderStatus');
-  if(!r||!(r.teacherIds||[]).map(String).includes(String(teacher.empId))||mine?.status==='Accepted'){
-    panel.innerHTML='<strong>No timetable currently waiting for review.</strong><span>Your accepted timetable is available inside <b>My Accepted Timetable</b>. You will be notified if the Principal issues a new version.</span>';
-    badge.textContent='NONE';badge.className='badge ok';
-    if(folderStatus)folderStatus.textContent='NONE';
-    const actions=panel.parentElement?.querySelector('.actions');if(actions)actions.style.display='none';
-    return;
-  }
-  const status=mine?.status||'Pending';
-  badge.textContent=status.toUpperCase();badge.className='badge '+(status==='Issue'?'bad':'warn');
-  if(folderStatus)folderStatus.textContent=status.toUpperCase();
-  const actions=panel.parentElement?.querySelector('.actions');if(actions)actions.style.display='flex';
-  if(status==='Issue'){
-    panel.innerHTML=`<strong>Timetable V${esc(String(r.version||''))} — issue submitted.</strong><span>The Principal has been notified. The review remains open until a corrected/new version is issued.<br><b>Your issue:</b> ${esc(mine?.reason||'')}</span>`;
-  }else{
-    panel.innerHTML=`<strong>Timetable V${esc(String(r.version||''))} is waiting for your confirmation.</strong><span>Review your personal timetable below. Accept if it is workable, or raise an issue with the exact day/period/reason.</span>`;
-  }
-}
-function renderMyClassPublishReadiness(r){
-  const folders=(r?.folders||timetables()).filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
-  if(!folders.length)return '';
-  return '<div style="margin-top:12px">'+folders.map(folder=>{
-    const ids=(folder.recipientTeacherEmpIds||[]).map(String),reviews=r?.teacherReviews||{};
-    const acceptedIds=ids.filter(id=>String(reviews[id]?.status||'').toLowerCase()==='accepted');
-    const issueIds=ids.filter(id=>String(reviews[id]?.status||'').toLowerCase()==='issue');
-    const pending=ids.filter(id=>!acceptedIds.includes(id)&&!issueIds.includes(id));
-    const ready=ids.length>0&&acceptedIds.length===ids.length;
-    return `<div class="notice"><strong>${esc(folder.className)} — ${esc(folder.division)}</strong><span>${folder.published?`Published to Student Portal${folder.publishedAt?' • '+new Date(folder.publishedAt).toLocaleString():''}`:`${acceptedIds.length}/${ids.length} teachers confirmed · ${ready?'All concerned teachers accepted. Ready for Class Teacher publication.':issueIds.length?`${issueIds.length} issue(s) pending resolution.`:`Waiting for ${pending.length} teacher confirmation(s).`}`}</span>${!folder.published&&ready?`<button class="primary" style="margin-top:8px" onclick="publishMyClassTimetable('${esc(folder.id)}')"><i class="fa-solid fa-paper-plane"></i> Publish to Students</button>`:''}</div>`
-  }).join('')+'</div>';
-}
-function publishMyClassTimetable(folderId){
-  const r=timetableReviewState();const folder=(r?.folders||timetables()).find(x=>String(x.id)===String(folderId));if(!folder)return alert('Class timetable not found.');
-  const ids=folder.recipientTeacherEmpIds||[],ready=ids.length&&ids.every(id=>r.teacherReviews?.[String(id)]?.status==='Accepted');if(!ready)return alert('All concerned teachers must accept before publication.');
-  if(!confirm(`Publish ${folder.className} — ${folder.division} timetable to the Student Portal?`))return;
-  socketSend('FACULTY_PUBLISH_CLASS',{folderId,teacherId:teacher.empId,teacherName:teacher.name,version:r.version});toast('Publication request sent.');
-}
-function facultyTimetableDecision(status){
-  if(!teacher)return;
-  const r=timetableReviewState();
-  if(!r)return alert('No timetable is waiting for review.');
-  let reason='';
-  if(status==='Issue'){
-    reason=prompt('Describe the exact issue (day, period and reason):','')||'';
-    if(!reason.trim())return alert('Please enter the timetable issue before sending.');
-  }
-  const payload={version:r.version,teacherId:teacher.empId,teacherName:teacher.name,status,reason:reason.trim(),respondedAt:new Date().toISOString()};
-  r.teacherReviews=r.teacherReviews||{};r.teacherReviews[teacher.empId]=payload;saveTimetableReviewState(r);
-  socketSend('FACULTY_TIMETABLE_DECISION',payload);
-  renderFacultyTimetableReview();renderTimetable();
-  if(status==='Accepted'){toast('Timetable accepted. No timetable is currently waiting for review.');setTimeout(()=>closeFacultyFolderModal(),180)}
-  else toast('Timetable issue sent to the Principal.');
-}
-function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4),base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(base64);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
-function facultyEligibleStudents(){
- const all=get(STUDENT_KEY,[]),folders=timetables().filter(folder=>(folder.recipientTeacherEmpIds||[]).map(String).includes(String(teacher?.empId))||String(folder.classTeacherEmpId||'')===String(teacher?.empId));
- return all.filter(stu=>folders.some(folder=>String(folder.className||'').replace(/^Grade\s*/i,'').trim().toLowerCase()===String(stu.grade||stu.className||'').replace(/^Grade\s*/i,'').trim().toLowerCase()&&String(folder.division||'').replace(/^Div\s*/i,'').trim().toLowerCase()===String(stu.section||stu.division||'').replace(/^Div\s*/i,'').trim().toLowerCase()));
-}
-function loadFacultyStudentNoticeRecipients(){
- const el=document.getElementById('facultyStudentNoticeRecipient');if(!el||!teacher)return;
- const a=facultyEligibleStudents();
- const groups={};a.forEach(stu=>{const k=`${stu.grade||stu.className||''}|||${stu.section||stu.division||''}`;(groups[k]||(groups[k]=[])).push(stu)});
- let html='<option value="">Select recipient</option>';
- Object.entries(groups).forEach(([k,arr])=>{const [g,d]=k.split('|||');html+=`<optgroup label="${esc(g)} ${esc(d)}"><option value="CLASS|${encodeURIComponent(k)}">Entire class group (${arr.length})</option>${arr.map(stu=>{const id=stu.rollId||stu.admissionNo||stu.studentId||'';return `<option value="STUDENT|${esc(id)}">${esc(stu.name||id)} · ${esc(id)}</option>`}).join('')}</optgroup>`});
- el.innerHTML=html;
-}
-function sendFacultyStudentNotice(){
- const raw=document.getElementById('facultyStudentNoticeRecipient')?.value||'',title=(document.getElementById('facultyStudentNoticeTitle')?.value||'').trim(),body=(document.getElementById('facultyStudentNoticeBody')?.value||'').trim(),priority=document.getElementById('facultyStudentNoticePriority')?.value||'Standard';
- if(!raw||!title||!body)return alert('Recipient, title and message are required.');
- const a=facultyEligibleStudents();let ids=[];
- if(raw.startsWith('STUDENT|'))ids=[raw.split('|')[1]];
- else if(raw.startsWith('CLASS|')){const [g,d]=decodeURIComponent(raw.split('|')[1]).split('|||');ids=a.filter(stu=>String(stu.grade||stu.className||'')===g&&String(stu.section||stu.division||'')===d).map(stu=>String(stu.rollId||stu.admissionNo||stu.studentId||''))}
- if(!ids.length)return alert('No eligible students found.');
- socketSend('FACULTY_STUDENT_NOTICE',{teacherId:teacher.empId,teacherName:teacher.name,studentIds:ids,title,body,priority,noticeId:'FN-'+Date.now()});
- document.getElementById('facultyStudentNoticeTitle').value='';document.getElementById('facultyStudentNoticeBody').value='';
- toast(`Notice sent to ${ids.length} student${ids.length===1?'':'s'}. A receipt will appear in Sent.`);
-}
-function facultyNotificationSettings(){
- const defaults={mobile:teacher?.portalMobile||teacher?.mobile||'',timetable:true,notices:true,approvals:true,leave:true,duties:true,academic:false};
- let saved={};try{saved=JSON.parse(localStorage.getItem(NOTIFY_PREF_KEY)||'{}')}catch(e){}
- return {...defaults,...saved,empId:teacher?.empId||saved.empId||''};
-}
-function loadFacultyNotificationSettings(){
- if(!teacher)return;const p=facultyNotificationSettings(),set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||''},check=(id,v)=>{const e=document.getElementById(id);if(e)e.checked=!!v};
- set('notifyRegisteredMobile',teacher.portalMobile||teacher.mobile||'');set('notifyAlertMobile',p.mobile||teacher.portalMobile||teacher.mobile||'');
- check('notifyTimetable',p.timetable);check('notifyNotices',p.notices);check('notifyApprovals',p.approvals);check('notifyLeave',p.leave);check('notifyDuties',p.duties);check('notifyAcademic',p.academic);
- updateNotificationPermissionStatus();
-}
-function saveFacultyNotificationSettings(){
- if(!teacher)return;
- const p={empId:teacher.empId,mobile:(document.getElementById('notifyAlertMobile')?.value||teacher.portalMobile||teacher.mobile||'').trim(),timetable:!!document.getElementById('notifyTimetable')?.checked,notices:!!document.getElementById('notifyNotices')?.checked,approvals:!!document.getElementById('notifyApprovals')?.checked,leave:!!document.getElementById('notifyLeave')?.checked,duties:!!document.getElementById('notifyDuties')?.checked,academic:!!document.getElementById('notifyAcademic')?.checked,updatedAt:new Date().toISOString()};
- localStorage.setItem(NOTIFY_PREF_KEY,JSON.stringify(p));socketSend('FACULTY_NOTIFICATION_SETTINGS_UPDATE',p);toast('Notification settings saved.');
- updateNotificationPermissionStatus();
-}
-function updateNotificationPermissionStatus(){
- const el=document.getElementById('notificationSettingsStatus');if(!el)return;
- const supported='Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window,permission=supported?Notification.permission:'unsupported';
- el.innerHTML=`<strong>Browser / Mobile Alerts</strong><span>${permission==='granted'?'Enabled on this browser/device.':permission==='denied'?'Blocked by browser settings.':permission==='default'?'Not enabled yet. Press Enable Browser / Mobile Alerts.':'Not supported by this browser.'}</span>`;
-}
-async function enableWebPush(){
-  if(!('serviceWorker' in navigator)||!('PushManager' in window))return alert('Web Push is not supported in this browser.');
-  if(!teacher)return alert('Please login first.');
-  try{
-    const permission=await Notification.requestPermission();
-    if(permission!=='granted')return alert('Notification permission was not granted.');
-    const reg=await navigator.serviceWorker.register('/sw.js');
-    const cfg=await fetch('/api/push/public-key').then(r=>r.json());
-    if(!cfg.publicKey)throw new Error('VAPID public key is not configured on the server.');
-    let sub=await reg.pushManager.getSubscription();
-    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(cfg.publicKey)});
-    const res=await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empId:teacher.empId,mobile:facultyNotificationSettings().mobile||teacher.portalMobile||teacher.mobile||'',subscription:sub})});
-    if(!res.ok)throw new Error((await res.json()).error||'Subscription failed');
-    toast('Mobile Web Push alerts enabled.');
-  }catch(e){alert('Push notification setup failed: '+e.message)}
-}
-let activeFacultyFolderSource=null,activeFacultyClassFolder=null;
-function openFacultySourceFolder(id,title){
- const source=document.getElementById(id),body=document.getElementById('facultyFolderModalBody');if(!source||!body)return;
- activeFacultyFolderSource={source,parent:source.parentNode,next:source.nextSibling};
- document.getElementById('facultyFolderModalTitle').textContent=title||'Faculty Folder';
- body.innerHTML='';body.appendChild(source);source.classList.remove('faculty-folder-source');
- const modal=document.getElementById('facultyFolderModal');modal.classList.add('open');modal.setAttribute('aria-hidden','false');
-}
-function openAcceptedTimetableFolder(){
- const review=currentTeacherReview();
- if(review&&review.status!=='Accepted')return alert('Please accept the timetable review before opening your active timetable.');
- const source=document.getElementById('acceptedTimetableSource');
- if(!source)return;
- openFacultySourceFolder('acceptedTimetableSource','My Accepted Timetable');
- renderAcceptedTimetablePopup();
-}
-function renderAcceptedTimetablePopup(){
- const body=document.getElementById('facultyFolderModalBody');if(!body)return;
- const mine=myTimetables(),review=currentTeacherReview(),accepted=!review||review.status==='Accepted';
- if(!accepted){body.innerHTML='<div class="empty">Your accepted timetable will appear here after confirmation.</div>';return}
- const fullReview=timetableReviewState(),classTeacherFolders=mine.filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
- const publishReadiness=classTeacherFolders.length?`<div class="notice"><strong>Class Teacher Publication Status</strong><span>These class timetables can be published to students only after all concerned teachers confirm.</span>${renderMyClassPublishReadiness(fullReview)}</div>`:'';
- const cards=mine.map((f,index)=>{const isCT=String(f.classTeacherEmpId||'')===String(teacher.empId),myPeriods=[];(f.settings?.workingDays||[]).forEach(d=>(f.slots||[]).filter(s=>s.type==='period').forEach(slot=>{const c=f.grid?.[d]?.[slot.index];if(c?.teacherEmpId===teacher.empId)myPeriods.push(c)}));return `<button class="accepted-class-card" onclick="showAcceptedClassDetail(${index})"><strong>${esc(f.className)} — ${esc(f.division)}</strong><small>${isCT?'Class Teacher · complete class timetable':`Subject Teacher · ${myPeriods.length} assigned period${myPeriods.length===1?'':'s'}`}<br>Class Teacher: ${esc(f.classTeacher||'—')}</small></button>`}).join('');
- body.innerHTML=`<div class="accepted-timetable-shell"><div class="notice"><strong>Confirmed timetable</strong><span>${mine.length} class/division folder${mine.length===1?'':'s'} assigned to you. Select a class to view the schedule.</span></div>${publishReadiness}<div id="acceptedClassGrid" class="accepted-class-grid">${cards||'<div class="empty">No timetable folders assigned.</div>'}</div><div id="acceptedClassDetail" class="accepted-detail"></div></div>`;
+function facultyRecipientSearch(q=''){const v=String(q).trim().toLowerCase(),box=document.getElementById('facultyRecipientSuggestions');if(!box)return;facultyShareSelectedRecipient=null;if(!v){box.classList.remove('open');box.innerHTML='';return}const m=facultyRecipientCatalog().filter(x=>`${x.name} ${x.id} ${x.role} ${x.context}`.toLowerCase().includes(v)).slice(0,12);box.innerHTML=m.length?m.map((x,i)=>`<div class="recipient-suggestion" onclick="selectFacultyRecipient(${i})"><strong>${esc(x.name)} <span class="mailbox-type">${esc(x.role)}</span></strong><small>${esc(x.id)}${x.context?' • '+esc(x.context):''}</small></div>`).join(''):'<div class="recipient-suggestion"><small>No matching portal user</small></div>';box.dataset.items=JSON.stringify(m);box.classList.add('open')}
+function selectFacultyRecipient(i){const box=document.getElementById('facultyRecipientSuggestions'),items=JSON.parse(box?.dataset.items||'[]'),x=items[i];if(!x)return;facultyShareSelectedRecipient=x;document.getElementById('facultyShareRecipient').value=`${x.name} — ${x.role}${x.context?' • '+x.context:''}`;box.classList.remove('open')}
+function replyFacultyMail(id){const m=facultyOfficialAll().find(x=>String(x.id)===String(id));if(!m)return;setFacultyMailFolder('share');facultyShareSelectedRecipient={role:m.fromRole,id:String(m.fromId),name:m.fromName||m.fromRole,context:''};setTimeout(()=>{const inp=document.getElementById('facultyShareRecipient');if(inp)inp.value=`${facultyShareSelectedRecipient.name} — ${facultyShareSelectedRecipient.role}`;const t=document.getElementById('facultyShareTitle');if(t)t.value='Re: '+String(m.title||'Message').replace(/^Re:\s*/i,'');closeFacultyMailModal()},60)}
+
+function renderFacultyShareComposer(){const el=document.getElementById('facultyShareComposer');if(!el)return;el.style.display=facultyMailFolder==='share'?'block':'none';if(facultyMailFolder!=='share')return;el.innerHTML=`<div class="mailbox-share-compose"><div class="recipient-search-wrap"><label>Recipient</label><input id="facultyShareRecipient" autocomplete="off" placeholder="Type name, ID, Principal, Faculty or Student" oninput="facultyRecipientSearch(this.value)"><div id="facultyRecipientSuggestions" class="recipient-suggestions"></div></div><div><label>Subject</label><input id="facultyShareTitle" placeholder="Document / message subject"></div><div class="full"><label>Message</label><textarea id="facultyShareBody" placeholder="Write a message or description"></textarea></div><div class="full"><label>Document (optional, max 5 MB)</label><input id="facultyShareFile" type="file"></div><div class="full"><button class="primary" onclick="sendFacultyShare()"><i class="fa-solid fa-share-nodes"></i> Share</button></div></div>`;
 }
 function showAcceptedClassDetail(index){
  const mine=myTimetables(),f=mine[index];if(!f)return;
