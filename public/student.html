@@ -133,15 +133,76 @@ button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:poin
 .mailbox-pro-folder.share-folder .mailbox-count{display:none!important}
 .share-compose-only .mailbox-pro-list{display:none!important}
 
+
+/* ==========================================================================
+   STUDENT PORTAL V43 — PROFESSIONAL HEADER / NAVIGATION CLEANUP
+   --------------------------------------------------------------------------
+   PURPOSE:
+   The left sidebar is the single navigation system for the Student Portal.
+   The old horizontal quick-navigation row is intentionally hidden so the
+   content starts immediately below the professional page header.
+
+   FUNCTIONAL IMPACT:
+   None. This is a presentation-only change. All views and openPage() routes
+   remain unchanged.
+   ========================================================================== */
+.workspace-nav{
+  display:none !important;
+}
+
+/* Give the main page header a cleaner application-shell appearance now that
+   the duplicate navigation strip has been removed. */
+.topbar{
+  margin-bottom:18px;
+  padding:15px 0 16px;
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+
+/* Keep the page title hierarchy clean and consistent. */
+.topbar h1{
+  letter-spacing:-.02em;
+}
+.topbar p{
+  margin-top:3px;
+}
+
+/* On smaller screens the header remains compact while the sidebar is opened
+   from the existing mobile menu button. */
+@media(max-width:960px){
+  .workspace-nav{display:none !important;}
+  .topbar{margin-bottom:14px;}
+}
+
 </style>
 </head>
 <body>
 <section id="login" class="login"><div class="login-card"><div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Secure Student Access</div><h1>Student Portal</h1><p class="muted">Use the mobile number registered by the Principal to access your official student record.</p><div class="field"><label>Registered Mobile Number</label><input id="loginMobile" inputmode="tel" placeholder="Enter registered mobile"></div><button class="primary" style="width:100%" onclick="requestOtp()"><i class="fa-solid fa-paper-plane"></i> Generate Login OTP</button><div id="otpArea" class="hidden"><div class="otp" style="margin-top:14px">Prototype OTP: <strong id="otpText"></strong></div><div class="field"><label>Enter OTP</label><input id="otpInput" maxlength="6" inputmode="numeric" placeholder="6-digit OTP"></div><button class="primary" style="width:100%" onclick="loginStudent()"><i class="fa-solid fa-right-to-bracket"></i> Login</button></div><p class="demo-note">The OTP is displayed only for local testing. Production should send it through an authenticated SMS service.</p></div></section>
 <div id="app" class="shell hidden"><div class="portal-backdrop" onclick="togglePortalMenu(false)"></div><aside class="sidebar"><button class="sidebar-close" aria-label="Close menu" onclick="togglePortalMenu(false)"><i class="fa-solid fa-xmark"></i></button><div class="brand"><div class="mark"><i class="fa-solid fa-graduation-cap"></i></div><div><h2>Pope Pius Academy</h2><small>Student Portal</small></div></div><nav>
 <button class="active" onclick="openPage('dashboard',this)"><i class="fa-solid fa-house"></i> Dashboard</button><button onclick="openPage('profile',this)"><i class="fa-solid fa-id-card"></i> My Profile</button><button onclick="openPage('attendance',this)"><i class="fa-solid fa-calendar-check"></i> Attendance</button><button onclick="openPage('timetable',this)"><i class="fa-solid fa-clock"></i> Timetable & Periods</button><button onclick="openPage('teachers',this)"><i class="fa-solid fa-person-chalkboard"></i> My Teachers</button><button onclick="openPage('academics',this)"><i class="fa-solid fa-chart-line"></i> Academics & Results</button><button onclick="openPage('assignments',this)"><i class="fa-solid fa-book-open"></i> Assignments</button><button onclick="openPage('leave',this)"><i class="fa-solid fa-file-circle-check"></i> Leave Requests</button><button onclick="openPage('circulars',this)"><i class="fa-solid fa-bullhorn"></i> Circulars</button><button onclick="openPage('mailbox',this)"><i class="fa-solid fa-inbox"></i> Mailbox <span id="mailBadge" class="badge-count hidden">0</span></button><button onclick="openPage('settings',this)"><i class="fa-solid fa-gear"></i> Settings</button></nav><div class="student-mini"><strong id="sideName">Student</strong><span id="sideCode">—</span><span id="sideClass">—</span><button class="danger" style="width:100%;margin-top:11px" onclick="logout()">Logout</button></div></aside>
-<main class="main"><header class="topbar"><div><button class="mobile-menu" aria-label="Open menu" onclick="togglePortalMenu(true)"><i class="fa-solid fa-bars"></i></button><span><h1 id="pageTitle">Dashboard</h1><p id="pageSub">Your academic day at a glance</p></span></div><div id="serverState" class="server"><span id="serverDot" class="dot"></span><span id="serverText">Connecting</span></div></header><!-- DEVELOPER UI SECTION: workspaceNav
-     JavaScript addresses this container by id. Preserve the id or update all references. -->
-<div id="workspaceNav" class="workspace-nav" aria-label="Student quick navigation"></div>
+<main class="main"><header class="topbar"><div><button class="mobile-menu" aria-label="Open menu" onclick="togglePortalMenu(true)"><i class="fa-solid fa-bars"></i></button><span><h1 id="pageTitle">Dashboard</h1><p id="pageSub">Your academic day at a glance</p></span></div><div id="serverState" class="server"><span id="serverDot" class="dot"></span><span id="serverText">Connecting</span></div></header><!-- =====================================================================
+     STUDENT PORTAL NAVIGATION DESIGN
+     ---------------------------------------------------------------------
+     The previous horizontal quick-navigation strip was intentionally removed
+     from the visible interface.
+
+     REMOVED VISIBLE ITEMS:
+       Today / Timetable / Assignments / Attendance / Results / Mailbox / Profile
+
+     WHY:
+       These shortcuts duplicated the permanent left-side navigation and made
+       the Student Portal header feel crowded.
+
+     IMPORTANT:
+       No Student Portal page or function has been removed.
+       Dashboard, Profile, Attendance, Timetable, Teachers, Academics,
+       Assignments, Leave, Circulars, Communication/Mailbox and Settings remain
+       available through the left sidebar.
+
+     JavaScript compatibility:
+       buildWorkspaceNav() is already disabled in this project and
+       syncWorkspaceNav() safely queries '#workspaceNav button', so removal of
+       this empty visual container does not remove functional navigation.
+     ===================================================================== -->
 <!-- DEVELOPER UI SECTION: dashboard
      JavaScript addresses this container by id. Preserve the id or update all references. -->
 <section id="dashboard" class="view active"><div class="hero"><div><div class="eyebrow">Student Workspace</div><h2 id="welcomeName">Welcome</h2><p id="welcomeLine">Your official profile, attendance, timetable and learning information are available here.</p></div><div id="heroPhoto" class="hero-photo"><i class="fa-solid fa-user-graduate"></i></div></div><div class="kpis"><div class="kpi"><div class="label">Attendance</div><!-- DEVELOPER UI SECTION: dashAttendance
