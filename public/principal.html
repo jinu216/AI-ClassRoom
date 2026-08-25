@@ -10764,9 +10764,9 @@ function cspReviewFolders(){
       slots,
       grid,
       createdAt:new Date().toISOString(),
-      published:true,
+      published:false,
       reviewOnly:false,
-      status:'Active',
+      status:'Faculty Active',
       timetableVersion:state.timetableVersion
     };
   });
@@ -10780,22 +10780,20 @@ async function sendTimetableReviewNotification(){
 
 function approvePrincipalDraftAndSend(){
  if(!state.timetable)return;
- const audit=auditData();if(audit.errors.length)return bot(`<b>Cannot publish timetable.</b><br>${audit.errors.map(esc).join('<br>')}`);
- const folders=cspReviewFolders().map(x=>({...x,published:true,reviewOnly:false,status:'Active',publishedAt:new Date().toISOString(),publishedBy:'Principal'}));
- if(!folders.length)return bot('<b>Cannot publish.</b><br>No timetable folders could be created from the generated timetable.');
+ const audit=auditData();if(audit.errors.length)return bot(`<b>Cannot send timetable.</b><br>${audit.errors.map(esc).join('<br>')}`);
+ const folders=cspReviewFolders().map(x=>({...x,published:false,reviewOnly:false,status:'Faculty Active',publishedAt:null,publishedBy:null}));
+ if(!folders.length)return bot('<b>Cannot send.</b><br>No timetable folders could be created from the generated timetable.');
  state.principalReviewApproved=true;state.reviewDispatched=true;
- state.facultyReviews={};state.facultyReviewIssues={};
+ state.facultyReviews={};state.facultyReviewIssues={};state.classPublish={};
  teachersInTimetable().forEach(tid=>state.facultyReviews[tid]='Active');
- divisions().forEach(d=>state.classPublish[d.id]=true);
  save();
  timetableFoldersStore=folders;
  StorageAdapter.saveTimetableFolders(timetableFoldersStore);
  sendPortalServer('SYNC_TIMETABLE_FOLDERS',folders);
- sendPortalServer('SUBMIT_TIMETABLE_REVIEW',{version:state.timetableVersion,folders,teacherIds:teachersInTimetable(),mode:'LIVE_NO_APPROVAL',sentAt:new Date().toISOString()});
+ sendPortalServer('SUBMIT_TIMETABLE_REVIEW',{version:state.timetableVersion,folders,teacherIds:teachersInTimetable(),mode:'FACULTY_ACTIVE_CLASS_TEACHER_PUBLISH',sentAt:new Date().toISOString()});
  renderAll();
- bot(`<b>Timetable V${state.timetableVersion} is live.</b><br>It has been sent to every concerned teacher and directly published to the Student Portals by class/division. Faculty approval is not required. Teachers can raise a concern if a particular day/period is not workable.`,[],{success:true});
+ bot(`<b>Timetable V${state.timetableVersion} sent to Faculty.</b><br>Every concerned teacher and Class Teacher can now view the timetable. No teacher acceptance is required. Students will not receive it until the assigned Class Teacher publishes the class timetable from the Faculty Portal.`,[],{success:true});
 }
-
 function timetableConcernRecord(tid){
  const v=state.facultyReviewIssues?.[tid];
  if(!v)return null;
@@ -10848,7 +10846,8 @@ function resolveTimetableConcernBySwap(tid){
  state.facultyReviews={};delete state.facultyReviewIssues[tid];
  teachersInTimetable().forEach(id=>state.facultyReviews[id]='Active');
  save();
- const folders=cspReviewFolders().map(x=>({...x,published:true,reviewOnly:false,status:'Active',publishedAt:new Date().toISOString(),publishedBy:'Principal'}));
+ const previous=timetableFoldersStore||[];
+ const folders=cspReviewFolders().map(x=>{const old=previous.find(o=>String(o.academicDivisionId||o.classKey||'')===String(x.academicDivisionId||x.classKey||''));return {...x,published:!!old?.published,reviewOnly:false,status:old?.published?'Student Published':'Faculty Active',publishedAt:old?.publishedAt||null,publishedBy:old?.publishedBy||null}});
  timetableFoldersStore=folders;StorageAdapter.saveTimetableFolders(folders);
  sendPortalServer('SYNC_TIMETABLE_FOLDERS',folders);
  sendPortalServer('PRINCIPAL_TIMETABLE_SWAP',{version:state.timetableVersion,teacherId:tid,teacherName:staffName(tid),divisionId:src.divisionId,from:{day:beforeA.day,period:beforeA.period,subject:beforeA.subject,teacherId:beforeA.teacherId},to:{day:src.day,period:src.period,subject:src.subject,teacherId:src.teacherId},swappedWith:{day:b.day,period:b.period,subject:b.subject,teacherId:b.teacherId},folders,reason:issue.reason||''});
@@ -10857,23 +10856,28 @@ function resolveTimetableConcernBySwap(tid){
 }
 function renderReview(){
  if(!state.timetable){document.getElementById('review').innerHTML='<div class="empty">Generate the timetable first.</div>';return}
- const timetableTeachers=teachersInTimetable(),audit=auditData(),live=!!state.principalReviewApproved;
+ const timetableTeachers=teachersInTimetable(),audit=auditData(),sent=!!state.principalReviewApproved;
  const concerns=timetableTeachers.map(tid=>timetableConcernRecord(tid)).filter(Boolean);
  const trows=timetableTeachers.map(tid=>{
    const t=state.staff.find(x=>x.id===tid),issue=timetableConcernRecord(tid),load=teacherSchedule(tid).length;
-   return `<tr><td><b>${esc(t?.name||staffName(tid))}</b><div class="tiny">${esc(t?.sectionTier||'')}</div></td><td>${load}</td><td>${issue?`<span class="badge badTxt">Concern Raised</span><div class="tiny" style="margin-top:5px">${esc(issue.day||'')} ${issue.period?'P'+esc(issue.period):''} · ${esc(issue.reason||'')}</div>`:`<span class="badge ok">${live?'Active':'Waiting for Principal'}</span>`}</td><td>${issue?`<button class="btn primary" onclick="resolveTimetableConcernBySwap('${esc(tid)}')">Resolve by Period Swap</button>`:'<span class="tiny">No action required</span>'}</td></tr>`;
+   return `<tr><td><b>${esc(t?.name||staffName(tid))}</b><div class="tiny">${esc(t?.sectionTier||'')}</div></td><td>${load}</td><td>${issue?`<span class="badge badTxt">Concern Raised</span><div class="tiny" style="margin-top:5px">${esc(issue.day||'')} ${issue.period?'P'+esc(issue.period):''} · ${esc(issue.reason||'')}</div>`:`<span class="badge ok">${sent?'Timetable Received':'Waiting'}</span>`}</td><td>${issue?`<button class="btn primary" onclick="resolveTimetableConcernBySwap('${esc(tid)}')">Resolve by Period Swap</button>`:'<span class="tiny">No action required</span>'}</td></tr>`;
+ }).join('');
+ const classRows=divisions().map(d=>{
+   const folder=timetableFoldersStore.find(x=>String(x.academicDivisionId||x.classKey||'')===String(d.id));
+   const published=!!folder?.published;
+   return `<tr><td><b>${esc(d.label)}</b></td><td>${esc(staffName(state.classTeachers[d.id]))}</td><td>${published?'<span class="badge ok">Published to Students</span>':'<span class="badge info">Waiting for Class Teacher</span>'}</td></tr>`;
  }).join('');
  document.getElementById('review').innerHTML=`
  <div class="review-stage-grid">
-   <div class="review-stage ${live?'complete':'current'}"><b>1 · Principal Review</b><span class="sub">Audit the generated master timetable.</span><div style="margin-top:7px"><span class="badge ${live?'ok':'warnTxt'}">${live?'Published':'Waiting'}</span></div></div>
-   <div class="review-stage ${live?'complete':''}"><b>2 · Automatic Faculty Distribution</b><span class="sub">Class Teachers and every concerned Subject Teacher receive the live timetable automatically.</span><div style="margin-top:7px"><span class="badge ${live?'ok':'info'}">${live?'Live':'Pending'}</span></div></div>
-   <div class="review-stage ${live?'complete':''}"><b>3 · Automatic Student Publication</b><span class="sub">Students receive the timetable for their Principal-assigned Class + Division. No Faculty approval is required.</span><div style="margin-top:7px"><span class="badge ${live?'ok':'info'}">${live?'Live':'Pending'}</span></div></div>
-   <div class="review-stage ${concerns.length?'current':live?'complete':''}"><b>4 · Concern & Swap Control</b><span class="sub">Faculty can raise a concern for an exact day/period. Principal can resolve it by a conflict-free period swap instead of rebuilding the full timetable.</span><div style="margin-top:7px"><span class="badge ${concerns.length?'badTxt':'ok'}">${concerns.length?concerns.length+' concern(s)':'No open concerns'}</span></div></div>
+   <div class="review-stage ${sent?'complete':'current'}"><b>1 · Principal Review</b><span class="sub">Audit the generated master timetable.</span><div style="margin-top:7px"><span class="badge ${sent?'ok':'warnTxt'}">${sent?'Sent':'Waiting'}</span></div></div>
+   <div class="review-stage ${sent?'complete':''}"><b>2 · Faculty Distribution</b><span class="sub">Concerned teachers and Class Teachers receive the timetable automatically.</span><div style="margin-top:7px"><span class="badge ${sent?'ok':'info'}">${sent?'Active':'Pending'}</span></div></div>
+   <div class="review-stage ${sent?'current':''}"><b>3 · Class Teacher Publication</b><span class="sub">Only the assigned Class Teacher publishes the class timetable to the students of that Class + Division.</span></div>
+   <div class="review-stage ${concerns.length?'current':''}"><b>4 · Concern & Swap Control</b><span class="sub">Faculty can raise a concern for an exact day/period. Principal can resolve it by a safe period swap without rebuilding the full timetable.</span><div style="margin-top:7px"><span class="badge ${concerns.length?'badTxt':'ok'}">${concerns.length?concerns.length+' concern(s)':'No open concerns'}</span></div></div>
  </div>
- <div class="card"><div class="card-head"><div><h2>Principal Timetable Publication</h2><div class="sub">Audit result: ${audit.errors.length} hard issue(s), ${audit.warnings.length} warning(s). Publishing sends the timetable to concerned Faculty and directly to Student Portals.</div></div><button class="btn good" ${live||audit.errors.length?'disabled':''} onclick="approvePrincipalDraftAndSend()">${live?'Timetable Live':'Approve & Publish Timetable'}</button></div>${live?'<div class="status green">No Faculty approval gate. The current timetable is live in Faculty and Student Portals.</div>':'<div class="status amber">Review the generated timetable, then publish once.</div>'}</div>
- <div class="card"><div class="card-head"><div><h2>Faculty Concerns & Period Swap</h2><div class="sub">Teachers do not approve the timetable. They only raise a concern when a specific assigned period is impractical. Use Resolve by Period Swap to exchange two periods within the same class after automatic conflict checking.</div></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Teacher</th><th>Periods</th><th>Status / Concern</th><th>Principal Action</th></tr></thead><tbody>${trows}</tbody></table></div></div>
- <div class="card"><div class="field"><label>Preview class</label><select onchange="document.getElementById('reviewPreview').innerHTML=renderDivisionTimetable(this.value)">${divisions().map(d=>`<option value="${d.id}">${d.label}</option>`).join('')}</select></div><div id="reviewPreview">${renderDivisionTimetable(divisions()[0].id)}</div></div>
- <div class="card"><div class="card-head"><div><h2>Daily Operations</h2><div class="sub">After publication, attendance, availability, substitutions and recovery continue to use the same approved timetable.</div></div><button class="btn outline" onclick="openAttendanceOperations()">Go to Attendance & Leave</button></div></div>`;
+ <div class="card"><div class="card-head"><div><h2>Principal Timetable Distribution</h2><div class="sub">Audit result: ${audit.errors.length} hard issue(s), ${audit.warnings.length} warning(s). The Principal sends the timetable to Faculty only. Student publication is controlled by each Class Teacher.</div></div><button class="btn good" ${sent||audit.errors.length?'disabled':''} onclick="approvePrincipalDraftAndSend()">${sent?'Sent to Faculty':'Approve & Send to Faculty'}</button></div>${sent?'<div class="status green">Faculty has the timetable. Student publication is waiting for Class Teachers.</div>':'<div class="status amber">Review the generated timetable, then send it to Faculty.</div>'}</div>
+ <div class="card"><div class="card-head"><div><h2>Faculty Timetable & Concerns</h2><div class="sub">No approval gate. Teachers see the timetable immediately and can raise a concern if an assigned period needs adjustment.</div></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Teacher</th><th>Periods</th><th>Status / Concern</th><th>Principal Action</th></tr></thead><tbody>${trows}</tbody></table></div></div>
+ <div class="card"><div class="card-head"><div><h2>Class Teacher Student Publication Status</h2><div class="sub">Principal cannot publish these class timetables to students. The assigned Class Teacher publishes from the Faculty Portal.</div></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Class</th><th>Class Teacher</th><th>Student Publication</th></tr></thead><tbody>${classRows}</tbody></table></div></div>
+ <div class="card"><div class="field"><label>Preview class</label><select onchange="document.getElementById('reviewPreview').innerHTML=renderDivisionTimetable(this.value)">${divisions().map(d=>`<option value="${d.id}">${d.label}</option>`).join('')}</select></div><div id="reviewPreview">${renderDivisionTimetable(divisions()[0].id)}</div></div>`;
 }
 function facultyReview(tid,status){
  if(!state.reviewDispatched)return bot('Principal must approve the draft and send it to Faculty Review first.');

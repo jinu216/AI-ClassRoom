@@ -685,15 +685,14 @@ wss.on('connection', async (ws) => {
         case 'SUBMIT_TIMETABLE_REVIEW': {
           const r=data.payload||{};
           if(!Array.isArray(r.folders)||!Array.isArray(r.teacherIds))break;
-          timetableFolders=r.folders.map(f=>({...f,published:true,reviewOnly:false,status:'Active',publishedAt:f.publishedAt||new Date().toISOString(),publishedBy:'Principal'}));
-          timetableReview={version:r.version,folders:timetableFolders,teacherIds:r.teacherIds,teacherReviews:{},mode:'LIVE_NO_APPROVAL',sentAt:r.sentAt||new Date().toISOString()};
+          timetableFolders=r.folders.map(f=>({...f,published:false,reviewOnly:false,status:'Faculty Active'}));
+          timetableReview={version:r.version,folders:timetableFolders,teacherIds:r.teacherIds,teacherReviews:{},mode:'FACULTY_ACTIVE_CLASS_TEACHER_PUBLISH',sentAt:r.sentAt||new Date().toISOString()};
           persistRuntimeState('pius_timetable_folders',timetableFolders);
           persistRuntimeState('pius_timetable_review',timetableReview);
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
-          notifyFaculty(r.teacherIds,'New timetable published',`Timetable V${r.version} is now active. Open your Faculty Portal to view it. Raise a concern only if a specific day/period needs adjustment.`,'timetable').catch(()=>{});
-          (r.teacherIds||[]).forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===String(tid));addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(tid),toName:t?.name||String(tid),type:'TIMETABLE_PUBLISHED',title:`Timetable V${r.version} published`,body:'Your timetable is active. No approval is required. Raise a concern with the exact class/day/period if an adjustment is needed.',status:'Active',actionRef:`TIMETABLE:${r.version}`})});
-          portalStudents.forEach(stu=>{const folder=timetableFolders.find(f=>classEqualsStudent(f,stu));if(folder){const sid=studentPortalId(stu);addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Student',toId:sid,toName:stu.name||sid,type:'TIMETABLE_PUBLISHED',title:'Your class timetable is available',body:`The timetable for ${folder.className} — ${folder.division} has been published and is available in your Student Portal.`,status:'Published',actionRef:`TIMETABLE:${r.version}`})}});
+          notifyFaculty(r.teacherIds,'New timetable received',`Timetable V${r.version} is available in your Faculty Portal. No acceptance is required. Class Teachers can publish their class timetable to students after review.`,'timetable').catch(()=>{});
+          (r.teacherIds||[]).forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===String(tid));addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:String(tid),toName:t?.name||String(tid),type:'TIMETABLE_SENT_TO_FACULTY',title:`Timetable V${r.version} received`,body:'Your timetable is available in Faculty → Timetable & Concerns. No acceptance is required. Raise a concern only if a specific period needs adjustment.',status:'Active',actionRef:`TIMETABLE:${r.version}`})});
           persistRuntimeState('pius_communication_messages',communicationMessages);
           break;
         }
@@ -715,13 +714,13 @@ wss.on('connection', async (ws) => {
         case 'PRINCIPAL_TIMETABLE_SWAP': {
           const r=data.payload||{};
           if(!principalMasterAllowed(ws)||!Array.isArray(r.folders))break;
-          timetableFolders=r.folders.map(f=>({...f,published:true,reviewOnly:false,status:'Active'}));
+          timetableFolders=r.folders.map(f=>({...f,reviewOnly:false,status:f.published?'Student Published':'Faculty Active'}));
           timetableReview={version:r.version,folders:timetableFolders,teacherIds:[...new Set(timetableFolders.flatMap(f=>f.recipientTeacherEmpIds||[]).map(String))],teacherReviews:{},mode:'LIVE_NO_APPROVAL',sentAt:new Date().toISOString()};
           persistRuntimeState('pius_timetable_folders',timetableFolders);persistRuntimeState('pius_timetable_review',timetableReview);
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
           const affected=new Set([r.from?.teacherId,r.swappedWith?.teacherId,r.teacherId].filter(Boolean).map(String));
           affected.forEach(tid=>{const t=portalStaff.find(x=>String(x.empId)===tid);addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Faculty',toId:tid,toName:t?.name||tid,type:'TIMETABLE_SWAP_APPLIED',title:`Timetable V${r.version} updated`,body:`A period swap was applied by the Principal. Please open My Timetable to view the updated schedule.`,status:'Updated',details:r,actionRef:`TIMETABLE:${r.version}`})});
-          portalStudents.forEach(stu=>{const folder=timetableFolders.find(f=>classEqualsStudent(f,stu)&&String(f.academicDivisionId||f.classKey||'')===String(r.divisionId||''));if(folder){const sid=studentPortalId(stu);addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Student',toId:sid,toName:stu.name||sid,type:'TIMETABLE_SWAP_APPLIED',title:'Your class timetable was updated',body:'The Principal adjusted two periods in your class timetable. Open My Timetable to view the latest version.',status:'Updated',details:r,actionRef:`TIMETABLE:${r.version}`})}});
+          portalStudents.forEach(stu=>{const folder=timetableFolders.find(f=>f.published&&classEqualsStudent(f,stu)&&String(f.academicDivisionId||f.classKey||'')===String(r.divisionId||''));if(folder){const sid=studentPortalId(stu);addCommunicationWithReceipt({fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole:'Student',toId:sid,toName:stu.name||sid,type:'TIMETABLE_SWAP_APPLIED',title:'Your class timetable was updated',body:'The Principal adjusted two periods in your class timetable. Open My Timetable to view the latest version.',status:'Updated',details:r,actionRef:`TIMETABLE:${r.version}`})}});
           persistRuntimeState('pius_communication_messages',communicationMessages);
           break;
         }
