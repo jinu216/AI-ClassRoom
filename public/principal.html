@@ -1224,7 +1224,7 @@
   
 .comm-tabs{display:flex;gap:8px;margin-bottom:14px}.comm-message{padding:12px;border:1px solid var(--hairline);border-radius:10px;margin:8px 0;background:var(--panel-soft)}.comm-message.unread{border-color:rgba(201,162,75,.6);background:rgba(201,162,75,.07)}.comm-message small{color:var(--text-muted)}.chat-bubble{max-width:82%;padding:10px 12px;border-radius:12px;margin:7px 0;border:1px solid var(--hairline);background:var(--panel-soft)}.chat-bubble.mine{margin-left:auto;background:rgba(201,162,75,.1)}
 
-/* ===== V20 Official Mailbox / Floating Chat ===== */
+/* ===== V20 Communication Centre / Floating Chat ===== */
 .mail-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.mail-toolbar button.active{border-color:var(--brass,#c9a24b);color:var(--brass,#c9a24b)}
 .mail-row{border:1px solid var(--hairline,var(--line));border-radius:11px;margin:8px 0;background:var(--panel-soft,rgba(255,255,255,.02));overflow:hidden}.mail-row.unread{border-color:rgba(201,162,75,.6);background:rgba(201,162,75,.06)}
 .mail-summary{padding:12px;display:grid;grid-template-columns:minmax(160px,1.1fr) minmax(220px,2fr) auto;gap:10px;align-items:center;cursor:pointer}.mail-summary:hover{background:rgba(201,162,75,.04)}.mail-summary small{display:block;color:var(--text-muted,var(--muted));margin-top:3px}
@@ -1599,6 +1599,14 @@
 .request-result{margin-top:10px;padding:11px;border:1px solid rgba(255,255,255,.06);border-radius:10px;background:rgba(255,255,255,.025);line-height:1.55}
 .request-status-pill{display:inline-flex;padding:3px 8px;border-radius:999px;border:1px solid rgba(201,162,75,.2);font-size:9px;margin-left:5px}
 @media(max-width:600px){.request-search-row{grid-template-columns:1fr}}
+
+
+/* ===== V39 Communication Centre consistency ===== */
+.communication-centre-title{display:flex;align-items:center;gap:9px}
+.mailbox-pro-folder .mailbox-count{margin-left:auto}
+.mailbox-pro-folder.sent-folder .mailbox-count,
+.mailbox-pro-folder.share-folder .mailbox-count{display:none!important}
+.share-compose-only .mailbox-pro-list{display:none!important}
 
 </style>
 
@@ -3398,11 +3406,11 @@
           <div class="mailbox-pro-shell" id="principalMailboxPro">
   <aside class="mailbox-pro-folders">
     <button id="pMailReceiveBtn" class="mailbox-pro-folder active" onclick="setPrincipalMailFolder('receive')"><span class="mf-main"><i class="fa-solid fa-inbox"></i><b>Receive</b></span><span id="pReceiveCount" class="mailbox-count zero">0</span></button>
-    <button id="pMailSentBtn" class="mailbox-pro-folder" onclick="setPrincipalMailFolder('sent')"><span class="mf-main"><i class="fa-solid fa-paper-plane"></i><b>Sent</b></span><span id="pSentCount" class="mailbox-count zero">0</span></button>
-    <button id="pMailShareBtn" class="mailbox-pro-folder" onclick="setPrincipalMailFolder('share')"><span class="mf-main"><i class="fa-solid fa-share-nodes"></i><b>Share</b></span><span id="pShareCount" class="mailbox-count zero">0</span></button>
+    <button id="pMailSentBtn" class="mailbox-pro-folder sent-folder" onclick="setPrincipalMailFolder('sent')"><span class="mf-main"><i class="fa-solid fa-paper-plane"></i><b>Sent</b></span></button>
+    <button id="pMailShareBtn" class="mailbox-pro-folder share-folder" onclick="setPrincipalMailFolder('share')"><span class="mf-main"><i class="fa-solid fa-share-nodes"></i><b>Share</b></span></button>
   </aside>
   <div class="mailbox-pro-main">
-    <div class="mailbox-pro-head"><div><h4 id="principalMailboxFolderTitle" style="margin:0">Receive</h4><small style="color:var(--text-muted)">Official communication records</small></div><button class="btn-secondary" onclick="renderPrincipalOfficialComm()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button></div>
+    <div class="mailbox-pro-head"><div><h4 id="principalMailboxFolderTitle" style="margin:0">Receive</h4><small style="color:var(--text-muted)">Messages, requests and shared communication</small></div><button class="btn-secondary" onclick="renderPrincipalOfficialComm()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button></div>
     <div id="principalShareComposer" style="display:none"></div>
     <div id="principalOfficialCommList" class="mailbox-pro-list"></div>
   </div>
@@ -4135,7 +4143,7 @@ function principalMailboxCounts(){
  return {receive:receive.filter(m=>!(m.readBy||[]).includes(actor)).length,sent:principalSent().length,share:shares.filter(m=>!(m.readBy||[]).includes(actor)).length}
 }
 function setCount(id,n){const e=document.getElementById(id);if(e){e.textContent=n;e.classList.toggle('zero',!n)}}
-function updatePrincipalMailboxBadge(){const c=principalMailboxCounts();setCount('pReceiveCount',c.receive);setCount('pSentCount',c.sent);setCount('pShareCount',c.share);const nav=[...document.querySelectorAll('.nav-item,nav button')].find(b=>(b.getAttribute('onclick')||'').includes('principalMailboxTab'));if(nav){let b=nav.querySelector('.mailbox-nav-badge');if(!b){b=document.createElement('span');b.className='mailbox-nav-badge';nav.appendChild(b)}b.textContent=c.receive+c.share;b.style.display=(c.receive+c.share)?'inline-flex':'none'}}
+function updatePrincipalMailboxBadge(){const c=principalMailboxCounts();setCount('pReceiveCount',c.receive);const nav=[...document.querySelectorAll('.nav-item,nav button')].find(b=>(b.getAttribute('onclick')||'').includes('principalMailboxTab'));if(nav){let b=nav.querySelector('.mailbox-nav-badge');if(!b){b=document.createElement('span');b.className='mailbox-nav-badge';nav.appendChild(b)}b.textContent=c.receive;b.style.display=c.receive?'inline-flex':'none'}}
 function principalRowHtml(m){
  const actor=principalActorKey(),unread=(String(m.toId)==='principal'||m.toRole==='Principal')&&!(m.readBy||[]).includes(actor),party=principalMailFolder==='sent'?(m.toName||m.toRole):(m.fromName||m.fromRole||'System');
  return `<div class="mailbox-pro-row ${unread?'unread':''}" onclick="openPrincipalMailModal('${escapeHtml(m.id)}')"><div><strong>${escapeHtml(party)}</strong><small>${escapeHtml(m.requestNo||m.id||'')}</small></div><div><strong>${escapeHtml(m.title||m.type||'Message')} <span class="mailbox-type">${escapeHtml((m.type||'MESSAGE').replaceAll('_',' '))}</span></strong><small>${escapeHtml(m.status||'')}</small></div><div><strong>${m.createdAt?new Date(m.createdAt).toLocaleDateString():''}</strong><small>${m.createdAt?new Date(m.createdAt).toLocaleTimeString():''}</small></div></div>`;
@@ -4158,7 +4166,7 @@ function renderPrincipalShareComposer(){
 }
 async function uploadPrincipalShareFile(){const file=document.getElementById('principalShareFile')?.files?.[0];if(!file)return null;const fd=new FormData();fd.append('file',file);const r=await fetch('/api/communications/upload',{method:'POST',body:fd}),j=await r.json();if(!r.ok)throw new Error(j.error||'Upload failed');return j.attachment}
 async function sendPrincipalShare(){const raw=document.getElementById('principalShareRecipient')?.value||'',title=(document.getElementById('principalShareTitle')?.value||'').trim(),body=(document.getElementById('principalShareBody')?.value||'').trim();if(!principalShareSelectedRecipient||!title)return alert('Select a recipient from the prediction list and enter a subject.');let attachment=null;try{attachment=await uploadPrincipalShareFile()}catch(e){return alert(e.message)}if(!body&&!attachment)return alert('Enter a message or attach a document.');const {role:toRole,id:toId,name:toName}=principalShareSelectedRecipient;sendPortalServer('COMMUNICATION_MESSAGE_CREATE',{fromRole:'Principal',fromId:'principal',fromName:'Principal',toRole,toId,toName,type:'PORTAL_SHARE',title,body,attachment,status:'Shared',createdAt:new Date().toISOString()});document.getElementById('principalShareTitle').value='';document.getElementById('principalShareBody').value='';document.getElementById('principalShareFile').value='';principalShareSelectedRecipient=null;setTimeout(renderPrincipalOfficialComm,150)}
-function renderPrincipalOfficialComm(){const el=document.getElementById('principalOfficialCommList');if(!el)return;renderPrincipalShareComposer();const a=principalMailRows();el.innerHTML=a.length?a.map(principalRowHtml).join(''):'<div class="leave-empty" style="padding:25px">No records in this folder.</div>';updatePrincipalMailboxBadge()}
+function renderPrincipalOfficialComm(){const el=document.getElementById('principalOfficialCommList');if(!el)return;renderPrincipalShareComposer();if(principalMailFolder==='share'){el.style.display='none';el.innerHTML='';updatePrincipalMailboxBadge();return}el.style.display='block';const a=principalMailRows();el.innerHTML=a.length?a.map(principalRowHtml).join(''):'<div class="leave-empty" style="padding:25px">No records in this folder.</div>';updatePrincipalMailboxBadge()}
 function openPrincipalMailModal(id){const m=principalAllOfficial().find(x=>String(x.id)===String(id));if(!m)return;principalOpenMailId=String(id);if(String(m.toId)==='principal'||m.toRole==='Principal')principalMailAction(m.id,'READ');document.getElementById('principalMailModalTitle').textContent=m.title||m.type||'Message';document.getElementById('principalMailModalType').textContent=(m.type||'MESSAGE').replaceAll('_',' ');document.getElementById('principalMailModalMeta').innerHTML=`From: <b>${escapeHtml(m.fromName||m.fromRole||'System')}</b><br>To: <b>${escapeHtml(m.toName||m.toRole||'—')}</b><br>Request / Message No: <b>${escapeHtml(m.requestNo||m.id||'—')}</b><br>${m.createdAt?new Date(m.createdAt).toLocaleString():''} · Status: ${escapeHtml(m.status||'')}`;document.getElementById('principalMailModalBody').innerHTML=`${principalRequestDetails(m)}${m.attachment?`<div class="mailbox-pro-details"><a href="${escapeHtml(m.attachment.url)}" target="_blank">📎 ${escapeHtml(m.attachment.name)}</a></div>`:''}`;const act=document.getElementById('principalMailModalActions');act.innerHTML=`<button class="btn-secondary" onclick="replyPrincipalMail('${escapeHtml(m.id)}')"><i class="fa-solid fa-reply"></i> Reply</button><button class="btn-secondary" onclick="principalSaveOpenMail()">Save</button><button class="btn-secondary" onclick="closePrincipalMailModal()">Close</button>${principalActionable(m)?`<button class="btn-success" onclick="principalMailApprovalById('${escapeHtml(m.id)}',true)">Approve</button><button class="btn-secondary" onclick="principalMailApprovalById('${escapeHtml(m.id)}',false)">Reject</button>`:''}`;const modal=document.getElementById('principalMailModal');modal.classList.add('open');modal.setAttribute('aria-hidden','false');setTimeout(renderPrincipalOfficialComm,80)}
 function principalMailApprovalById(id,approve){const m=principalAllOfficial().find(x=>String(x.id)===String(id));if(m)principalMailApproval(m,approve)}
 function principalSaveOpenMail(){if(principalOpenMailId)principalMailAction(principalOpenMailId,'READ');alert('Saved in mailbox.')}

@@ -30,7 +30,7 @@
 @media(max-width:700px){.academic-snapshot-grid{grid-template-columns:1fr}.faculty-ai{right:10px;bottom:10px}.faculty-ai-panel{right:0;bottom:78px;width:calc(100vw - 20px)}}
 
 
-/* ===== V20 Official Mailbox / Floating Chat ===== */
+/* ===== V20 Communication Centre / Floating Chat ===== */
 .mail-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.mail-toolbar button.active{border-color:var(--brass,#c9a24b);color:var(--brass,#c9a24b)}
 .mail-row{border:1px solid var(--hairline,var(--line));border-radius:11px;margin:8px 0;background:var(--panel-soft,rgba(255,255,255,.02));overflow:hidden}.mail-row.unread{border-color:rgba(201,162,75,.6);background:rgba(201,162,75,.06)}
 .mail-summary{padding:12px;display:grid;grid-template-columns:minmax(160px,1.1fr) minmax(220px,2fr) auto;gap:10px;align-items:center;cursor:pointer}.mail-summary:hover{background:rgba(201,162,75,.04)}.mail-summary small{display:block;color:var(--text-muted,var(--muted));margin-top:3px}
@@ -186,6 +186,14 @@
 .request-status-pill{display:inline-flex;padding:3px 8px;border-radius:999px;border:1px solid rgba(201,162,75,.2);font-size:9px;margin-left:5px}
 @media(max-width:600px){.request-search-row{grid-template-columns:1fr}}
 
+
+/* ===== V39 Communication Centre consistency ===== */
+.communication-centre-title{display:flex;align-items:center;gap:9px}
+.mailbox-pro-folder .mailbox-count{margin-left:auto}
+.mailbox-pro-folder.sent-folder .mailbox-count,
+.mailbox-pro-folder.share-folder .mailbox-count{display:none!important}
+.share-compose-only .mailbox-pro-list{display:none!important}
+
 </style></head><body>
 <div id="login" class="login"><div class="login-card">
 <div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Pope Pius Academy</div><h1>Teacher Portal</h1><p>Secure teacher access using the mobile number registered by the Principal. Your portal permissions are controlled by the school administration.</p>
@@ -296,11 +304,11 @@
   <div class="request-search-row" style="margin-top:9px"><input id="facultyRequestSearchInput" placeholder="Enter request number"><button class="secondary" onclick="searchFacultyRequestStatus()">Search</button></div>
   <div id="facultyRequestSearchResult"></div>
 </div>
-<div class="card"><div class="section-head"><h3><i class="fa-solid fa-comments"></i> Communication Center</h3><span class="badge ok">Official Mailbox</span></div><p style="color:var(--muted);font-size:12px;">Official timetable, approvals, requests, notices and school actions are recorded in this Mailbox.</p><div class="mailbox-pro-shell" id="facultyMailboxPro">
+<div class="card"><div class="section-head"><h3><i class="fa-solid fa-comments"></i> Communication Center</h3><span class="badge ok">Official Communication Centre</span></div><p style="color:var(--muted);font-size:12px;">Official timetable, approvals, requests, notices and school actions are recorded in this Mailbox.</p><div class="mailbox-pro-shell" id="facultyMailboxPro">
   <aside class="mailbox-pro-folders">
     <button id="fMailReceiveBtn" class="mailbox-pro-folder active" onclick="setFacultyMailFolder('receive')"><span class="mf-main"><i class="fa-solid fa-inbox"></i><b>Receive</b></span><span id="fReceiveCount" class="mailbox-count zero">0</span></button>
-    <button id="fMailSentBtn" class="mailbox-pro-folder" onclick="setFacultyMailFolder('sent')"><span class="mf-main"><i class="fa-solid fa-paper-plane"></i><b>Sent</b></span><span id="fSentCount" class="mailbox-count zero">0</span></button>
-    <button id="fMailShareBtn" class="mailbox-pro-folder" onclick="setFacultyMailFolder('share')"><span class="mf-main"><i class="fa-solid fa-share-nodes"></i><b>Share</b></span><span id="fShareCount" class="mailbox-count zero">0</span></button>
+    <button id="fMailSentBtn" class="mailbox-pro-folder sent-folder" onclick="setFacultyMailFolder('sent')"><span class="mf-main"><i class="fa-solid fa-paper-plane"></i><b>Sent</b></span></button>
+    <button id="fMailShareBtn" class="mailbox-pro-folder share-folder" onclick="setFacultyMailFolder('share')"><span class="mf-main"><i class="fa-solid fa-share-nodes"></i><b>Share</b></span></button>
   </aside>
   <div class="mailbox-pro-main">
     <div class="mailbox-pro-head"><div><h3 id="facultyMailboxFolderTitle" style="margin:0">Receive</h3><small style="color:var(--muted)">Messages, requests, notices and decisions</small></div><button class="secondary" onclick="renderFacultyOfficialComm()"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button></div>
@@ -467,7 +475,7 @@ function facultyActionable(m){return facultyMailFolder==='receive'&&/Pending|Act
 function facultyMailRows(){return facultyMailFolder==='sent'?facultySent():facultyMailFolder==='share'?facultyShares():facultyIncoming()}
 function facultyMailboxCounts(){const actor=facultyActorKey(),receive=facultyIncoming(),shares=facultyShares().filter(m=>String(m.toId)===String(teacher?.empId));return {receive:receive.filter(m=>!(m.readBy||[]).includes(actor)).length,sent:facultySent().length,share:shares.filter(m=>!(m.readBy||[]).includes(actor)).length}}
 function facultySetCount(id,n){const e=document.getElementById(id);if(e){e.textContent=n;e.classList.toggle('zero',!n)}}
-function updateFacultyMailboxBadge(){if(!teacher)return;const c=facultyMailboxCounts();facultySetCount('fReceiveCount',c.receive);facultySetCount('fSentCount',c.sent);facultySetCount('fShareCount',c.share);const nav=[...document.querySelectorAll('nav button,.sidebar button')].find(b=>(b.getAttribute('onclick')||'').includes("'mailbox'"));if(nav){let b=nav.querySelector('.mailbox-nav-badge');if(!b){b=document.createElement('span');b.className='mailbox-nav-badge';nav.appendChild(b)}b.textContent=c.receive+c.share;b.style.display=(c.receive+c.share)?'inline-flex':'none'}}
+function updateFacultyMailboxBadge(){if(!teacher)return;const c=facultyMailboxCounts();facultySetCount('fReceiveCount',c.receive);const nav=[...document.querySelectorAll('nav button,.sidebar button')].find(b=>(b.getAttribute('onclick')||'').includes("'mailbox'"));if(nav){let b=nav.querySelector('.mailbox-nav-badge');if(!b){b=document.createElement('span');b.className='mailbox-nav-badge';nav.appendChild(b)}b.textContent=c.receive;b.style.display=c.receive?'inline-flex':'none'}}
 function facultyRowHtml(m){const actor=facultyActorKey(),unread=String(m.toId)===String(teacher?.empId)&&!(m.readBy||[]).includes(actor),party=facultyMailFolder==='sent'?(m.toName||m.toRole):(m.fromName||m.fromRole||'School');return `<div class="mailbox-pro-row ${unread?'unread':''}" onclick="openFacultyMailModal('${esc(m.id)}')"><div><strong>${esc(party)}</strong><small>${esc(m.requestNo||m.id||'')}</small></div><div><strong>${esc(m.title||m.type||'Message')} <span class="mailbox-type">${esc((m.type||'MESSAGE').replaceAll('_',' '))}</span></strong><small>${esc(m.status||'')}</small></div><div><strong>${m.createdAt?new Date(m.createdAt).toLocaleDateString():''}</strong><small>${m.createdAt?new Date(m.createdAt).toLocaleTimeString():''}</small></div></div>`}
 function facultyShareRecipients(){let a=[{role:'Principal',id:'principal',name:'Principal'}];staff().filter(x=>String(x.empId)!==String(teacher?.empId)&&x.portalAccess!==false).forEach(x=>a.push({role:'Faculty',id:String(x.empId),name:x.name||x.empId}));facultyEligibleStudents().forEach(x=>{const id=x.rollId||x.admissionNo||x.studentId||'';if(id&&!a.some(y=>String(y.id)===String(id)))a.push({role:'Student',id:String(id),name:x.name||id})});return a}
 
@@ -475,7 +483,8 @@ let facultyShareSelectedRecipient=null;
 function facultyRecipientCatalog(){
  const a=[{role:'Principal',id:'principal',name:'Principal',context:'School Administration'}];
  staff().filter(x=>String(x.empId)!==String(teacher?.empId)&&x.portalAccess!==false).forEach(x=>a.push({role:'Faculty',id:String(x.empId),name:x.name||x.empId,context:[x.role,x.mainSubject,x.assignedClass,x.assignedDiv].filter(Boolean).join(' • ')}));
- facultyEligibleStudents().forEach(x=>{const id=x.rollId||x.admissionNo||x.studentId||'';if(id&&!a.some(y=>String(y.id)===String(id)))a.push({role:'Student',id:String(id),name:x.name||id,context:[x.grade||x.className,x.section||x.division].filter(Boolean).join(' • ')})});
+ const eligible=facultyEligibleStudents();
+ eligible.forEach(x=>{const id=x.rollId||x.admissionNo||x.studentId||'';if(id&&!a.some(y=>String(y.id)===String(id)))a.push({role:'Student',id:String(id),name:x.name||id,context:[x.grade||x.className,x.section||x.division].filter(Boolean).join(' • ')})});
  return a;
 }
 function facultyRecipientSearch(q=''){const v=String(q).trim().toLowerCase(),box=document.getElementById('facultyRecipientSuggestions');if(!box)return;facultyShareSelectedRecipient=null;if(!v){box.classList.remove('open');box.innerHTML='';return}const m=facultyRecipientCatalog().filter(x=>`${x.name} ${x.id} ${x.role} ${x.context}`.toLowerCase().includes(v)).slice(0,12);box.innerHTML=m.length?m.map((x,i)=>`<div class="recipient-suggestion" onclick="selectFacultyRecipient(${i})"><strong>${esc(x.name)} <span class="mailbox-type">${esc(x.role)}</span></strong><small>${esc(x.id)}${x.context?' • '+esc(x.context):''}</small></div>`).join(''):'<div class="recipient-suggestion"><small>No matching portal user</small></div>';box.dataset.items=JSON.stringify(m);box.classList.add('open')}
