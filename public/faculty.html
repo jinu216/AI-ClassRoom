@@ -227,6 +227,16 @@
 .student-detail-table{width:100%;border-collapse:collapse}.student-detail-table td,.student-detail-table th{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;text-align:left}
 @media(max-width:700px){.my-class-student-list,.student-profile-grid{grid-template-columns:1fr}.student-performance-grid{grid-template-columns:repeat(2,1fr)}}
 
+
+/* ===== V43 Dedicated My Class Modal ===== */
+#myClassDedicatedModal{position:fixed;inset:0;z-index:13050;background:rgba(2,8,15,.88);backdrop-filter:blur(9px);display:none;align-items:center;justify-content:center;padding:14px}
+#myClassDedicatedModal.open{display:flex}
+.my-class-dedicated-dialog{width:min(1050px,97vw);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;border-radius:20px;background:linear-gradient(160deg,#10243a,#071521);border:1px solid rgba(201,162,75,.34);box-shadow:0 34px 110px rgba(0,0,0,.7)}
+.my-class-dedicated-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:17px 19px;border-bottom:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(201,162,75,.07),transparent)}
+.my-class-dedicated-head h3{margin:3px 0 0;font-family:Fraunces,serif;font-size:21px;color:#f4ead6}
+.my-class-dedicated-body{padding:17px 19px;overflow:auto;flex:1}
+.my-class-dedicated-foot{padding:12px 19px;border-top:1px solid rgba(255,255,255,.07);display:flex;justify-content:flex-end;background:#081522}
+
 </style></head><body>
 <div id="login" class="login"><div class="login-card">
 <div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Pope Pius Academy</div><h1>Teacher Portal</h1><p>Secure teacher access using the mobile number registered by the Principal. Your portal permissions are controlled by the school administration.</p>
@@ -253,7 +263,7 @@
       <div class="class-teacher-status"><div class="label">Today's Status</div><div id="todayStatus" class="value">Available</div><div class="sub">Based on approved leave</div></div>
       <div><div class="label">Class Teacher Responsibility</div><div id="classTeacherAssignmentClean"><div class="class-teacher-grade">—</div><div class="class-teacher-division">No class assigned</div></div>
       <div id="classTeacherMetrics" class="class-teacher-metrics" style="display:none"></div>
-      <div id="classTeacherActions" class="class-teacher-actions" style="display:none"><button class="secondary" onclick="openMyClassWorkspace()"><i class="fa-solid fa-school"></i> My Class</button><button class="secondary" onclick="show('studentApprovals')"><i class="fa-solid fa-user-check"></i> Student Approvals</button></div></div>
+      <div id="classTeacherActions" class="class-teacher-actions" style="display:none"><button type="button" class="secondary" id="myClassDashboardBtn" onclick="window.openMyClassWorkspace()"><i class="fa-solid fa-school"></i> My Class</button><button class="secondary" onclick="show('studentApprovals')"><i class="fa-solid fa-user-check"></i> Student Approvals</button></div></div>
     </div>
   </div>
   <div class="card kpi academic-kpi"><div class="label">Weekly Teaching</div><div id="dashboardWeeklyPeriods" class="value">0</div><div class="sub" id="dashboardWeeklyMeta">0 classes / subjects</div></div>
@@ -350,7 +360,16 @@
   </div>
 </div>
 <div id="facultyMailModal" class="mailbox-pro-modal" aria-hidden="true"><div class="mailbox-pro-dialog"><div class="mailbox-pro-modal-head"><div><small id="facultyMailModalType" class="mailbox-type">MESSAGE</small><h3 id="facultyMailModalTitle">Message</h3><div id="facultyMailModalMeta" class="mailbox-pro-meta"></div></div><button class="secondary" onclick="closeFacultyMailModal()">×</button></div><div id="facultyMailModalBody" class="mailbox-pro-body"></div><div class="mailbox-pro-foot"><button class="secondary" onclick="facultyDeleteOpenMail()"><i class="fa-solid fa-trash"></i> Delete</button><div id="facultyMailModalActions" class="mailbox-pro-actions"></div></div></div></div><h3 style="margin-top:18px">Profile Approval History</h3><div id="approvalMailbox"></div></div></section>
-</main></div><style>.modal-backdrop{position:fixed;inset:0;background:rgba(2,8,15,.82);backdrop-filter:blur(7px);display:grid;place-items:center;z-index:100;padding:20px}.modal-backdrop.hidden{display:none}.modal-card{width:min(860px,100%);max-height:92vh;overflow:auto;background:#0d1b2d;border:1px solid rgba(201,162,75,.3);border-radius:20px;padding:28px;box-shadow:0 30px 100px rgba(0,0,0,.55)}.modal-card h2{font-family:Fraunces,serif;margin:8px 0}.modal-card .notice{padding:12px;border:1px solid var(--line);border-radius:10px;background:#091827}</style><div id="facultyFolderModal" class="faculty-folder-modal" aria-hidden="true"><div class="faculty-folder-dialog"><div class="faculty-folder-head"><div><div class="eyebrow">Faculty Workspace</div><h3 id="facultyFolderModalTitle">Folder</h3></div><button class="secondary" onclick="closeFacultyFolderModal()">×</button></div><div id="facultyFolderModalBody" class="faculty-folder-body"></div><div class="faculty-folder-foot"><button class="secondary" onclick="closeFacultyFolderModal()">Close</button><button class="primary" onclick="saveCloseFacultyFolder()"><i class="fa-solid fa-floppy-disk"></i> Save & Close</button></div></div></div><div id="firstLoginModal" class="modal-backdrop hidden"><div class="modal-card"><div class="crest"><i class="fa-solid fa-id-card"></i></div><div class="eyebrow">First Login • Identity Verification</div><h2>Confirm Your Faculty Profile</h2><p>Please review the information registered by the Principal. Then enroll a clear face photo. Your face image will be stored with your faculty profile for future optional face-based login and will also appear on the Principal Portal.</p><div id="firstLoginProfileSummary" class="notice"></div><div class="profile-layout" style="margin-top:14px"><div><div class="photo-box" id="faceEnrollBox"><span id="faceEnrollEmpty">No face image enrolled</span></div><div class="actions" style="margin-top:10px"><input id="faceEnrollFile" type="file" accept="image/*" class="hidden" onchange="uploadFaceEnrollment(event)"><button class="secondary" onclick="faceEnrollFile.click()"><i class="fa-solid fa-upload"></i> Upload Face</button><button class="secondary" onclick="startFaceEnrollmentCamera()"><i class="fa-solid fa-camera"></i> Camera</button><button id="faceCaptureBtn" class="primary hidden" onclick="captureFaceEnrollment()">Capture</button></div></div><div><div class="field"><label>Confirmation</label><select id="firstLoginConfirm"><option value="">Select</option><option value="confirmed">I confirm the displayed profile information is correct.</option><option value="correction">I found an error and want to request correction.</option></select></div><div class="field"><label>Correction note (if required)</label><textarea id="firstLoginCorrection" rows="3" placeholder="Tell the Principal what needs to be corrected."></textarea></div></div></div><div class="actions" style="justify-content:flex-end;margin-top:16px"><button class="secondary" onclick="logout()">Later / Logout</button><button class="primary" onclick="submitFirstLoginVerification()"><i class="fa-solid fa-paper-plane"></i> Confirm & Send to Principal</button></div></div></div>
+</main></div><style>.modal-backdrop{position:fixed;inset:0;background:rgba(2,8,15,.82);backdrop-filter:blur(7px);display:grid;place-items:center;z-index:100;padding:20px}.modal-backdrop.hidden{display:none}.modal-card{width:min(860px,100%);max-height:92vh;overflow:auto;background:#0d1b2d;border:1px solid rgba(201,162,75,.3);border-radius:20px;padding:28px;box-shadow:0 30px 100px rgba(0,0,0,.55)}.modal-card h2{font-family:Fraunces,serif;margin:8px 0}.modal-card .notice{padding:12px;border:1px solid var(--line);border-radius:10px;background:#091827}</style><div id="facultyFolderModal" class="faculty-folder-modal" aria-hidden="true"><div class="faculty-folder-dialog"><div class="faculty-folder-head"><div><div class="eyebrow">Faculty Workspace</div><h3 id="facultyFolderModalTitle">Folder</h3></div><button class="secondary" onclick="closeFacultyFolderModal()">×</button></div><div id="facultyFolderModalBody" class="faculty-folder-body"></div><div class="faculty-folder-foot"><button class="secondary" onclick="closeFacultyFolderModal()">Close</button><button class="primary" onclick="saveCloseFacultyFolder()"><i class="fa-solid fa-floppy-disk"></i> Save & Close</button></div></div></div><div id="myClassDedicatedModal" aria-hidden="true">
+  <div class="my-class-dedicated-dialog">
+    <div class="my-class-dedicated-head">
+      <div><div class="eyebrow">Class Teacher Workspace</div><h3 id="myClassDedicatedTitle">My Class</h3><small id="myClassDedicatedSubtitle" style="color:var(--muted)"></small></div>
+      <button type="button" class="secondary" onclick="closeMyClassWorkspace()">×</button>
+    </div>
+    <div id="myClassWorkspaceBody" class="my-class-dedicated-body"></div>
+    <div class="my-class-dedicated-foot"><button type="button" class="secondary" onclick="closeMyClassWorkspace()">Close</button></div>
+  </div>
+</div><div id="firstLoginModal" class="modal-backdrop hidden"><div class="modal-card"><div class="crest"><i class="fa-solid fa-id-card"></i></div><div class="eyebrow">First Login • Identity Verification</div><h2>Confirm Your Faculty Profile</h2><p>Please review the information registered by the Principal. Then enroll a clear face photo. Your face image will be stored with your faculty profile for future optional face-based login and will also appear on the Principal Portal.</p><div id="firstLoginProfileSummary" class="notice"></div><div class="profile-layout" style="margin-top:14px"><div><div class="photo-box" id="faceEnrollBox"><span id="faceEnrollEmpty">No face image enrolled</span></div><div class="actions" style="margin-top:10px"><input id="faceEnrollFile" type="file" accept="image/*" class="hidden" onchange="uploadFaceEnrollment(event)"><button class="secondary" onclick="faceEnrollFile.click()"><i class="fa-solid fa-upload"></i> Upload Face</button><button class="secondary" onclick="startFaceEnrollmentCamera()"><i class="fa-solid fa-camera"></i> Camera</button><button id="faceCaptureBtn" class="primary hidden" onclick="captureFaceEnrollment()">Capture</button></div></div><div><div class="field"><label>Confirmation</label><select id="firstLoginConfirm"><option value="">Select</option><option value="confirmed">I confirm the displayed profile information is correct.</option><option value="correction">I found an error and want to request correction.</option></select></div><div class="field"><label>Correction note (if required)</label><textarea id="firstLoginCorrection" rows="3" placeholder="Tell the Principal what needs to be corrected."></textarea></div></div></div><div class="actions" style="justify-content:flex-end;margin-top:16px"><button class="secondary" onclick="logout()">Later / Logout</button><button class="primary" onclick="submitFirstLoginVerification()"><i class="fa-solid fa-paper-plane"></i> Confirm & Send to Principal</button></div></div></div>
 <div id="principalChangeModal" class="modal-backdrop hidden"><div class="modal-card"><div class="crest"><i class="fa-solid fa-clipboard-check"></i></div><div class="eyebrow">Principal Update • Cross Verification</div><h2>Review Proposed Profile Changes</h2><p>The Principal has proposed changes to your faculty record. Your live profile will not change until you confirm them.</p><div id="principalChangeSummary" class="notice"></div><div class="field"><label>Correction note (required only if you do not confirm)</label><textarea id="principalChangeNote" rows="3" placeholder="Explain what should be corrected."></textarea></div><div class="actions" style="justify-content:flex-end"><button class="danger" onclick="respondToPrincipalChange(false)"><i class="fa-solid fa-rotate-left"></i> Request Correction</button><button class="primary" onclick="respondToPrincipalChange(true)"><i class="fa-solid fa-check"></i> Confirm & Apply</button></div></div></div>
 <div id="facultyKnowledgeBot" class="faculty-ai collapsed">
   <button class="faculty-ai-orb" onclick="toggleFacultyBot()" aria-label="Open Faculty Knowledge Assistant"><span class="faculty-ai-face"><i class="faculty-ai-eye l"></i><i class="faculty-ai-eye r"></i></span><span id="facultyBotBadge" class="faculty-ai-badge">0</span></button>
@@ -407,7 +426,6 @@ function facultyAcademicActionCount(){
 function normalizeFacultyClass(v){return String(v||'').replace(/^grade\s*/i,'').replace(/^class\s*/i,'').trim()}
 function normalizeFacultyDiv(v){return String(v||'').replace(/^div(ision)?\s*/i,'').trim()}
 const CLASS_CAMERA_KEY='pius_camera_configurations';
-let myClassPopupOpen=false;
 function myClassCameraConfigurations(){
  const c=currentClassTeacherAssignment();if(!c)return [];
  const nc=v=>String(v||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
@@ -433,28 +451,26 @@ function renderMyClassWorkspace(){
  setTimeout(showMyClassStudentsDetail,0);
 }
 function openMyClassWorkspace(){
- if(!currentClassTeacherAssignment())return alert('You are not currently assigned as a Class Teacher.');
- const modal=document.getElementById('facultyFolderModal'),
-       body=document.getElementById('facultyFolderModalBody'),
-       title=document.getElementById('facultyFolderModalTitle');
- if(!modal||!body||!title)return alert('My Class popup is not available.');
- /* My Class is generated directly inside the Faculty popup. It does not move
-    an existing page card, so it cannot disappear or fail because of folder DOM state. */
- if(activeFacultyFolderSource){
-   try{
-     const {source,parent,next}=activeFacultyFolderSource;
-     source.classList.add('faculty-folder-source');
-     if(next&&next.parentNode===parent)parent.insertBefore(source,next);else parent.appendChild(source);
-   }catch(e){}
-   activeFacultyFolderSource=null;
- }
- activeFacultyClassFolder=null;
- title.textContent='My Class';
- myClassPopupOpen=true;
- body.innerHTML='<div id="myClassWorkspaceBody"></div>';
+ const c=currentClassTeacherAssignment();
+ if(!c)return alert('You are not currently assigned as a Class Teacher.');
+ const modal=document.getElementById('myClassDedicatedModal'),
+       title=document.getElementById('myClassDedicatedTitle'),
+       subtitle=document.getElementById('myClassDedicatedSubtitle'),
+       body=document.getElementById('myClassWorkspaceBody');
+ if(!modal||!body)return alert('My Class window could not be opened.');
+ const grade=`Grade ${normalizeFacultyClass(c.grade)}`,div=`Div ${normalizeFacultyDiv(c.division)}`;
+ if(title)title.textContent='My Class';
+ if(subtitle)subtitle.textContent=`${grade} • ${div} • ${classTeacherStudents().length} students`;
  modal.classList.add('open');
  modal.setAttribute('aria-hidden','false');
+ document.body.style.overflow='hidden';
  renderMyClassWorkspace();
+}
+function closeMyClassWorkspace(){
+ const modal=document.getElementById('myClassDedicatedModal');
+ modal?.classList.remove('open');
+ modal?.setAttribute('aria-hidden','true');
+ document.body.style.overflow='';
 }
 function studentPortalIdValue(x){return String(x?.rollId||x?.admissionNo||x?.studentId||'')}
 function studentAttendancePerformance(stu){
@@ -652,10 +668,9 @@ function openFacultyClassFolder(index){openAcceptedTimetableFolder();setTimeout(
 function closeFacultyFolderModal(){
  const modal=document.getElementById('facultyFolderModal'),body=document.getElementById('facultyFolderModalBody');
  if(activeFacultyFolderSource){const {source,parent,next}=activeFacultyFolderSource;source.classList.add('faculty-folder-source');if(next&&next.parentNode===parent)parent.insertBefore(source,next);else parent.appendChild(source);activeFacultyFolderSource=null}
- activeFacultyClassFolder=null;myClassPopupOpen=false;if(body)body.innerHTML='';modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');
+ activeFacultyClassFolder=null;if(body)body.innerHTML='';modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');
 }
 function saveCloseFacultyFolder(){
- if(myClassPopupOpen)return closeFacultyFolderModal();
  if(activeFacultyClassFolder){markTimetableSeen();return closeFacultyFolderModal()}
  if(activeFacultyFolderSource?.source?.id==='timetableReviewSource'){/* Accept / issue buttons save their own state. */}
  closeFacultyFolderModal();
@@ -899,5 +914,13 @@ setInterval(()=>{
 <script>
 window.addEventListener('storage',e=>{if(e.key===CLASS_CAMERA_KEY&&teacher){try{renderMyClassWorkspace()}catch(x){}}});
 window.addEventListener('pius-cloud-message',e=>{if(e.detail?.payload?.key===CLASS_CAMERA_KEY&&teacher){setTimeout(()=>{try{renderMyClassWorkspace()}catch(x){}},50)}});
+</script>
+<script>
+window.openMyClassWorkspace=openMyClassWorkspace;
+window.closeMyClassWorkspace=closeMyClassWorkspace;
+window.showMyClassStudentsDetail=showMyClassStudentsDetail;
+window.showMyClassStudentProfile=showMyClassStudentProfile;
+window.showMyClassAttendanceDetail=showMyClassAttendanceDetail;
+window.showMyClassCameraDetail=showMyClassCameraDetail;
 </script>
 </body></html>
