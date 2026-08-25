@@ -45,6 +45,27 @@ button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:poin
 
 
 .floating-chat{display:none!important}
+
+/* ===== V36 Safe Sync / Communication Health ===== */
+.portal-live-sync{
+ position:fixed;right:18px;top:14px;z-index:9990;display:flex;align-items:center;gap:7px;
+ background:rgba(8,22,36,.95);border:1px solid rgba(201,162,75,.24);border-radius:12px;
+ padding:7px 9px;box-shadow:0 10px 28px rgba(0,0,0,.28);backdrop-filter:blur(8px);
+ font-size:10px;color:#d9e3ec
+}
+.portal-live-sync button{min-height:auto!important;padding:6px 8px!important;font-size:9px!important}
+.portal-sync-dot{width:8px;height:8px;border-radius:50%;background:#64748b;box-shadow:0 0 0 3px rgba(100,116,139,.12)}
+.portal-live-sync.live .portal-sync-dot{background:#34d399;box-shadow:0 0 8px rgba(52,211,153,.65)}
+.portal-live-sync.pending .portal-sync-dot{background:#fbbf24;box-shadow:0 0 8px rgba(251,191,36,.6)}
+.portal-live-sync.offline .portal-sync-dot{background:#f87171}
+.portal-sync-menu{position:absolute;right:0;top:42px;width:300px;background:#0c1c2d;border:1px solid rgba(201,162,75,.28);border-radius:13px;box-shadow:0 20px 55px rgba(0,0,0,.48);padding:12px;display:none}
+.portal-live-sync.open .portal-sync-menu{display:block}
+.portal-sync-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.portal-sync-row:last-child{border-bottom:0}
+.portal-sync-result{margin-top:9px;padding:9px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(255,255,255,.025);line-height:1.55}
+.portal-route-ok{color:#6ee7b7}.portal-route-bad{color:#fca5a5}.portal-route-warn{color:#fde68a}
+@media(max-width:700px){.portal-live-sync{right:8px;top:8px}.portal-sync-menu{width:min(300px,calc(100vw - 16px))}}
+
 </style>
 </head>
 <body>
@@ -73,7 +94,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const norm=v=>String(v||'').replace(/[^0-9+]/g,'').replace(/^00/,'+');
 const isoDate=()=>new Date().toISOString().slice(0,10),studentId=()=>student?.rollId||student?.admissionNo||student?.studentId||'';
 function wsSend(type,payload,extra={}){if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,payload,...extra}))}
-function connect(){try{socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);socket.onopen=()=>{setServer(true);wsSend('SYNC_STUDENT_PORTAL_DATA',{studentRequests:get(K.requests,[]),studentLeaves:get(K.leaves,[])})};socket.onclose=()=>{setServer(false);setTimeout(connect,2200)};socket.onerror=()=>setServer(false);socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.portalStudents))save(K.students,m.payload.portalStudents);if(Array.isArray(m.payload.portalStaff))save(K.staff,m.payload.portalStaff);if(m.payload.classTeacherAssignments)save(K.classTeachers,m.payload.classTeacherAssignments);if(Array.isArray(m.payload.studentProfileRequests))save(K.requests,m.payload.studentProfileRequests);if(Array.isArray(m.payload.portalStudents)&&m.payload.portalStudents.length){serverStudents=m.payload.portalStudents;save(K.students,serverStudents)}if(Array.isArray(m.payload.portalStaff)&&m.payload.portalStaff.length)save(K.staff,m.payload.portalStaff);if(Array.isArray(m.payload.notices)&&m.payload.notices.length)save(K.notices,m.payload.notices);if(Array.isArray(m.payload.timetableFolders))save(K.timetables,m.payload.timetableFolders);mergePayload(m.payload)}if(m.type==='TIMETABLE_FOLDERS_UPDATED'&&Array.isArray(m.payload)){save(K.timetables,m.payload);if(student){renderTimetable();toast('Your class timetable has been published or updated.')}}if(m.type==='CLASS_TEACHER_ASSIGNMENTS_UPDATED'&&m.payload){save(K.classTeachers,m.payload);if(student)renderAll();}if(m.type==='STUDENT_PROFILE_REQUEST_CREATED'&&m.payload){upsert(K.requests,m.payload);if(student&&String(m.payload.studentId||m.payload.rollId)===String(studentId())){renderAll();toast('Your request was sent to your Class Teacher.')}}if(m.type==='STUDENT_PROFILE_REQUEST_UPDATED'&&m.payload){upsert(K.requests,m.payload);if(student&&String(m.payload.studentId||m.payload.rollId)===String(studentId())){renderAll();toast('Your student request has been updated.')}}if(m.type==='PORTAL_STUDENTS_UPDATED'){serverStudents=m.payload||[];if(serverStudents.length)save(K.students,serverStudents);refreshCurrent()}if(m.type==='STUDENT_LOGIN_RESULT'&&m.requestId===loginRequest)finishLookup(m.payload);if(m.type==='STUDENT_PROFILE_REQUEST_UPDATED')upsertAndNotify(K.requests,m.payload,'Profile request updated');if(m.type==='STUDENT_LEAVE_UPDATED')upsertAndNotify(K.leaves,m.payload,'Leave request updated');if(m.type==='STUDENT_MAIL_RECEIVED'){upsert(K.mail,m.payload);refreshCurrent()}}}catch(e){setServer(false);setTimeout(connect,2200)}}
+function connect(){try{socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);socket.onopen=()=>{setServer(true);markPortalLive();wsSend('PORTAL_IDENTIFY',portalIdentity());wsSend('SYNC_STUDENT_PORTAL_DATA',{studentRequests:get(K.requests,[]),studentLeaves:get(K.leaves,[])})};socket.onclose=()=>{setServer(false);setTimeout(connect,2200)};socket.onerror=()=>setServer(false);socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(handlePortalV36Message(m))return;if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.portalStudents))save(K.students,m.payload.portalStudents);if(Array.isArray(m.payload.portalStaff))save(K.staff,m.payload.portalStaff);if(m.payload.classTeacherAssignments)save(K.classTeachers,m.payload.classTeacherAssignments);if(Array.isArray(m.payload.studentProfileRequests))save(K.requests,m.payload.studentProfileRequests);if(Array.isArray(m.payload.portalStudents)&&m.payload.portalStudents.length){serverStudents=m.payload.portalStudents;save(K.students,serverStudents)}if(Array.isArray(m.payload.portalStaff)&&m.payload.portalStaff.length)save(K.staff,m.payload.portalStaff);if(Array.isArray(m.payload.notices)&&m.payload.notices.length)save(K.notices,m.payload.notices);if(Array.isArray(m.payload.timetableFolders))save(K.timetables,m.payload.timetableFolders);mergePayload(m.payload)}if(m.type==='TIMETABLE_FOLDERS_UPDATED'&&Array.isArray(m.payload)){save(K.timetables,m.payload);if(student){renderTimetable();toast('Your class timetable has been published or updated.')}}if(m.type==='CLASS_TEACHER_ASSIGNMENTS_UPDATED'&&m.payload){save(K.classTeachers,m.payload);if(student)renderAll();}if(m.type==='STUDENT_PROFILE_REQUEST_CREATED'&&m.payload){upsert(K.requests,m.payload);if(student&&String(m.payload.studentId||m.payload.rollId)===String(studentId())){renderAll();toast('Your request was sent to your Class Teacher.')}}if(m.type==='STUDENT_PROFILE_REQUEST_UPDATED'&&m.payload){upsert(K.requests,m.payload);if(student&&String(m.payload.studentId||m.payload.rollId)===String(studentId())){renderAll();toast('Your student request has been updated.')}}if(m.type==='PORTAL_STUDENTS_UPDATED'){serverStudents=m.payload||[];if(serverStudents.length)save(K.students,serverStudents);refreshCurrent()}if(m.type==='STUDENT_LOGIN_RESULT'&&m.requestId===loginRequest)finishLookup(m.payload);if(m.type==='STUDENT_PROFILE_REQUEST_UPDATED')upsertAndNotify(K.requests,m.payload,'Profile request updated');if(m.type==='STUDENT_LEAVE_UPDATED')upsertAndNotify(K.leaves,m.payload,'Leave request updated');if(m.type==='STUDENT_MAIL_RECEIVED'){upsert(K.mail,m.payload);refreshCurrent()}}}catch(e){setServer(false);setTimeout(connect,2200)}}
 function studentCommUpsert(k,item){let a=get(k,[]),i=a.findIndex(x=>x.id===item.id);if(i>=0)a[i]={...a[i],...item};else a.push(item);save(k,a)}
 function attachStudentCommunicationSocket(){if(!socket||socket._commV18)return;socket._commV18=true;socket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(m.type==='INIT_DATA'&&m.payload){if(Array.isArray(m.payload.communicationMessages))save(K.communications,m.payload.communicationMessages);if(Array.isArray(m.payload.chatMessages))save(K.chat,m.payload.chatMessages)}if(m.type==='ALL_SCHOOL_DATA_RESET'){localStorage.clear();sessionStorage.clear();setTimeout(()=>location.reload(),250);return}if(m.type==='COMMUNICATION_UPDATED'&&m.payload)studentCommUpsert(K.communications,m.payload);if(m.type==='COMMUNICATION_MESSAGE_UPDATED'&&m.payload)studentCommUpsert(K.communications,m.payload);if(m.type==='PRESENCE_UPDATED'&&m.payload){let a=get('pius_portal_presence',[]),i=a.findIndex(x=>x.role===m.payload.role&&String(x.id)===String(m.payload.id));if(i>=0)a[i]=m.payload;else a.push(m.payload);save('pius_portal_presence',a);renderStudentPresence()}if(m.type==='CHAT_MESSAGE_UPDATED'&&m.payload){studentCommUpsert(K.chat,m.payload);if(String(m.payload.toId)===String(studentId())){const b=$('studentFloatChatBadge');if(b){b.textContent='NEW';b.style.display='flex'}}renderStudentFloatChat()}if(m.type==='PORTAL_STUDENTS_UPDATED'&&Array.isArray(m.payload)){save(K.students,m.payload);if(student){const fresh=m.payload.find(x=>String(x.rollId||x.admissionNo||x.studentId)===String(studentId()));if(fresh){student=fresh;renderAll();toast('Your student profile was updated.')}}}if(m.type==='CLASS_TIMETABLE_PUBLISHED'&&m.payload){let a=get(K.timetables,[]),i=a.findIndex(x=>x.id===m.payload.id);if(i>=0)a[i]=m.payload;else a.push(m.payload);save(K.timetables,a);if(student&&classMatch(m.payload)){renderTimetable();toast('Your confirmed class timetable is now published.')}}if(student){renderStudentOfficialComm();renderStudentChat();}})}
 setInterval(attachStudentCommunicationSocket,500);
@@ -150,5 +171,63 @@ window.resetPortalLocalData=function(){
   if(!confirm('Clear this Student Portal browser cache? Shared school records on the server will not be deleted.'))return;
   localStorage.clear();sessionStorage.clear();location.reload();
 };
+</script>
+<div id="portalLiveSync" class="portal-live-sync offline">
+  <span class="portal-sync-dot"></span>
+  <button type="button" id="portalSyncStatusBtn" onclick="togglePortalSyncMenu(event)" style="background:none;border:0;color:inherit;cursor:pointer">Offline</button>
+  <div class="portal-sync-menu" id="portalSyncMenu">
+    <div class="portal-sync-row"><span><b>Data synchronization</b><small id="portalSyncLast" style="display:block;color:#94a3b8">Waiting for server</small></span><button type="button" onclick="requestSafePortalRefresh()">Refresh Data</button></div>
+    <div class="portal-sync-row"><span><b>Communication path</b><small style="display:block;color:#94a3b8">Principal ↔ Faculty ↔ Student</small></span><button type="button" onclick="runPortalCommunicationTest()">Test</button></div>
+    <div id="portalCommunicationResult" class="portal-sync-result">No communication test has been run yet.</div>
+  </div>
+</div>
+<script>
+let portalQueuedUpdates=0,portalLastSyncAt=null,portalUserEditing=false,portalDiagRequestId='';
+function portalIdentity(){return {role:'Student',id:String(studentId()||'student'),name:String(student?.name||'Student')}}
+function setPortalSyncState(state,text){
+ const el=document.getElementById('portalLiveSync'),btn=document.getElementById('portalSyncStatusBtn');if(!el||!btn)return;
+ el.classList.remove('live','pending','offline');el.classList.add(state);btn.textContent=text;
+}
+function markPortalLive(){portalLastSyncAt=new Date();portalQueuedUpdates=0;setPortalSyncState('live','🟢 Live');const l=document.getElementById('portalSyncLast');if(l)l.textContent='Synced '+portalLastSyncAt.toLocaleTimeString()}
+function notePortalUpdate(){
+ if(portalUserEditing){portalQueuedUpdates++;setPortalSyncState('pending',`🔄 ${portalQueuedUpdates} update${portalQueuedUpdates===1?'':'s'} available`)}
+ else markPortalLive();
+}
+function togglePortalSyncMenu(e){e?.stopPropagation?.();document.getElementById('portalLiveSync')?.classList.toggle('open')}
+document.addEventListener('click',e=>{if(!e.target.closest('#portalLiveSync'))document.getElementById('portalLiveSync')?.classList.remove('open')})
+document.addEventListener('focusin',e=>{if(e.target.matches('input,textarea,select,[contenteditable="true"]'))portalUserEditing=true})
+document.addEventListener('focusout',()=>setTimeout(()=>{portalUserEditing=!!document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]')},60))
+function requestSafePortalRefresh(){
+ if(portalUserEditing&&!confirm('You are currently editing. Refresh the latest server data without reloading the page? Unsaved fields will remain open, but visible data may update.'))return;
+ wsSend('PORTAL_SNAPSHOT_REQUEST',portalIdentity());portalQueuedUpdates=0;setPortalSyncState('pending','🔄 Refreshing…');
+}
+function runPortalCommunicationTest(){
+ portalDiagRequestId='DIAG-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+ const box=document.getElementById('portalCommunicationResult');if(box)box.innerHTML='Testing live communication paths…';
+ wsSend('PORTAL_DIAGNOSTIC_START',{...portalIdentity(),requestId:portalDiagRequestId});
+}
+function handlePortalV36Message(m){
+ if(m.type==='PORTAL_SNAPSHOT'&&m.payload){if(Array.isArray(m.payload.portalStudents)){save(K.students,m.payload.portalStudents);serverStudents=m.payload.portalStudents}if(Array.isArray(m.payload.portalStaff))save(K.staff,m.payload.portalStaff);if(m.payload.classTeacherAssignments)save(K.classTeachers,m.payload.classTeacherAssignments);if(Array.isArray(m.payload.timetableFolders))save(K.timetables,m.payload.timetableFolders);if(Array.isArray(m.payload.studentProfileRequests))save(K.requests,m.payload.studentProfileRequests);if(Array.isArray(m.payload.communicationMessages))save(K.communications,m.payload.communicationMessages);if(student)renderAll();markPortalLive();return true}
+ if(m.type==='PORTAL_ROUTE_PROBE'&&m.payload?.probeId){
+   wsSend('PORTAL_ROUTE_ACK',{probeId:m.payload.probeId,...portalIdentity(),receivedAt:new Date().toISOString()});
+   return true;
+ }
+ if(m.type==='PORTAL_DIAGNOSTIC_RESULT'&&m.payload&&(!portalDiagRequestId||m.payload.requestId===portalDiagRequestId)){
+   const r=m.payload,box=document.getElementById('portalCommunicationResult');
+   if(box){
+     const row=x=>`<div class="portal-sync-row"><span>${x.role}</span><b class="${x.responded?'portal-route-ok':'portal-route-bad'}">${x.responded?'CONNECTED':'NO REPLY'}</b></div>`;
+     box.innerHTML=`<b>Communication Test</b><div style="margin-top:6px">${(r.routes||[]).map(row).join('')}</div><div style="margin-top:7px;color:#94a3b8">Server: ${r.serverOk?'reachable':'failed'} • ${r.roundTripMs||0} ms • ${new Date(r.completedAt).toLocaleTimeString()}</div>`;
+   }
+   return true;
+ }
+ if(/^PORTAL_|.*_UPDATED$|.*_SYNCED$|COMMUNICATION_UPDATED|STUDENT_PROFILE_REQUEST_/.test(String(m.type||'')))notePortalUpdate();
+ return false;
+}
+setInterval(()=>{
+ try{
+   if((socket)?.readyState===WebSocket.OPEN){wsSend('PORTAL_IDENTIFY',portalIdentity());if(!portalUserEditing&&portalQueuedUpdates===0)setPortalSyncState('live','🟢 Live')}
+   else setPortalSyncState('offline','Offline');
+ }catch(e){setPortalSyncState('offline','Offline')}
+},15000);
 </script>
 </body></html>

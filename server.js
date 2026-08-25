@@ -10,6 +10,8 @@ const fs = require('fs');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+const portalClientIdentity=new Map();
+const portalDiagnosticRuns=new Map();
 
 app.use(express.json({ limit: '12mb' }));
 
@@ -546,6 +548,38 @@ app.post('/api/ai/analyse',async(req,res)=>{
 // ====================================================================
 // 2. WEBSOCKET REAL-TIME ENGINE
 // ====================================================================
+
+function currentPortalSnapshot(){
+  return {
+    portalStaff,portalStudents,studentProfileRequests,classTeacherAssignments,timetableFolders,
+    communicationMessages,studentAttendanceRecords:typeof studentAttendanceRecords!=='undefined'?studentAttendanceRecords:[],
+    profileVerificationRequests,portionProgress,attendanceRecords,leaveRecords,
+    generatedAt:new Date().toISOString()
+  };
+}
+function sendWs(ws,obj){try{if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(obj))}catch(e){}}
+function connectedRoleSummary(){
+  const roles={Principal:0,Faculty:0,Student:0};
+  portalClientIdentity.forEach(v=>{if(v?.role in roles)roles[v.role]++});
+  return roles;
+}
+function startPortalDiagnostic(ws,r){
+  const probeId=`PROBE-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,start=Date.now();
+  const run={requestId:r.requestId||probeId,requester:ws,probeId,start,acks:new Map()};
+  portalDiagnosticRuns.set(probeId,run);
+  portalClientIdentity.forEach((identity,client)=>sendWs(client,{type:'PORTAL_ROUTE_PROBE',payload:{probeId,requestedBy:r.role||'',serverAt:new Date().toISOString()}}));
+  setTimeout(()=>{
+    const active=portalDiagnosticRuns.get(probeId);if(!active)return;
+    const roles=['Principal','Faculty','Student'];
+    const routes=roles.map(role=>{
+      const connected=[...portalClientIdentity.entries()].filter(([client,id])=>id?.role===role);
+      const responded=connected.some(([client,id])=>active.acks.has(client));
+      return {role,connectedClients:connected.length,responded};
+    });
+    sendWs(active.requester,{type:'PORTAL_DIAGNOSTIC_RESULT',payload:{requestId:active.requestId,serverOk:true,routes,roundTripMs:Date.now()-start,connected:connectedRoleSummary(),completedAt:new Date().toISOString()}});
+    portalDiagnosticRuns.delete(probeId);
+  },1400);
+}
 wss.on('connection', async (ws) => {
   console.log('Client connected.');
 
@@ -814,6 +848,24 @@ wss.on('connection', async (ws) => {
           rows.forEach(row=>{const key=`${row.studentId||row.rollId||row.admissionNo||''}|${row.date||''}`,i=studentAttendanceRecords.findIndex(x=>`${x.studentId||x.rollId||x.admissionNo||''}|${x.date||''}`===key);if(i>=0)studentAttendanceRecords[i]=row;else studentAttendanceRecords.unshift(row)});
           persistRuntimeState('pius_student_attendance_records',studentAttendanceRecords);
           broadcast({type:'STUDENT_ATTENDANCE_UPDATED',payload:studentAttendanceRecords});
+          break;
+        }
+
+        case 'PORTAL_IDENTIFY': {
+          const r=data.payload||{};if(r.role)portalClientIdentity.set(ws,{role:r.role,id:String(r.id||''),name:r.name||'',lastSeen:new Date().toISOString()});
+          break;
+        }
+        case 'PORTAL_SNAPSHOT_REQUEST': {
+          sendWs(ws,{type:'PORTAL_SNAPSHOT',payload:currentPortalSnapshot()});
+          break;
+        }
+        case 'PORTAL_DIAGNOSTIC_START': {
+          startPortalDiagnostic(ws,data.payload||{});
+          break;
+        }
+        case 'PORTAL_ROUTE_ACK': {
+          const r=data.payload||{},run=portalDiagnosticRuns.get(r.probeId);
+          if(run){run.acks.set(ws,{...r,at:new Date().toISOString()});if(r.role)portalClientIdentity.set(ws,{role:r.role,id:String(r.id||''),name:r.name||'',lastSeen:new Date().toISOString()})}
           break;
         }
 
@@ -1108,7 +1160,7 @@ wss.on('connection', async (ws) => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', () => {portalClientIdentity.delete(ws);
     console.log('Client disconnected.');
   });
 });
