@@ -278,10 +278,10 @@
   <div class="card-head"><div><h3>Daily Portion Progress</h3><p>Complete the teaching record for each class/division after the lesson. Daily completion is saved as an academic teaching record for Principal review.</p></div><span class="pill">Principal Monitored</span></div>
   <div id="dailyPortionFolders"></div>
 </div>
-<div class="card faculty-folder-source" id="portionProgressSource" style="margin-bottom:16px"><div class="section-head"><h3><i class="fa-solid fa-book-open"></i> Portion Progress Update</h3><span class="badge warn">Principal Monitored</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="field"><label>Class / Division</label><select id="portionClass" onchange="populatePortionSubjects()"></select></div><div class="field"><label>Subject</label><select id="portionSubject"></select></div><div class="field"><label>Portion / Chapter</label><input id="portionName" placeholder="e.g. Chapter 4 — Electricity"></div><div class="field"><label>Planned Completion %</label><input id="portionPlanned" type="number" min="0" max="100" value="100"></div><div class="field"><label>Actual Completion %</label><input id="portionCompleted" type="number" min="0" max="100" value="0"></div><div class="field"><label>Target Date</label><input id="portionDue" type="date"></div></div><div class="field"><label>Teaching Note</label><textarea id="portionNote" rows="2" placeholder="Topics completed, pending exercises or recovery plan"></textarea></div><button class="primary" onclick="submitPortionProgress()"><i class="fa-solid fa-paper-plane"></i> Submit Portion Progress</button><div id="portionProgressList" style="margin-top:14px"></div></div><div class="card faculty-folder-source" id="timetableReviewSource" style="margin-bottom:16px"><div class="section-head"><h3><i class="fa-solid fa-clipboard-check"></i> Timetable Review</h3><span id="facultyTimetableReviewBadge" class="badge warn">Waiting</span></div><div id="facultyTimetableReviewPanel" class="notice">No timetable is currently waiting for your review.</div><div class="actions" style="margin-top:10px"><button class="primary" onclick="facultyTimetableDecision('Accepted')"><i class="fa-solid fa-check"></i> Accept Timetable</button><button class="danger" onclick="facultyTimetableDecision('Issue')"><i class="fa-solid fa-triangle-exclamation"></i> Raise Issue</button></div></div><div class="faculty-folder-grid" id="facultyTeachingFolders">
+<div class="card faculty-folder-source" id="portionProgressSource" style="margin-bottom:16px"><div class="section-head"><h3><i class="fa-solid fa-book-open"></i> Portion Progress Update</h3><span class="badge warn">Principal Monitored</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="field"><label>Class / Division</label><select id="portionClass" onchange="populatePortionSubjects()"></select></div><div class="field"><label>Subject</label><select id="portionSubject"></select></div><div class="field"><label>Portion / Chapter</label><input id="portionName" placeholder="e.g. Chapter 4 — Electricity"></div><div class="field"><label>Planned Completion %</label><input id="portionPlanned" type="number" min="0" max="100" value="100"></div><div class="field"><label>Actual Completion %</label><input id="portionCompleted" type="number" min="0" max="100" value="0"></div><div class="field"><label>Target Date</label><input id="portionDue" type="date"></div></div><div class="field"><label>Teaching Note</label><textarea id="portionNote" rows="2" placeholder="Topics completed, pending exercises or recovery plan"></textarea></div><button class="primary" onclick="submitPortionProgress()"><i class="fa-solid fa-paper-plane"></i> Submit Portion Progress</button><div id="portionProgressList" style="margin-top:14px"></div></div><div class="card faculty-folder-source" id="timetableReviewSource" style="margin-bottom:16px"><div class="section-head"><h3><i class="fa-solid fa-clipboard-check"></i> Timetable & Concerns</h3><span id="facultyTimetableReviewBadge" class="badge warn">Waiting</span></div><div id="facultyTimetableReviewPanel" class="notice">No timetable is currently waiting for your review.</div><div class="actions" style="margin-top:10px"><button class="danger" onclick="raiseTimetableConcern()"><i class="fa-solid fa-triangle-exclamation"></i> Raise Timetable Concern</button></div></div><div class="faculty-folder-grid" id="facultyTeachingFolders">
   <button class="faculty-folder-card" onclick="openFacultySourceFolder('dailyPortionFoldersCard','Daily Portion Progress')"><span class="folder-status">DAILY</span><span class="fi"><i class="fa-solid fa-calendar-check"></i></span><strong>Daily Portion Progress</strong><small>Complete the teaching record for each class/division after the lesson.</small></button>
   <button class="faculty-folder-card" onclick="openFacultySourceFolder('portionProgressSource','Portion Progress Update')"><span class="folder-status">ACADEMIC</span><span class="fi"><i class="fa-solid fa-book-open"></i></span><strong>Portion Progress</strong><small>Update chapter, completion percentage, target date and teaching notes.</small></button>
-  <button class="faculty-folder-card" onclick="openFacultySourceFolder('timetableReviewSource','Timetable Review')"><span id="timetableReviewFolderStatus" class="folder-status">REVIEW</span><span class="fi"><i class="fa-solid fa-clipboard-check"></i></span><strong>Timetable Review</strong><small>Accept the timetable or raise an issue before it becomes your active schedule.</small></button>
+  <button class="faculty-folder-card" onclick="openFacultySourceFolder('timetableReviewSource','Timetable Review')"><span id="timetableReviewFolderStatus" class="folder-status">REVIEW</span><span class="fi"><i class="fa-solid fa-clipboard-check"></i></span><strong>Timetable & Concerns</strong><small>Your Principal-published timetable is active automatically. Raise a concern only for a specific day/period that needs adjustment.</small></button>
 </div>
 <div class="faculty-folder-grid" style="margin-top:18px">
   <button class="faculty-folder-card" onclick="openAcceptedTimetableFolder()">
@@ -417,7 +417,7 @@ function dashboardLessonData(){
  return {lessons,today,current:today.find(x=>minute>=ttMinutes(x.slot.start)&&minute<ttMinutes(x.slot.end)),next:today.find(x=>ttMinutes(x.slot.start)>minute)};
 }
 function facultyAcademicActionCount(){
- let n=0,labels=[];const review=currentTeacherReview();if(review?.status==='Pending'){n++;labels.push('Timetable review')};
+ let n=0,labels=[];const review=currentTeacherReview();if(review?.status==='Issue'){n++;labels.push('Timetable concern sent')};
  const req=myStudentApprovalRequests?myStudentApprovalRequests().filter(r=>r.status==='Pending Class Teacher Approval').length:0;if(req){n+=req;labels.push(req+' student request'+(req===1?'':'s'))}
  const duties=typeof myAdditionalDuties==='function'?myAdditionalDuties().filter(d=>d.status==='Pending').length:0;if(duties){n+=duties;labels.push(duties+' duty approval'+(duties===1?'':'s'))}
  const official=typeof myOfficialCommunications==='function'?myOfficialCommunications().filter(m=>['New','Pending','Action Required'].includes(String(m.status||'New'))).length:0;if(official){n+=official;labels.push(official+' mailbox item'+(official===1?'':'s'))}
@@ -687,28 +687,27 @@ function currentTeacherReview(){
   return {...mine,version:r.version};
 }
 function renderFacultyTimetableReview(){
-  if(!teacher)return;
-  const panel=document.getElementById('facultyTimetableReviewPanel'),badge=document.getElementById('facultyTimetableReviewBadge');
-  if(!panel||!badge)return;
-  const r=timetableReviewState(),mine=currentTeacherReview();
-  const folderStatus=document.getElementById('timetableReviewFolderStatus');
-  if(!r||!(r.teacherIds||[]).map(String).includes(String(teacher.empId))||mine?.status==='Accepted'){
-    panel.innerHTML='<strong>No timetable currently waiting for review.</strong><span>Your accepted timetable is available inside <b>My Accepted Timetable</b>. You will be notified if the Principal issues a new version.</span>';
-    badge.textContent='NONE';badge.className='badge ok';
-    if(folderStatus)folderStatus.textContent='NONE';
-    const actions=panel.parentElement?.querySelector('.actions');if(actions)actions.style.display='none';
-    return;
-  }
-  const status=mine?.status||'Pending';
-  badge.textContent=status.toUpperCase();badge.className='badge '+(status==='Issue'?'bad':'warn');
-  if(folderStatus)folderStatus.textContent=status.toUpperCase();
-  const actions=panel.parentElement?.querySelector('.actions');if(actions)actions.style.display='flex';
-  if(status==='Issue'){
-    panel.innerHTML=`<strong>Timetable V${esc(String(r.version||''))} — issue submitted.</strong><span>The Principal has been notified. The review remains open until a corrected/new version is issued.<br><b>Your issue:</b> ${esc(mine?.reason||'')}</span>`;
-  }else{
-    panel.innerHTML=`<strong>Timetable V${esc(String(r.version||''))} is waiting for your confirmation.</strong><span>Review your personal timetable below. Accept if it is workable, or raise an issue with the exact day/period/reason.</span>`;
-  }
+ const panel=document.getElementById('facultyTimetableReviewPanel'),badge=document.getElementById('facultyTimetableReviewBadge'),folderStatus=document.getElementById('timetableReviewFolderStatus');
+ if(!panel||!badge)return;
+ const r=timetableReviewState(),mine=currentTeacherReview(),mineFolders=myTimetables();
+ if(!mineFolders.length){badge.textContent='NO TIMETABLE';badge.className='badge';if(folderStatus)folderStatus.textContent='EMPTY';panel.innerHTML='<strong>No active timetable.</strong><span>The Principal has not published a timetable assigned to you yet.</span>';return}
+ if(mine?.status==='Issue'){badge.textContent='CONCERN SENT';badge.className='badge bad';if(folderStatus)folderStatus.textContent='CONCERN';panel.innerHTML=`<strong>Your timetable concern has been sent to the Principal.</strong><span>${esc(mine.day||'')} ${mine.period?'P'+esc(mine.period):''}${mine.className?' · '+esc(mine.className)+' — '+esc(mine.division||''):''}<br><b>Reason:</b> ${esc(mine.reason||'')}</span>`;return}
+ badge.textContent='ACTIVE';badge.className='badge ok';if(folderStatus)folderStatus.textContent='ACTIVE';
+ panel.innerHTML=`<strong>Timetable V${esc(String(r?.version||mineFolders[0]?.timetableVersion||''))} is active.</strong><span>No acceptance is required. The Principal has already published this timetable. If a particular assigned day/period is not workable, use <b>Raise Timetable Concern</b>.</span>`;
 }
+function raiseTimetableConcern(){
+ if(!teacher)return;
+ const r=timetableReviewState(),folders=myTimetables(),rows=[];
+ folders.forEach(folder=>(folder.settings?.workingDays||[]).forEach(day=>(folder.slots||[]).filter(x=>x.type==='period').forEach(slot=>{const c=folder.grid?.[day]?.[slot.index];if(c&&String(c.teacherEmpId)===String(teacher.empId))rows.push({folder,day,period:slot.index,subject:c.subject||'',time:`${slot.start||''}–${slot.end||''}`})})));
+ if(!rows.length)return alert('No assigned timetable periods were found for your profile.');
+ const menu=rows.map((x,i)=>`${i+1}. ${x.folder.className} — ${x.folder.division} · ${x.day} P${x.period} · ${x.subject} ${x.time}`).join('\n');
+ const pick=Number(prompt(`Select the exact period you want the Principal to review:\n\n${menu}`,'1'))-1;if(!rows[pick])return;
+ const x=rows[pick],reason=(prompt(`Explain why ${x.day} P${x.period} (${x.subject}) needs to change:`, '')||'').trim();if(!reason)return alert('Please enter the reason for the concern.');
+ const payload={version:r?.version||x.folder.timetableVersion||'',teacherId:teacher.empId,teacherName:teacher.name,status:'Issue',reason,folderId:x.folder.id,divisionId:x.folder.academicDivisionId||x.folder.classKey||'',className:x.folder.className,division:x.folder.division,day:x.day,period:x.period,subject:x.subject,raisedAt:new Date().toISOString(),respondedAt:new Date().toISOString()};
+ const rr=r||{version:payload.version,folders:timetables(),teacherIds:[],teacherReviews:{}};rr.teacherReviews=rr.teacherReviews||{};rr.teacherReviews[String(teacher.empId)]=payload;saveTimetableReviewState(rr);
+ socketSend('FACULTY_TIMETABLE_DECISION',payload);renderFacultyTimetableReview();toast('Timetable concern sent to the Principal.');
+}
+
 function renderMyClassPublishReadiness(r){
   const folders=(r?.folders||timetables()).filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
   if(!folders.length)return '';
@@ -727,22 +726,7 @@ function publishMyClassTimetable(folderId){
   if(!confirm(`Publish ${folder.className} — ${folder.division} timetable to the Student Portal?`))return;
   socketSend('FACULTY_PUBLISH_CLASS',{folderId,teacherId:teacher.empId,teacherName:teacher.name,version:r.version});toast('Publication request sent.');
 }
-function facultyTimetableDecision(status){
-  if(!teacher)return;
-  const r=timetableReviewState();
-  if(!r)return alert('No timetable is waiting for review.');
-  let reason='';
-  if(status==='Issue'){
-    reason=prompt('Describe the exact issue (day, period and reason):','')||'';
-    if(!reason.trim())return alert('Please enter the timetable issue before sending.');
-  }
-  const payload={version:r.version,teacherId:teacher.empId,teacherName:teacher.name,status,reason:reason.trim(),respondedAt:new Date().toISOString()};
-  r.teacherReviews=r.teacherReviews||{};r.teacherReviews[teacher.empId]=payload;saveTimetableReviewState(r);
-  socketSend('FACULTY_TIMETABLE_DECISION',payload);
-  renderFacultyTimetableReview();renderTimetable();
-  if(status==='Accepted'){toast('Timetable accepted. No timetable is currently waiting for review.');setTimeout(()=>closeFacultyFolderModal(),180)}
-  else toast('Timetable issue sent to the Principal.');
-}
+function facultyTimetableDecision(status){if(status==='Issue')return raiseTimetableConcern();toast('This timetable is already active. Faculty acceptance is no longer required.')}
 function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4),base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(base64);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 function facultyEligibleStudents(){
  const all=get(STUDENT_KEY,[]),folders=timetables().filter(folder=>(folder.recipientTeacherEmpIds||[]).map(String).includes(String(teacher?.empId))||String(folder.classTeacherEmpId||'')===String(teacher?.empId));
@@ -827,10 +811,9 @@ function openAcceptedTimetableFolder(){
 }
 function renderAcceptedTimetablePopup(){
  const source=document.getElementById('acceptedTimetableSource');if(!source)return;
- const mine=myTimetables(),review=currentTeacherReview(),accepted=!review||review.status==='Accepted';
+ const mine=myTimetables(),review=currentTeacherReview(),accepted=true;
  if(!accepted){source.innerHTML='<div class="empty">Your accepted timetable will appear here after confirmation.</div>';return}
- const fullReview=timetableReviewState(),classTeacherFolders=mine.filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
- const publishReadiness=classTeacherFolders.length?`<div class="notice"><strong>Class Teacher Publication Status</strong><span>These class timetables can be published to students only after all concerned teachers confirm.</span>${renderMyClassPublishReadiness(fullReview)}</div>`:'';
+ const fullReview=timetableReviewState(),publishReadiness='';
  const cards=mine.map((f,index)=>{const isCT=String(f.classTeacherEmpId||'')===String(teacher.empId),myPeriods=[];(f.settings?.workingDays||[]).forEach(d=>(f.slots||[]).filter(s=>s.type==='period').forEach(slot=>{const c=f.grid?.[d]?.[slot.index];if(c?.teacherEmpId===teacher.empId)myPeriods.push(c)}));return `<button class="accepted-class-card" onclick="showAcceptedClassDetail(${index})"><strong>${esc(f.className)} — ${esc(f.division)}</strong><small>${isCT?'Class Teacher · complete class timetable':`Subject Teacher · ${myPeriods.length} assigned period${myPeriods.length===1?'':'s'}`}<br>Class Teacher: ${esc(f.classTeacher||'—')}</small></button>`}).join('');
  source.innerHTML=`<div class="accepted-timetable-shell"><div class="notice"><strong>Confirmed timetable</strong><span>${mine.length} class/division folder${mine.length===1?'':'s'} assigned to you. Select a class to view the schedule.</span></div>${publishReadiness}<div id="acceptedClassGrid" class="accepted-class-grid">${cards||'<div class="empty">No timetable folders assigned.</div>'}</div><div id="acceptedClassDetail" class="accepted-detail"></div></div>`;
 }
