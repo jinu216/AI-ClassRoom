@@ -244,8 +244,8 @@ async function hydrateSharedStateFromCloud() {
   if (!supabase) return;
   const keys = [
     'pius_staff_data','pius_students_data','pius_profile_verification_requests',
-    'pius_student_profile_requests','pius_student_leave_records','pius_student_attendance_records',
-    'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
+    'pius_student_profile_requests','pius_student_leave_records','pius_student_attendance_records','pius_student_attendance_records',
+    'pius_class_teacher_assignments','pius_timetable_folders','pius_timetable_review','pius_portion_progress',
     'pius_additional_duty_assignments','pius_digital_library_resources',
     'pius_attendance_settings','pius_attendance_records','pius_leave_records',
     'pius_communication_messages','pius_chat_messages','pius_communication_audit_log','pius_faculty_notification_settings'
@@ -261,6 +261,7 @@ async function hydrateSharedStateFromCloud() {
   if (Array.isArray(value('pius_student_attendance_records'))) studentAttendanceRecords=value('pius_student_attendance_records');
   if (value('pius_class_teacher_assignments') && typeof value('pius_class_teacher_assignments') === 'object') classTeacherAssignments=value('pius_class_teacher_assignments');
   if (Array.isArray(value('pius_timetable_folders'))) timetableFolders=value('pius_timetable_folders');
+  if (value('pius_timetable_review') && typeof value('pius_timetable_review')==='object') timetableReview=value('pius_timetable_review');
   if (Array.isArray(value('pius_portion_progress'))) portionProgress=value('pius_portion_progress');
   if (Array.isArray(value('pius_additional_duty_assignments'))) additionalDutyAssignments=value('pius_additional_duty_assignments');
   if (Array.isArray(value('pius_digital_library_resources'))) libraryResources=value('pius_digital_library_resources');
@@ -347,7 +348,7 @@ function broadcast(data) {
 const RESETTABLE_STATE_KEYS=[
   'pius_staff_data','pius_students_data','pius_profile_verification_requests',
   'pius_student_profile_requests','pius_student_leave_records',
-  'pius_class_teacher_assignments','pius_timetable_folders','pius_portion_progress',
+  'pius_class_teacher_assignments','pius_timetable_folders','pius_timetable_review','pius_portion_progress',
   'pius_attendance_settings','pius_attendance_records','pius_leave_records',
   'pius_communication_messages','pius_chat_messages','pius_communication_audit_log',
   'pius_faculty_notification_settings','pius_daily_portion_progress'
@@ -426,10 +427,15 @@ function studentPortalId(s){return String(s.rollId||s.admissionNo||s.studentId||
 function normClassPart(v){return String(v||'').replace(/^grade\s*/i,'').replace(/^class\s*/i,'').replace(/^div(ision)?\s*/i,'').trim().toLowerCase()}
 function studentClassKey(s){return `${normClassPart(s.grade||s.className)}|||${normClassPart(s.section||s.division)}`}
 function classTeacherIdForStudent(s){
-  const key=studentClassKey(s);
-  const direct=classTeacherAssignments[key]||classTeacherAssignments[`${String(s.grade||s.className||'').trim()}|||${String(s.section||s.division||'').trim()}`];
-  if(direct)return String(direct);
-  const folder=timetableFolders.find(f=>normClassPart(f.className)===normClassPart(s.grade||s.className)&&normClassPart(f.division)===normClassPart(s.section||s.division)&&f.classTeacherEmpId);
+  const cg=normClassPart(s.grade||s.className),cd=normClassPart(s.section||s.division);
+  let id='';
+  Object.entries(classTeacherAssignments||{}).some(([key,val])=>{
+    const parts=String(key).split('|||');
+    if(parts.length>=2&&normClassPart(parts[0])===cg&&normClassPart(parts[1])===cd){id=String(val||'');return true}
+    return false;
+  });
+  if(id)return id;
+  const folder=timetableFolders.find(f=>normClassPart(f.className)===cg&&normClassPart(f.division)===cd&&f.classTeacherEmpId);
   return folder?.classTeacherEmpId?String(folder.classTeacherEmpId):'';
 }
 function classTeacherNameForStudent(s){
@@ -446,11 +452,8 @@ function teacherStudents(teacherId){
   });
 }
 function classEqualsStudent(folder,s){
-  const grade=String(s.grade||s.className||'').trim().toLowerCase();
-  const div=String(s.section||s.division||'').replace(/^div\s*/i,'').trim().toLowerCase();
-  const fg=String(folder.className||'').trim().toLowerCase();
-  const fd=String(folder.division||'').replace(/^div\s*/i,'').trim().toLowerCase();
-  return grade===fg && (!div||div===fd);
+  return normClassPart(folder.className)===normClassPart(s.grade||s.className)
+    && normClassPart(folder.division)===normClassPart(s.section||s.division);
 }
 app.post('/api/communications/upload',upload.single('file'),(req,res)=>{
   if(!req.file)return res.status(400).json({ok:false,error:'No file uploaded.'});
@@ -580,6 +583,10 @@ function startPortalDiagnostic(ws,r){
     portalDiagnosticRuns.delete(probeId);
   },1400);
 }
+
+function socketPortalRole(ws){return portalClientIdentity.get(ws)?.role||''}
+function principalMasterAllowed(ws){return socketPortalRole(ws)==='Principal'}
+
 wss.on('connection', async (ws) => {
   console.log('Client connected.');
 
@@ -603,6 +610,7 @@ wss.on('connection', async (ws) => {
       ,studentProfileRequests
       ,studentLeaveRecords
       ,studentMailbox
+      ,studentAttendanceRecords
       ,classTeacherAssignments
       ,timetableFolders
       ,timetableReview
@@ -630,7 +638,9 @@ wss.on('connection', async (ws) => {
           if (!Array.isArray(data.payload)) break;
           // Prevent Principal/server feedback loops by ignoring an identical roster.
           if (JSON.stringify(data.payload) === JSON.stringify(portalStaff)) break;
+          if(!principalMasterAllowed(ws)){console.warn('Rejected non-Principal staff master sync');break;}
           portalStaff = data.payload;
+          persistRuntimeState('pius_staff_data',portalStaff);
           broadcast({ type: 'PORTAL_STAFF_UPDATED', payload: portalStaff });
           break;
 
@@ -638,13 +648,17 @@ wss.on('connection', async (ws) => {
         case 'SYNC_PORTAL_STUDENTS':
           if (!Array.isArray(data.payload)) break;
           if (JSON.stringify(data.payload) === JSON.stringify(portalStudents)) break;
+          if(!principalMasterAllowed(ws)){console.warn('Rejected non-Principal student master sync');break;}
           portalStudents = data.payload;
+          persistRuntimeState('pius_students_data',portalStudents);
           broadcast({ type:'PORTAL_STUDENTS_UPDATED', payload:portalStudents });
           break;
 
         case 'SYNC_STUDENT_PORTAL_DATA':
-          if (Array.isArray(data.payload?.studentRequests)) data.payload.studentRequests.forEach(upsertStudentRequest);
-          if (Array.isArray(data.payload?.studentLeaves)) data.payload.studentLeaves.forEach(r => upsertById(studentLeaveRecords, r));
+          if (Array.isArray(data.payload?.studentRequests)) data.payload.studentRequests.forEach(r=>{if(r?.id&&!studentProfileRequests.some(x=>String(x.id)===String(r.id)))studentProfileRequests.unshift(r)});
+          if (Array.isArray(data.payload?.studentLeaves)) data.payload.studentLeaves.forEach(r=>{if(r?.id&&!studentLeaveRecords.some(x=>String(x.id)===String(r.id)))studentLeaveRecords.unshift(r)});
+          persistRuntimeState('pius_student_profile_requests',studentProfileRequests);
+          persistRuntimeState('pius_student_leave_records',studentLeaveRecords);
           broadcast({ type:'STUDENT_DATA_SYNCED', payload:{ studentProfileRequests, studentLeaveRecords, studentMailbox } });
           break;
 
@@ -654,13 +668,17 @@ wss.on('connection', async (ws) => {
           break;
 
         case 'SYNC_CLASS_TEACHER_ASSIGNMENTS':
+          if(!principalMasterAllowed(ws)){console.warn('Rejected non-Principal Class Teacher master sync');break;}
           classTeacherAssignments = (data.payload && typeof data.payload === 'object') ? data.payload : {};
+          persistRuntimeState('pius_class_teacher_assignments',classTeacherAssignments);
           broadcast({ type:'CLASS_TEACHER_ASSIGNMENTS_UPDATED', payload:classTeacherAssignments });
           break;
 
         case 'SYNC_TIMETABLE_FOLDERS':
           if (!Array.isArray(data.payload)) break;
+          if(!principalMasterAllowed(ws)){console.warn('Rejected non-Principal timetable master sync');break;}
           timetableFolders = data.payload;
+          persistRuntimeState('pius_timetable_folders',timetableFolders);
           broadcast({ type:'TIMETABLE_FOLDERS_UPDATED', payload:timetableFolders });
           break;
 
@@ -669,6 +687,8 @@ wss.on('connection', async (ws) => {
           if(!Array.isArray(r.folders)||!Array.isArray(r.teacherIds))break;
           timetableFolders=r.folders;
           timetableReview={version:r.version,folders:r.folders,teacherIds:r.teacherIds,teacherReviews:{},sentAt:r.sentAt||new Date().toISOString()};
+          persistRuntimeState('pius_timetable_folders',timetableFolders);
+          persistRuntimeState('pius_timetable_review',timetableReview);
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'TIMETABLE_REVIEW_UPDATED',payload:timetableReview});
           notifyFaculty(r.teacherIds,'Timetable waiting for review',`Timetable V${r.version} is ready. Open the Faculty Portal to Accept or Raise Issue.`,'timetable').catch(()=>{});
@@ -681,6 +701,7 @@ wss.on('connection', async (ws) => {
           if(!timetableReview||String(r.version)!==String(timetableReview.version))break;
           timetableReview.teacherReviews=timetableReview.teacherReviews||{};
           timetableReview.teacherReviews[String(r.teacherId)]=r;
+          persistRuntimeState('pius_timetable_review',timetableReview);
           broadcast({type:'FACULTY_TIMETABLE_REVIEW_UPDATED',payload:r});
           addCommunicationWithReceipt({fromRole:'Faculty',fromId:String(r.teacherId),fromName:r.teacherName||String(r.teacherId),toRole:'Principal',toId:'principal',toName:'Principal',type:r.status==='Accepted'?'TIMETABLE_ACCEPTED':'TIMETABLE_ISSUE',title:`${r.teacherName||r.teacherId} — timetable ${r.status}`,body:r.status==='Accepted'?`Timetable V${r.version} accepted.`:`Timetable V${r.version} issue: ${r.reason||'No reason supplied'}`,status:r.status,actionRef:`TIMETABLE:${r.version}`});
           addCommunication({fromRole:'System',fromId:'system',fromName:'School System',toRole:'Faculty',toId:String(r.teacherId),toName:r.teacherName||String(r.teacherId),type:'TIMETABLE_RESPONSE_RECORDED',title:`Timetable V${r.version} — ${r.status}`,body:r.status==='Accepted'?'Your timetable is confirmed and is now active in your Faculty Portal.':'Your issue has been sent to the Principal.',status:r.status,actionRef:`TIMETABLE:${r.version}`});
@@ -737,7 +758,8 @@ wss.on('connection', async (ws) => {
           const ctId=classTeacherIdForStudent(stu);
           if(!ctId){
             r.status='Pending Class Teacher Assignment';
-            upsertStudentProfileRequest(r);
+            upsertStudentRequest(r);
+            persistRuntimeState('pius_student_profile_requests',studentProfileRequests);
             broadcast({type:'STUDENT_PROFILE_REQUEST_CREATED',payload:r});
             addCommunicationWithReceipt({
               requestNo:r.requestNo,fromRole:'Student',fromId:sid,fromName:stu.name||sid,
@@ -749,7 +771,7 @@ wss.on('connection', async (ws) => {
             break;
           }
           r.classTeacherId=ctId;r.status='Pending Class Teacher Approval';
-          upsertStudentProfileRequest(r);
+          upsertStudentRequest(r);
           broadcast({type:'STUDENT_PROFILE_REQUEST_CREATED',payload:r});
           addCommunicationWithReceipt({
             requestNo:r.requestNo,fromRole:'Student',fromId:sid,fromName:stu.name||sid,
@@ -882,6 +904,12 @@ wss.on('connection', async (ws) => {
           const r=data.payload||{};if(r.role)portalClientIdentity.set(ws,{role:r.role,id:String(r.id||''),name:r.name||'',lastSeen:new Date().toISOString()});
           break;
         }
+        case 'ROUTING_AUDIT_REQUEST': {
+          if(!principalMasterAllowed(ws))break;
+          const rows=portalStudents.map(stu=>({studentId:studentPortalId(stu),studentName:stu.name||'',className:stu.grade||stu.className||'',division:stu.section||stu.division||'',classTeacherId:classTeacherIdForStudent(stu),classTeacherName:classTeacherNameForStudent(stu)}));
+          sendWs(ws,{type:'ROUTING_AUDIT_RESULT',payload:{rows,staffCount:portalStaff.length,studentCount:portalStudents.length,classTeacherAssignments:Object.keys(classTeacherAssignments||{}).length,timetableFolders:timetableFolders.length,generatedAt:new Date().toISOString()}});
+          break;
+        }
         case 'PORTAL_SNAPSHOT_REQUEST': {
           sendWs(ws,{type:'PORTAL_SNAPSHOT',payload:currentPortalSnapshot()});
           break;
@@ -964,46 +992,54 @@ wss.on('connection', async (ws) => {
         case 'SYNC_PORTION_PROGRESS':
           if (!Array.isArray(data.payload)) break;
           data.payload.forEach(item => upsertById(portionProgress,item));
+          persistRuntimeState('pius_portion_progress',portionProgress);
           broadcast({type:'PORTION_PROGRESS_UPDATED',payload:portionProgress});
           break;
 
         case 'PORTION_PROGRESS_UPDATE':
           upsertById(portionProgress,data.payload);
+          persistRuntimeState('pius_portion_progress',portionProgress);
           broadcast({type:'PORTION_PROGRESS_UPDATED',payload:portionProgress});
           break;
 
         case 'SYNC_LIBRARY_RESOURCES':
           if (!Array.isArray(data.payload)) break;
           data.payload.forEach(item => upsertById(libraryResources,item));
+          persistRuntimeState('pius_digital_library_resources',libraryResources);
           broadcast({type:'LIBRARY_RESOURCES_UPDATED',payload:libraryResources});
           break;
 
         case 'LIBRARY_RESOURCE_CREATE':
         case 'LIBRARY_RESOURCE_UPDATE':
           upsertById(libraryResources,data.payload);
+          persistRuntimeState('pius_digital_library_resources',libraryResources);
           broadcast({type:'LIBRARY_RESOURCE_UPDATED',payload:data.payload});
           broadcast({type:'LIBRARY_RESOURCES_UPDATED',payload:libraryResources});
           break;
 
         case 'LIBRARY_RESOURCE_DELETE':
           libraryResources=libraryResources.filter(x=>x.id!==data.payload?.id);
+          persistRuntimeState('pius_digital_library_resources',libraryResources);
           broadcast({type:'LIBRARY_RESOURCES_UPDATED',payload:libraryResources});
           break;
 
         case 'SYNC_ADDITIONAL_DUTIES':
           if (!Array.isArray(data.payload)) break;
           data.payload.forEach(item => upsertById(additionalDutyAssignments, item));
+          persistRuntimeState('pius_additional_duty_assignments',additionalDutyAssignments);
           broadcast({ type:'ADDITIONAL_DUTIES_UPDATED', payload:additionalDutyAssignments });
           break;
 
         case 'ADDITIONAL_DUTY_CREATE':
           upsertById(additionalDutyAssignments, data.payload);
+          persistRuntimeState('pius_additional_duty_assignments',additionalDutyAssignments);
           broadcast({ type:'ADDITIONAL_DUTY_UPDATED', payload:data.payload });
           broadcast({ type:'ADDITIONAL_DUTIES_UPDATED', payload:additionalDutyAssignments });
           break;
 
         case 'ADDITIONAL_DUTY_DECISION':
           upsertById(additionalDutyAssignments, data.payload);
+          persistRuntimeState('pius_additional_duty_assignments',additionalDutyAssignments);
           broadcast({ type:'ADDITIONAL_DUTY_UPDATED', payload:data.payload });
           broadcast({ type:'ADDITIONAL_DUTIES_UPDATED', payload:additionalDutyAssignments });
           break;
@@ -1057,30 +1093,36 @@ wss.on('connection', async (ws) => {
           break;
 
         case 'SYNC_ATTENDANCE_DATA':
+          if(!principalMasterAllowed(ws)){sendWs(ws,{type:'ATTENDANCE_DATA_SYNCED',payload:{settings:attendanceSettings,records:attendanceRecords,leaves:leaveRecords}});break;}
           if (data.payload?.settings) attendanceSettings = { ...attendanceSettings, ...data.payload.settings };
-          if (Array.isArray(data.payload?.records)) data.payload.records.forEach(r => upsertById(attendanceRecords, r));
-          if (Array.isArray(data.payload?.leaves)) data.payload.leaves.forEach(r => upsertById(leaveRecords, r));
+          if (Array.isArray(data.payload?.records)) attendanceRecords = data.payload.records;
+          if (Array.isArray(data.payload?.leaves)) leaveRecords = data.payload.leaves;
+          persistRuntimeState('pius_attendance_settings',attendanceSettings);persistRuntimeState('pius_attendance_records',attendanceRecords);persistRuntimeState('pius_leave_records',leaveRecords);
           broadcast({ type:'ATTENDANCE_DATA_SYNCED', payload:{ settings:attendanceSettings, records:attendanceRecords, leaves:leaveRecords } });
           break;
 
         case 'ATTENDANCE_SETTINGS_UPDATE':
           attendanceSettings = { ...attendanceSettings, ...(data.payload || {}) };
+          persistRuntimeState('pius_attendance_settings',attendanceSettings);
           broadcast({ type:'ATTENDANCE_SETTINGS_UPDATED', payload:attendanceSettings });
           break;
 
         case 'ATTENDANCE_MARK':
         case 'ATTENDANCE_MANUAL_UPDATE':
           upsertById(attendanceRecords, data.payload);
+          persistRuntimeState('pius_attendance_records',attendanceRecords);
           broadcast({ type:'ATTENDANCE_RECORD_UPDATED', payload:data.payload });
           break;
 
         case 'LEAVE_REQUEST_CREATE':
           upsertById(leaveRecords, data.payload);
+          persistRuntimeState('pius_leave_records',leaveRecords);
           broadcast({ type:'LEAVE_RECORD_UPDATED', payload:data.payload });
           break;
 
         case 'LEAVE_DECISION':
           upsertById(leaveRecords, data.payload);
+          persistRuntimeState('pius_leave_records',leaveRecords);
           broadcast({ type:'LEAVE_RECORD_UPDATED', payload:data.payload });
           break;
 
@@ -1104,6 +1146,7 @@ wss.on('connection', async (ws) => {
         case 'PROFILE_VERIFICATION_CREATE': {
           const r=data.payload||{};ensureRequestNo(r,'PV');
           upsertVerification(r);
+          persistRuntimeState('pius_profile_verification_requests',profileVerificationRequests);
           broadcast({ type: 'PROFILE_VERIFICATION_CREATED', payload: r });
           const existing=communicationMessages.find(x=>x.type==='FACULTY_PROFILE_REQUEST'&&String(x.requestNo)===String(r.requestNo));
           if(!existing)addCommunicationWithReceipt({requestNo:r.requestNo,fromRole:'Faculty',fromId:String(r.empId||''),fromName:r.teacherName||r.empId||'Faculty',toRole:'Principal',toId:'principal',toName:'Principal',type:'FACULTY_PROFILE_REQUEST',title:'Faculty profile update request',body:r.note||'Faculty requested a profile update.',status:'Pending Principal Approval',details:{previous:r.previousSnapshot||{},proposed:r.snapshot||r.proposedChanges||{},note:r.note||'',source:r.source||'Teacher Profile Edit'},actionRef:r.id});
@@ -1114,7 +1157,8 @@ wss.on('connection', async (ws) => {
         case 'PROFILE_VERIFICATION_DECISION': {
           const r=data.payload||{};ensureRequestNo(r,'PV');
           upsertVerification(r);
-          if (r.appliedProfile) applyProfileToRoster(r.appliedProfile);
+          persistRuntimeState('pius_profile_verification_requests',profileVerificationRequests);
+          if (r.appliedProfile){applyProfileToRoster(r.appliedProfile);persistRuntimeState('pius_staff_data',portalStaff);}
           broadcast({ type: 'PROFILE_VERIFICATION_DECIDED', payload: r });
           broadcast({ type: 'PORTAL_STAFF_UPDATED', payload: portalStaff });
           const original=communicationMessages.find(x=>x.type==='FACULTY_PROFILE_REQUEST'&&(String(x.requestNo)===String(r.requestNo)||String(x.actionRef)===String(r.id)));

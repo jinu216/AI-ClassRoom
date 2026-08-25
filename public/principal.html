@@ -5987,8 +5987,17 @@ function requireMainAdmin(){if(currentAccessProfile?.id!=='main-admin'){alert('O
 
     function getTeacherForDivision(className, division) {
       const assignments = getClassTeacherAssignments();
-      const empId = assignments[getClassTeacherAssignmentKey(className, division)];
-      return empId ? staffStore.find(s => s.empId === empId && s.category?.trim().toLowerCase()==='teaching') : null;
+      const nc=v=>String(v||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
+      const nd=v=>String(v||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase();
+      let empId=assignments[getClassTeacherAssignmentKey(className,division)]||'';
+      if(!empId){
+        Object.entries(assignments||{}).some(([key,val])=>{
+          const parts=String(key).split('|||');
+          if(parts.length>=2&&nc(parts[0])===nc(className)&&nd(parts[1])===nd(division)){empId=String(val||'');return true}
+          return false;
+        });
+      }
+      return empId ? staffStore.find(s => String(s.empId)===String(empId) && s.category?.trim().toLowerCase()==='teaching') : null;
     }
 
     function getEligibleClassTeacherIds(className) {
@@ -11034,5 +11043,8 @@ setInterval(()=>{
  }catch(e){setPortalSyncState('offline','Offline')}
 },15000);
 </script>
+<script>window.auditPortalRouting=function(){
+ const a=getClassTeacherAssignments(),rows=buildAutoClassDivisions().map(d=>{const t=getTeacherForDivision(d.className,d.division);return {class:d.className,division:d.division,classTeacher:t?.name||'Unassigned',empId:t?.empId||'',students:studentStore.filter(s=>String(s.grade||s.className||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase()===String(d.className||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase()&&String(s.section||s.division||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase()===String(d.division||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase()).length}});console.table(rows);return rows;
+};</script>
 </body>
 </html>
