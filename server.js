@@ -1,3 +1,23 @@
+/*
+================================================================================
+POPE PIUS SCHOOL ERP - SERVER - DEVELOPER COMMENTED VERSION
+================================================================================
+ROLE IN THE SYSTEM
+- Express serves the portal files.
+- WebSocket provides live synchronization between Principal, Faculty and Student portals.
+- Shared runtime/cloud state provides the common data layer.
+- Routing and authorization checks must be enforced here, not only in browser UI.
+
+MASTER-DATA AUTHORITY
+- Principal is the source of truth for staff roster, student roster, Class Teacher map,
+  master timetable folders and school-level settings.
+- Faculty/Student portals consume scoped views and create allowed requests/updates.
+
+TIMETABLE ROUTING
+Principal -> concerned Faculty/Class Teacher -> Class Teacher publishes -> students.
+Faculty concerns are advisory/action items for Principal and do not block publication.
+================================================================================
+*/
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -25,12 +45,30 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 
 const CLOUD_KEY_PATTERN = /^pius_[A-Za-z0-9_.:+-]{1,180}$/;
 const LOCAL_ONLY_KEY_PATTERN = /(password|login_grant|preview_|health_probe|_read_|_seen_|_undo|review_drafts|active_step)/i;
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: validCloudKey
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function validCloudKey(key) {
   return CLOUD_KEY_PATTERN.test(String(key || '')) && !LOCAL_ONLY_KEY_PATTERN.test(String(key || ''));
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: requestActor
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function requestActor(req) {
   return String(req.get('x-portal-actor') || 'portal-user').slice(0,120);
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: cloudUnavailable
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function cloudUnavailable(res) {
   return res.status(503).json({ ok:false, error:'Supabase cloud storage is not configured on the server.' });
 }
@@ -111,6 +149,12 @@ app.delete('/api/cloud-state/:key', async (req, res) => {
 // Read-only cloud diagnostics used by the Principal System Health page.
 // Secrets are used only on the server and are never included in the response.
 const SYSTEM_VERSION = process.env.APP_VERSION || 'principal-cloud-health-v1';
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: timedFetch
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function timedFetch(url, options = {}, timeoutMs = 8000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -119,6 +163,12 @@ function timedFetch(url, options = {}, timeoutMs = 8000) {
     .then(response => ({ response, latencyMs: Date.now() - started }))
     .finally(() => clearTimeout(timer));
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: safeServiceError
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function safeServiceError(error) {
   if (error && error.name === 'AbortError') return 'Request timed out.';
   return 'Cloud service could not be reached.';
@@ -240,6 +290,12 @@ let attendanceSettings = { schoolName:'Pope Pius Academy', latitude:'', longitud
 let attendanceRecords = [];
 let leaveRecords = [];
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: hydrateSharedStateFromCloud
+   PURPOSE: Loads persisted shared state into server runtime when a client connects/server starts. This is what prevents portal state from depending only on one browser localStorage.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function hydrateSharedStateFromCloud() {
   if (!supabase) return;
   const keys = [
@@ -274,6 +330,12 @@ async function hydrateSharedStateFromCloud() {
   if (value('pius_faculty_notification_settings') && typeof value('pius_faculty_notification_settings')==='object') facultyNotificationSettings=value('pius_faculty_notification_settings');
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: upsertById
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function upsertById(list, item) {
   if (!item || !item.id) return;
   const index = list.findIndex(x => x.id === item.id);
@@ -281,6 +343,12 @@ function upsertById(list, item) {
   else list.unshift(item);
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: upsertVerification
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function upsertVerification(request) {
   if (!request || !request.id) return;
   const index = profileVerificationRequests.findIndex(r => r.id === request.id);
@@ -288,6 +356,12 @@ function upsertVerification(request) {
   else profileVerificationRequests.unshift(request);
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: applyProfileToRoster
+   PURPOSE: Applies the related update/decision to current state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function applyProfileToRoster(profile) {
   if (!profile || !profile.empId) return;
   const index = portalStaff.findIndex(s => s.empId === profile.empId);
@@ -295,6 +369,12 @@ function applyProfileToRoster(profile) {
   else portalStaff.push(profile);
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: upsertStudentRequest
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function upsertStudentRequest(request) {
   if (!request || !request.id) return;
   const index = studentProfileRequests.findIndex(r => r.id === request.id);
@@ -302,6 +382,12 @@ function upsertStudentRequest(request) {
   else studentProfileRequests.unshift(request);
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: applyStudentToRoster
+   PURPOSE: Applies the related update/decision to current state.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function applyStudentToRoster(profile) {
   if (!profile) return;
   const id = profile.rollId || profile.admissionNo || profile.studentId;
@@ -336,6 +422,12 @@ const studentDatabase = {
 };
 
 // Helper: Broadcast payload to all connected clients
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: broadcast
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function broadcast(data) {
   const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
@@ -353,6 +445,12 @@ const RESETTABLE_STATE_KEYS=[
   'pius_communication_messages','pius_chat_messages','pius_communication_audit_log',
   'pius_faculty_notification_settings','pius_daily_portion_progress'
 ];
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: clearPersistentSchoolState
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function clearPersistentSchoolState(){
   if(supabase){
     try{
@@ -362,6 +460,12 @@ async function clearPersistentSchoolState(){
     }catch(e){console.error('Cloud reset failed:',e.message)}
   }
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: clearInMemorySchoolState
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function clearInMemorySchoolState(){
   portalStaff=[];profileVerificationRequests=[];portalStudents=[];studentProfileRequests=[];
   studentLeaveRecords=[];studentMailbox=[];studentAttendanceRecords=[];classTeacherAssignments={};timetableFolders=[];
@@ -369,6 +473,12 @@ function clearInMemorySchoolState(){
   leaveRecords=[];communicationMessages=[];chatMessages=[];communicationAuditLog=[];
   facultyNotificationSettings={};dailyPortionProgress=[];portalPresence={};
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: persistRuntimeState
+   PURPOSE: Persists one runtime state key to the cloud state table. Call after authoritative mutations so Render restarts do not lose the update.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function persistRuntimeState(key,value){
   if(!supabase)return;
   try{
@@ -377,14 +487,62 @@ async function persistRuntimeState(key,value){
     await supabase.from('portal_state').upsert({state_key:key,state_value:value,version,updated_by:'server-runtime',updated_at:new Date().toISOString()},{onConflict:'state_key'});
   }catch(e){console.error('Runtime state persistence failed:',key,e.message)}
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: commId
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function commId(prefix='MSG'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: requestNo
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function requestNo(prefix='REQ'){const d=new Date(),stamp=d.toISOString().slice(0,10).replace(/-/g,'');return `${prefix}-${stamp}-${String(Date.now()).slice(-7)}-${Math.random().toString(36).slice(2,5).toUpperCase()}`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: ensureRequestNo
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function ensureRequestNo(obj,prefix='REQ'){if(!obj)return '';if(!obj.requestNo)obj.requestNo=obj.id||requestNo(prefix);return obj.requestNo}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: presenceKey
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function presenceKey(role,id){return `${role||''}|${id||''}`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: setPresence
+   PURPOSE: Sets the requested state/value.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function setPresence(role,id,name,online=true){if(!role||!id)return;const k=presenceKey(role,id);portalPresence[k]={role,id:String(id),name:name||String(id),online:!!online,lastSeen:new Date().toISOString()};broadcast({type:'PRESENCE_UPDATED',payload:portalPresence[k]})}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: presenceList
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function presenceList(){return Object.values(portalPresence)}
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: auditCommunication
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function auditCommunication(action,item,actor={}){const row={id:commId('AUD'),requestNo:item?.requestNo||item?.id||'',messageId:item?.id||'',action,actorRole:actor.role||actor.actorRole||'',actorId:actor.id||actor.actorId||'',actorName:actor.name||actor.actorName||'',status:item?.status||'',at:new Date().toISOString()};communicationAuditLog.unshift(row);communicationAuditLog=communicationAuditLog.slice(0,10000);persistRuntimeState('pius_communication_audit_log',communicationAuditLog);broadcast({type:'COMMUNICATION_AUDIT_UPDATED',payload:row});return row}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: addCommunication
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function addCommunication(msg){
   const item={id:msg.id||commId('MAIL'),requestNo:msg.requestNo||requestNo(msg.type&&/REQUEST|PROFILE|LEAVE|TIMETABLE/.test(msg.type)?'REQ':'MSG'),kind:'official',status:msg.status||'New',createdAt:msg.createdAt||new Date().toISOString(),readBy:Array.isArray(msg.readBy)?msg.readBy:[],deletedFor:Array.isArray(msg.deletedFor)?msg.deletedFor:[],...msg};
   ensureRequestNo(item,msg.type&&/REQUEST|PROFILE|LEAVE|TIMETABLE/.test(msg.type)?'REQ':'MSG');
@@ -395,6 +553,12 @@ function addCommunication(msg){
   return item;
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: addSenderReceipt
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function addSenderReceipt(source,overrides={}){
   if(!source||!source.fromRole||!source.fromId||source.fromRole==='System')return null;
   const receipt={
@@ -410,11 +574,23 @@ function addSenderReceipt(source,overrides={}){
   };
   return addCommunication(receipt);
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: addCommunicationWithReceipt
+   PURPOSE: Creates the actual recipient communication record plus a sender receipt so Receive/Sent remain a persistent audit trail.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function addCommunicationWithReceipt(msg,receiptOverrides={}){
   const item=addCommunication(msg);
   if(msg?.fromRole&&msg?.fromId&&msg?.fromRole!=='System'&&!msg?.noSenderReceipt)addSenderReceipt(item,receiptOverrides);
   return item;
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: addChat
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function addChat(msg){
   const item={id:msg.id||commId('CHAT'),kind:'chat',createdAt:msg.createdAt||new Date().toISOString(),...msg};
   chatMessages.push(item);chatMessages=chatMessages.slice(-10000);
@@ -422,10 +598,34 @@ function addChat(msg){
   broadcast({type:'CHAT_MESSAGE_UPDATED',payload:item});
   return item;
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentPortalId
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentPortalId(s){return String(s.rollId||s.admissionNo||s.studentId||'')}
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: normClassPart
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function normClassPart(v){return String(v||'').replace(/^grade\s*/i,'').replace(/^class\s*/i,'').replace(/^div(ision)?\s*/i,'').trim().toLowerCase()}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: studentClassKey
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function studentClassKey(s){return `${normClassPart(s.grade||s.className)}|||${normClassPart(s.section||s.division)}`}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: classTeacherIdForStudent
+   PURPOSE: Server-authoritative Class Teacher lookup using normalized student Class+Division against classTeacherAssignments, with timetable fallback.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function classTeacherIdForStudent(s){
   const cg=normClassPart(s.grade||s.className),cd=normClassPart(s.section||s.division);
   let id='';
@@ -438,19 +638,43 @@ function classTeacherIdForStudent(s){
   const folder=timetableFolders.find(f=>normClassPart(f.className)===cg&&normClassPart(f.division)===cd&&f.classTeacherEmpId);
   return folder?.classTeacherEmpId?String(folder.classTeacherEmpId):'';
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: classTeacherNameForStudent
+   PURPOSE: Resolves the Class Teacher display name after classTeacherIdForStudent returns empId.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function classTeacherNameForStudent(s){
   const id=classTeacherIdForStudent(s),t=portalStaff.find(x=>String(x.empId)===id);return t?.name||id||'Class Teacher';
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: teacherCanMessageStudent
+   PURPOSE: Authorization helper allowing a teacher to communicate with a student when the teacher is Class Teacher or appears in that class timetable.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function teacherCanMessageStudent(teacherId,student){
   const id=String(teacherId||'');if(!id||!student)return false;
   if(classTeacherIdForStudent(student)===id)return true;
   return timetableFolders.some(f=>normClassPart(f.className)===normClassPart(student.grade||student.className)&&normClassPart(f.division)===normClassPart(student.section||student.division)&&(f.recipientTeacherEmpIds||[]).map(String).includes(id));
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: teacherStudents
+   PURPOSE: Returns the server-scoped list of students a teacher may access/message according to class/timetable routing.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function teacherStudents(teacherId){
   const seen=new Set();return portalStudents.filter(stu=>{
     const sid=studentPortalId(stu);if(!sid||seen.has(sid)||!teacherCanMessageStudent(teacherId,stu))return false;seen.add(sid);return true;
   });
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: classEqualsStudent
+   PURPOSE: Normalized server comparator used when publishing a class timetable to only the matching students.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function classEqualsStudent(folder,s){
   return normClassPart(folder.className)===normClassPart(s.grade||s.className)
     && normClassPart(folder.division)===normClassPart(s.section||s.division);
@@ -464,6 +688,12 @@ app.post('/api/communications/upload',upload.single('file'),(req,res)=>{
   res.json({ok:true,attachment:{name:req.file.originalname,size:req.file.size,mime:req.file.mimetype,url:`/uploads/${finalName}`}});
 });
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: sendWebPushToEmpIds
+   PURPOSE: Sends the related event/message/data to another portal or server.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function sendWebPushToEmpIds(empIds,title,body,url='/public/faculty.html'){
   if(!VAPID_PUBLIC_KEY||!VAPID_PRIVATE_KEY)return {sent:0,reason:'VAPID not configured'};
   const ids=new Set((empIds||[]).map(String));let sent=0;
@@ -473,6 +703,12 @@ async function sendWebPushToEmpIds(empIds,title,body,url='/public/faculty.html')
   }
   return {sent};
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: telegramSend
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function telegramSend(chatId,text){
   if(!TELEGRAM_BOT_TOKEN||!chatId)return false;
   try{
@@ -480,6 +716,12 @@ async function telegramSend(chatId,text){
     return r.ok;
   }catch(e){return false}
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: notifyFaculty
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 async function notifyFaculty(empIds,title,body,category='general'){
   const requested=new Set((empIds||[]).map(String));
   const allowed=[...requested].filter(id=>{
@@ -501,6 +743,12 @@ async function notifyFaculty(empIds,title,body,category='general'){
   }
   return {push:push.sent||0,telegram};
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: aiSystemPrompt
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function aiSystemPrompt(){
   return `You are the advisory intelligence layer for a school ERP. Use only supplied structured facts. Never invent teacher capabilities, workloads, ownership, rules or timetable feasibility. Deterministic school rules and CSP results are authoritative. Give concise management-friendly analysis: issue, reason, impact, best options, risks, and what requires Principal approval. Never claim a staffing reduction is safe unless supplied simulation data proves it.`;
 }
@@ -552,6 +800,12 @@ app.post('/api/ai/analyse',async(req,res)=>{
 // 2. WEBSOCKET REAL-TIME ENGINE
 // ====================================================================
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: currentPortalSnapshot
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function currentPortalSnapshot(){
   return {
     portalStaff,portalStudents,studentProfileRequests,classTeacherAssignments,timetableFolders,
@@ -560,12 +814,30 @@ function currentPortalSnapshot(){
     generatedAt:new Date().toISOString()
   };
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: sendWs
+   PURPOSE: Sends the related event/message/data to another portal or server.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function sendWs(ws,obj){try{if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(obj))}catch(e){}}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: connectedRoleSummary
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function connectedRoleSummary(){
   const roles={Principal:0,Faculty:0,Student:0};
   portalClientIdentity.forEach(v=>{if(v?.role in roles)roles[v.role]++});
   return roles;
 }
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: startPortalDiagnostic
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function startPortalDiagnostic(ws,r){
   const probeId=`PROBE-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,start=Date.now();
   const run={requestId:r.requestId||probeId,requester:ws,probeId,start,acks:new Map()};
@@ -584,7 +856,19 @@ function startPortalDiagnostic(ws,r){
   },1400);
 }
 
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: socketPortalRole
+   PURPOSE: Helper used by this portal/module. Read its callers and event/data references before modifying its behavior.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function socketPortalRole(ws){return portalClientIdentity.get(ws)?.role||''}
+/* -----------------------------------------------------------------------------
+   DEVELOPER FUNCTION NOTE: principalMasterAllowed
+   PURPOSE: Server authorization helper: master-data synchronization events must originate from an identified Principal socket.
+   MAINTENANCE: Preserve existing callers, storage keys and WebSocket event contracts
+   unless the corresponding Principal/Faculty/Student/server route is updated together.
+----------------------------------------------------------------------------- */
 function principalMasterAllowed(ws){return socketPortalRole(ws)==='Principal'}
 
 wss.on('connection', async (ws) => {
@@ -667,7 +951,8 @@ wss.on('connection', async (ws) => {
           broadcast({ type:'STUDENT_REQUESTS_SYNCED', payload:studentProfileRequests });
           break;
 
-        case 'SYNC_CLASS_TEACHER_ASSIGNMENTS':
+        /* MASTER ROUTE: Principal publishes the authoritative Class+Division -> empId mapping. */
+case 'SYNC_CLASS_TEACHER_ASSIGNMENTS':
           if(!principalMasterAllowed(ws)){console.warn('Rejected non-Principal Class Teacher master sync');break;}
           classTeacherAssignments = (data.payload && typeof data.payload === 'object') ? data.payload : {};
           persistRuntimeState('pius_class_teacher_assignments',classTeacherAssignments);
@@ -682,7 +967,8 @@ wss.on('connection', async (ws) => {
           broadcast({ type:'TIMETABLE_FOLDERS_UPDATED', payload:timetableFolders });
           break;
 
-        case 'SUBMIT_TIMETABLE_REVIEW': {
+        /* EVENT ROUTE: Principal -> Faculty timetable distribution. Historical name retained for compatibility; no Faculty acceptance required. */
+case 'SUBMIT_TIMETABLE_REVIEW': {
           const r=data.payload||{};
           if(!Array.isArray(r.folders)||!Array.isArray(r.teacherIds))break;
           timetableFolders=r.folders.map(f=>({...f,published:false,reviewOnly:false,status:'Faculty Active'}));
@@ -697,7 +983,8 @@ wss.on('connection', async (ws) => {
           break;
         }
 
-        case 'FACULTY_TIMETABLE_DECISION': {
+        /* EVENT ROUTE: Faculty concern -> Principal. Status Issue is an action item, not a publication lock. */
+case 'FACULTY_TIMETABLE_DECISION': {
           const r=data.payload||{};
           if(r.status!=='Issue')break;
           if(!timetableReview)timetableReview={version:r.version,folders:timetableFolders,teacherIds:[],teacherReviews:{},mode:'LIVE_NO_APPROVAL'};
@@ -980,7 +1267,8 @@ wss.on('connection', async (ws) => {
           break;
         }
 
-        case 'FACULTY_PUBLISH_CLASS':
+        /* EVENT ROUTE: Class Teacher -> Student publication. Concerns do not block this route; authorization is based on classTeacherEmpId. */
+case 'FACULTY_PUBLISH_CLASS':
         case 'PUBLISH_CLASS_TIMETABLE': {
           const r=data.payload||{};
           const folder=timetableFolders.find(x=>String(x.id)===String(r.folderId)||String(x.academicDivisionId)===String(r.divisionId));
