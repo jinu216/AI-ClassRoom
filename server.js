@@ -894,6 +894,10 @@ wss.on('connection', async (ws) => {
         case 'COMMUNICATION_MESSAGE_CREATE': {
           const r=data.payload||{};
           if(!r.toRole||!r.title)break;
+          if(r.type==='PORTAL_SHARE'){
+            r.status=r.status||'Shared';
+            r.details={...(r.details||{}),shared:true,hasAttachment:!!r.attachment,sharedAt:r.createdAt||new Date().toISOString()};
+          }
           addCommunicationWithReceipt(r);
           break;
         }
