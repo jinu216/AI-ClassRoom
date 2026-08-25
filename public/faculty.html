@@ -775,12 +775,21 @@ async function enableWebPush(){
 }
 let activeFacultyFolderSource=null,activeFacultyClassFolder=null;
 function openFacultySourceFolder(id,title){
- const source=document.getElementById(id),body=document.getElementById('facultyFolderModalBody');if(!source||!body)return;
- if(activeFacultyFolderSource)closeFacultyFolderModal();
+ const source=document.getElementById(id),body=document.getElementById('facultyFolderModalBody'),modal=document.getElementById('facultyFolderModal');
+ if(!source||!body||!modal){console.error('Faculty folder could not open:',id,{source:!!source,body:!!body,modal:!!modal});return alert('This folder could not be opened.');}
+ if(activeFacultyFolderSource){
+   if(activeFacultyFolderSource.source===source&&modal.classList.contains('open'))return;
+   closeFacultyFolderModal();
+ }
  activeFacultyFolderSource={source,parent:source.parentNode,next:source.nextSibling};
- document.getElementById('facultyFolderModalTitle').textContent=title||'Faculty Folder';
- body.innerHTML='';body.appendChild(source);source.classList.remove('faculty-folder-source');
- const modal=document.getElementById('facultyFolderModal');modal.classList.add('open');modal.setAttribute('aria-hidden','false');
+ const titleEl=document.getElementById('facultyFolderModalTitle');if(titleEl)titleEl.textContent=title||'Faculty Folder';
+ body.replaceChildren();
+ body.appendChild(source);
+ source.classList.remove('faculty-folder-source');
+ source.style.display='block';
+ modal.classList.add('open');
+ modal.setAttribute('aria-hidden','false');
+ document.body.style.overflow='hidden';
 }
 function openAcceptedTimetableFolder(){
  const review=currentTeacherReview();
@@ -791,13 +800,13 @@ function openAcceptedTimetableFolder(){
  renderAcceptedTimetablePopup();
 }
 function renderAcceptedTimetablePopup(){
- const body=document.getElementById('facultyFolderModalBody');if(!body)return;
+ const source=document.getElementById('acceptedTimetableSource');if(!source)return;
  const mine=myTimetables(),review=currentTeacherReview(),accepted=!review||review.status==='Accepted';
- if(!accepted){body.innerHTML='<div class="empty">Your accepted timetable will appear here after confirmation.</div>';return}
+ if(!accepted){source.innerHTML='<div class="empty">Your accepted timetable will appear here after confirmation.</div>';return}
  const fullReview=timetableReviewState(),classTeacherFolders=mine.filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
  const publishReadiness=classTeacherFolders.length?`<div class="notice"><strong>Class Teacher Publication Status</strong><span>These class timetables can be published to students only after all concerned teachers confirm.</span>${renderMyClassPublishReadiness(fullReview)}</div>`:'';
  const cards=mine.map((f,index)=>{const isCT=String(f.classTeacherEmpId||'')===String(teacher.empId),myPeriods=[];(f.settings?.workingDays||[]).forEach(d=>(f.slots||[]).filter(s=>s.type==='period').forEach(slot=>{const c=f.grid?.[d]?.[slot.index];if(c?.teacherEmpId===teacher.empId)myPeriods.push(c)}));return `<button class="accepted-class-card" onclick="showAcceptedClassDetail(${index})"><strong>${esc(f.className)} — ${esc(f.division)}</strong><small>${isCT?'Class Teacher · complete class timetable':`Subject Teacher · ${myPeriods.length} assigned period${myPeriods.length===1?'':'s'}`}<br>Class Teacher: ${esc(f.classTeacher||'—')}</small></button>`}).join('');
- body.innerHTML=`<div class="accepted-timetable-shell"><div class="notice"><strong>Confirmed timetable</strong><span>${mine.length} class/division folder${mine.length===1?'':'s'} assigned to you. Select a class to view the schedule.</span></div>${publishReadiness}<div id="acceptedClassGrid" class="accepted-class-grid">${cards||'<div class="empty">No timetable folders assigned.</div>'}</div><div id="acceptedClassDetail" class="accepted-detail"></div></div>`;
+ source.innerHTML=`<div class="accepted-timetable-shell"><div class="notice"><strong>Confirmed timetable</strong><span>${mine.length} class/division folder${mine.length===1?'':'s'} assigned to you. Select a class to view the schedule.</span></div>${publishReadiness}<div id="acceptedClassGrid" class="accepted-class-grid">${cards||'<div class="empty">No timetable folders assigned.</div>'}</div><div id="acceptedClassDetail" class="accepted-detail"></div></div>`;
 }
 
 function showAcceptedClassDetail(index){
@@ -815,7 +824,7 @@ function openFacultyClassFolder(index){openAcceptedTimetableFolder();setTimeout(
 function closeFacultyFolderModal(){
  const modal=document.getElementById('facultyFolderModal'),body=document.getElementById('facultyFolderModalBody');
  if(activeFacultyFolderSource){const {source,parent,next}=activeFacultyFolderSource;source.classList.add('faculty-folder-source');if(next&&next.parentNode===parent)parent.insertBefore(source,next);else parent.appendChild(source);activeFacultyFolderSource=null}
- activeFacultyClassFolder=null;if(body)body.innerHTML='';modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');
+ activeFacultyClassFolder=null;if(body)body.replaceChildren();modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');document.body.style.overflow='';
 }
 function saveCloseFacultyFolder(){
  if(activeFacultyClassFolder){markTimetableSeen();return closeFacultyFolderModal()}
@@ -1085,6 +1094,16 @@ window.debugMyClass=function(){
  };
  console.table(report);
  return report;
+};
+</script>
+<script>
+window.debugFacultyTimetableFolders=function(){
+ const ids=['dailyPortionFoldersCard','timetableReviewSource','acceptedTimetableSource','facultyFolderModal','facultyFolderModalBody'];
+ const result={};
+ ids.forEach(id=>{const e=document.getElementById(id);result[id]={found:!!e,display:e?getComputedStyle(e).display:'missing',parent:e?.parentElement?.id||e?.parentElement?.className||''}});
+ result.teacher=teacher?.empId||null;
+ result.myTimetables=typeof myTimetables==='function'?myTimetables().length:null;
+ console.table(result);return result;
 };
 </script>
 </body></html>
