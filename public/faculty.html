@@ -263,7 +263,7 @@
       <div class="class-teacher-status"><div class="label">Today's Status</div><div id="todayStatus" class="value">Available</div><div class="sub">Based on approved leave</div></div>
       <div><div class="label">Class Teacher Responsibility</div><div id="classTeacherAssignmentClean"><div class="class-teacher-grade">—</div><div class="class-teacher-division">No class assigned</div></div>
       <div id="classTeacherMetrics" class="class-teacher-metrics" style="display:none"></div>
-      <div id="classTeacherActions" class="class-teacher-actions" style="display:none"><button type="button" class="secondary" id="myClassDashboardBtn" onclick="window.openMyClassWorkspace()"><i class="fa-solid fa-school"></i> My Class</button><button class="secondary" onclick="show('studentApprovals')"><i class="fa-solid fa-user-check"></i> Student Approvals</button></div></div>
+      <div id="classTeacherActions" class="class-teacher-actions" style="display:none"><button type="button" class="secondary" id="myClassDashboardBtn" onclick="openMyClassWorkspace()"><i class="fa-solid fa-school"></i> My Class</button><button class="secondary" onclick="show('studentApprovals')"><i class="fa-solid fa-user-check"></i> Student Approvals</button></div></div>
     </div>
   </div>
   <div class="card kpi academic-kpi"><div class="label">Weekly Teaching</div><div id="dashboardWeeklyPeriods" class="value">0</div><div class="sub" id="dashboardWeeklyMeta">0 classes / subjects</div></div>
@@ -453,18 +453,33 @@ function renderMyClassWorkspace(){
 function openMyClassWorkspace(){
  const c=currentClassTeacherAssignment();
  if(!c)return alert('You are not currently assigned as a Class Teacher.');
- const modal=document.getElementById('myClassDedicatedModal'),
-       title=document.getElementById('myClassDedicatedTitle'),
-       subtitle=document.getElementById('myClassDedicatedSubtitle'),
-       body=document.getElementById('myClassWorkspaceBody');
- if(!modal||!body)return alert('My Class window could not be opened.');
- const grade=`Grade ${normalizeFacultyClass(c.grade)}`,div=`Div ${normalizeFacultyDiv(c.division)}`;
+
+ const modal=document.getElementById('myClassDedicatedModal');
+ const title=document.getElementById('myClassDedicatedTitle');
+ const subtitle=document.getElementById('myClassDedicatedSubtitle');
+ const body=document.getElementById('myClassWorkspaceBody');
+
+ if(!modal||!body){
+   console.error('My Class modal elements are missing.');
+   return alert('My Class window could not be opened.');
+ }
+
+ const grade=`Grade ${normalizeFacultyClass(c.grade)}`;
+ const div=`Div ${normalizeFacultyDiv(c.division)}`;
+
  if(title)title.textContent='My Class';
  if(subtitle)subtitle.textContent=`${grade} • ${div} • ${classTeacherStudents().length} students`;
+
  modal.classList.add('open');
  modal.setAttribute('aria-hidden','false');
  document.body.style.overflow='hidden';
- renderMyClassWorkspace();
+
+ try{
+   renderMyClassWorkspace();
+ }catch(err){
+   console.error('My Class render error:',err);
+   body.innerHTML=`<div class="notice"><strong>Unable to load My Class</strong><span>${esc(err?.message||String(err))}</span></div>`;
+ }
 }
 function closeMyClassWorkspace(){
  const modal=document.getElementById('myClassDedicatedModal');
@@ -922,5 +937,22 @@ window.showMyClassStudentsDetail=showMyClassStudentsDetail;
 window.showMyClassStudentProfile=showMyClassStudentProfile;
 window.showMyClassAttendanceDetail=showMyClassAttendanceDetail;
 window.showMyClassCameraDetail=showMyClassCameraDetail;
+</script>
+<script>
+window.debugMyClass=function(){
+ const c=typeof currentClassTeacherAssignment==='function'?currentClassTeacherAssignment():null;
+ const modal=document.getElementById('myClassDedicatedModal');
+ const body=document.getElementById('myClassWorkspaceBody');
+ const students=typeof classTeacherStudents==='function'?classTeacherStudents():[];
+ const report={
+   functionAvailable:typeof openMyClassWorkspace==='function',
+   classAssignment:c,
+   studentCount:Array.isArray(students)?students.length:null,
+   modalFound:!!modal,
+   bodyFound:!!body
+ };
+ console.table(report);
+ return report;
+};
 </script>
 </body></html>
