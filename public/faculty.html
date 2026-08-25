@@ -211,6 +211,22 @@
 .class-camera-meta{font-size:10px;color:var(--muted);line-height:1.6;margin-top:8px}
 @media(max-width:760px){.my-class-folder-grid,.class-camera-grid{grid-template-columns:1fr}}
 
+
+/* ===== V41 My Class Student Directory ===== */
+.my-class-student-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.my-class-student-card{display:flex;align-items:center;gap:12px;text-align:left;padding:12px;border-radius:13px;border:1px solid rgba(201,162,75,.16);background:linear-gradient(145deg,rgba(17,38,58,.96),rgba(7,20,34,.98));color:var(--text);cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.2);transition:.18s}
+.my-class-student-card:hover{transform:translateY(-2px);border-color:rgba(225,189,104,.48);box-shadow:0 14px 28px rgba(0,0,0,.3)}
+.my-class-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;display:grid;place-items:center;flex:0 0 48px;background:rgba(201,162,75,.1);border:1px solid rgba(201,162,75,.2);color:#e5c66b}
+.my-class-avatar img{width:100%;height:100%;object-fit:cover}
+.student-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.student-profile-box{border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;background:rgba(255,255,255,.025)}
+.student-profile-box h4{margin:0 0 8px;color:#f4ead8}.student-profile-box p{margin:4px 0;color:var(--muted);font-size:11px;line-height:1.5}
+.student-performance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.student-performance-metric{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)}
+.student-performance-metric span{display:block;font-size:8px;color:var(--muted);text-transform:uppercase}.student-performance-metric strong{display:block;font-size:18px;margin-top:4px}
+.student-detail-table{width:100%;border-collapse:collapse}.student-detail-table td,.student-detail-table th{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;text-align:left}
+@media(max-width:700px){.my-class-student-list,.student-profile-grid{grid-template-columns:1fr}.student-performance-grid{grid-template-columns:repeat(2,1fr)}}
+
 </style></head><body>
 <div id="login" class="login"><div class="login-card">
 <div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Pope Pius Academy</div><h1>Teacher Portal</h1><p>Secure teacher access using the mobile number registered by the Principal. Your portal permissions are controlled by the school administration.</p>
@@ -407,17 +423,66 @@ function renderMyClassWorkspace(){
  const c=currentClassTeacherAssignment();if(!c){body.innerHTML='<div class="empty">You are not currently assigned as a Class Teacher.</div>';return}
  const students=classTeacherStudents(),att=todayStudentAttendanceForClass(),cams=myClassCameraConfigurations();
  const grade=`Grade ${normalizeFacultyClass(c.grade)}`,div=`Div ${normalizeFacultyDiv(c.division)}`;
- body.innerHTML=`<div class="notice"><strong>${esc(grade)}<br>${esc(div)}</strong><span>Assigned Class Teacher responsibility</span></div>
+ body.innerHTML=`<div class="notice"><strong>${esc(grade)}<br>${esc(div)}</strong><span>${students.length} students • Assigned Class Teacher responsibility</span></div>
  <div class="my-class-folder-grid">
-   <button class="my-class-folder" onclick="showMyClassStudentsDetail()"><i class="fa-solid fa-users"></i><strong>Students</strong><small>${students.length} student${students.length===1?'':'s'} in this class. Open full student directory.</small></button>
+   <button class="my-class-folder" onclick="showMyClassStudentsDetail()"><i class="fa-solid fa-users"></i><strong>Class Students</strong><small>Open the complete student directory and individual student profiles.</small></button>
    <button class="my-class-folder" onclick="showMyClassAttendanceDetail()"><i class="fa-solid fa-user-check"></i><strong>Today's Attendance</strong><small>${att.present} present • ${att.absent} absent • ${att.marked}/${att.total} marked</small></button>
    <button class="my-class-folder" onclick="showMyClassCameraDetail()"><i class="fa-solid fa-video"></i><strong>Class Cameras</strong><small>${cams.length} camera${cams.length===1?'':'s'} assigned to ${esc(grade)} ${esc(div)}.</small></button>
  </div><div id="myClassDetailPanel" style="margin-top:14px"></div>`;
+ setTimeout(showMyClassStudentsDetail,0);
 }
 function openMyClassWorkspace(){if(!currentClassTeacherAssignment())return alert('You are not currently assigned as a Class Teacher.');renderMyClassWorkspace();openFacultySourceFolder('myClassWorkspaceSource','My Class')}
+function studentPortalIdValue(x){return String(x?.rollId||x?.admissionNo||x?.studentId||'')}
+function studentAttendancePerformance(stu){
+ const sid=studentPortalIdValue(stu),records=get('pius_student_attendance_records',[]).filter(r=>String(r.studentId||r.rollId||r.admissionNo||'')===sid);
+ let present=0,absent=0,late=0;
+ records.forEach(r=>{const st=String(r.status||'').toLowerCase();if(st==='absent')absent++;else if(st==='late'){late++;present++}else if(['present','half day'].includes(st))present++});
+ const total=present+absent,percentage=total?Math.round((present/total)*100):null;
+ return {records,total,present,absent,late,percentage};
+}
+function studentAcademicPerformance(stu){
+ const sid=studentPortalIdValue(stu);
+ const resultStores=['pius_student_results','pius_results_data','pius_academic_results'];
+ const assignmentStores=['pius_student_assignments','pius_assignments_data'];
+ let results=[],assignments=[];
+ resultStores.forEach(k=>{const a=get(k,[]);if(Array.isArray(a))results.push(...a.filter(r=>String(r.studentId||r.rollId||r.admissionNo||r.student||'')===sid))});
+ assignmentStores.forEach(k=>{const a=get(k,[]);if(Array.isArray(a))assignments.push(...a.filter(r=>String(r.studentId||r.rollId||r.admissionNo||r.student||'')===sid))});
+ const marks=[];
+ results.forEach(r=>{const pct=Number(r.percentage??r.percent??r.scorePercent);if(Number.isFinite(pct))marks.push(pct);else{const score=Number(r.score??r.marks??r.obtained),max=Number(r.maxMarks??r.totalMarks??r.maximum);if(Number.isFinite(score)&&Number.isFinite(max)&&max>0)marks.push(score/max*100)}});
+ const average=marks.length?Math.round(marks.reduce((a,b)=>a+b,0)/marks.length):null;
+ const completed=assignments.filter(a=>/complete|submitted|done|graded/i.test(String(a.status||''))).length;
+ return {results,assignments,average,assignmentCompleted:completed};
+}
+function studentProfileRequestsFor(stu){
+ const sid=studentPortalIdValue(stu);
+ return get(STUDENT_REQUEST_KEY,[]).filter(r=>String(r.studentId||r.rollId||'')===sid).sort((a,b)=>String(b.createdAt||b.submittedAt||'').localeCompare(String(a.createdAt||a.submittedAt||'')));
+}
 function showMyClassStudentsDetail(){
  const el=document.getElementById('myClassDetailPanel'),a=classTeacherStudents();if(!el)return;
- el.innerHTML=`<div class="section-head"><h3>Student Directory</h3><span>${a.length} students</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>ID</th><th>Gender</th><th>Registered Mobile</th></tr></thead><tbody>${a.map(x=>`<tr><td><strong>${esc(x.name||x.fullName||'Student')}</strong></td><td>${esc(x.rollId||x.admissionNo||x.studentId||'—')}</td><td>${esc(x.gender||'—')}</td><td>${esc(x.phone||x.mobile||x.registeredMobile||'—')}</td></tr>`).join('')||'<tr><td colspan="4">No students found.</td></tr>'}</tbody></table></div>`;
+ el.innerHTML=`<div class="section-head"><div><h3>Class Students</h3><span>${a.length} student${a.length===1?'':'s'} • Select a student to open full details.</span></div></div><div class="my-class-student-list">${a.map((x,i)=>`<button class="my-class-student-card" onclick="showMyClassStudentProfile(${i})"><span class="my-class-avatar">${x.photoUrl?`<img src="${esc(x.photoUrl)}" alt="">`:'<i class="fa-solid fa-user-graduate"></i>'}</span><span><strong>${esc(x.name||x.fullName||'Student')}</strong><small>${esc(studentPortalIdValue(x)||'No ID')} • ${esc(x.gender||'Gender not entered')}</small></span></button>`).join('')||'<div class="empty">No students found for this class.</div>'}</div>`;
+}
+function showMyClassStudentProfile(index){
+ const students=classTeacherStudents(),stu=students[index],el=document.getElementById('myClassDetailPanel');if(!stu||!el)return;
+ const sid=studentPortalIdValue(stu),att=studentAttendancePerformance(stu),acad=studentAcademicPerformance(stu),requests=studentProfileRequestsFor(stu),latestReq=requests[0];
+ const guardian=stu.fatherName||stu.parentName||stu.guardianName||stu.motherName||'—';
+ const guardianPhone=stu.parentPhone||stu.guardianPhone||stu.fatherPhone||stu.motherPhone||stu.emergencyContact||'—';
+ const phone=stu.phone||stu.mobile||stu.registeredMobile||'—';
+ const email=stu.email||'—',address=stu.address||stu.residentialAddress||'—',dob=stu.dob||stu.dateOfBirth||'—';
+ el.innerHTML=`<div class="section-head"><div><h3>${esc(stu.name||stu.fullName||'Student')}</h3><span>${esc(sid||'No student ID')} • Grade ${esc(normalizeFacultyClass(stu.grade||stu.className||''))} • Div ${esc(normalizeFacultyDiv(stu.section||stu.division||''))}</span></div><button class="secondary" onclick="showMyClassStudentsDetail()"><i class="fa-solid fa-arrow-left"></i> Back to Class</button></div>
+ <div class="student-performance-grid">
+   <div class="student-performance-metric"><span>Attendance</span><strong>${att.percentage==null?'—':att.percentage+'%'}</strong></div>
+   <div class="student-performance-metric"><span>Present Days</span><strong>${att.present}</strong></div>
+   <div class="student-performance-metric"><span>Academic Avg.</span><strong>${acad.average==null?'—':acad.average+'%'}</strong></div>
+   <div class="student-performance-metric"><span>Assignments</span><strong>${acad.assignments.length?acad.assignmentCompleted+'/'+acad.assignments.length:'—'}</strong></div>
+ </div>
+ <div class="student-profile-grid">
+  <div class="student-profile-box"><h4>Student Information</h4><p><b>Student ID:</b> ${esc(sid||'—')}</p><p><b>Date of Birth:</b> ${esc(dob)}</p><p><b>Gender:</b> ${esc(stu.gender||'—')}</p><p><b>Email:</b> ${esc(email)}</p><p><b>Registered Mobile:</b> ${esc(phone)}</p><p><b>Address:</b> ${esc(address)}</p></div>
+  <div class="student-profile-box"><h4>Parent / Guardian</h4><p><b>Name:</b> ${esc(guardian)}</p><p><b>Contact:</b> ${esc(guardianPhone)}</p><p><b>Relationship:</b> ${esc(stu.guardianRelation||stu.relationship||'—')}</p><p><b>Emergency Contact:</b> ${esc(stu.emergencyContact||guardianPhone)}</p></div>
+  <div class="student-profile-box"><h4>Attendance Performance</h4><p><b>Attendance Percentage:</b> ${att.percentage==null?'No attendance data available':att.percentage+'%'}</p><p><b>Present:</b> ${att.present}</p><p><b>Absent:</b> ${att.absent}</p><p><b>Late:</b> ${att.late}</p><p><b>Attendance Records:</b> ${att.records.length}</p></div>
+  <div class="student-profile-box"><h4>Academic Performance</h4><p><b>Average:</b> ${acad.average==null?'No academic result data available':acad.average+'%'}</p><p><b>Result Records:</b> ${acad.results.length}</p><p><b>Assignments:</b> ${acad.assignments.length}</p><p><b>Completed:</b> ${acad.assignmentCompleted}</p></div>
+ </div>
+ <div class="student-profile-box" style="margin-top:12px"><h4>Academic Results</h4>${acad.results.length?`<div class="table-wrap"><table class="student-detail-table"><thead><tr><th>Subject</th><th>Assessment</th><th>Score</th><th>Status</th></tr></thead><tbody>${acad.results.slice(0,20).map(r=>`<tr><td>${esc(r.subject||r.subjectName||'—')}</td><td>${esc(r.exam||r.assessment||r.term||'—')}</td><td>${esc(r.percentage!=null?r.percentage+'%':r.score??r.marks??'—')}</td><td>${esc(r.status||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<p>No academic result data available for this student.</p>'}</div>
+ <div class="student-profile-box" style="margin-top:12px"><h4>Request / Approval Status</h4>${latestReq?`<p><b>Latest Request:</b> ${esc(latestReq.requestNo||latestReq.id||'—')}</p><p><b>Status:</b> ${esc(latestReq.status||'Pending')}</p><p><b>Submitted:</b> ${latestReq.createdAt||latestReq.submittedAt?new Date(latestReq.createdAt||latestReq.submittedAt).toLocaleString():'—'}</p>`:'<p>No student requests currently recorded.</p>'}</div>`;
 }
 function showMyClassAttendanceDetail(){
  const el=document.getElementById('myClassDetailPanel'),a=todayStudentAttendanceForClass();if(!el)return;
