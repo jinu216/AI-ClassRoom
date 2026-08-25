@@ -668,6 +668,138 @@ function replyFacultyMail(id){const m=facultyOfficialAll().find(x=>String(x.id)=
 
 function renderFacultyShareComposer(){const el=document.getElementById('facultyShareComposer');if(!el)return;el.style.display=facultyMailFolder==='share'?'block':'none';if(facultyMailFolder!=='share')return;el.innerHTML=`<div class="mailbox-share-compose"><div class="recipient-search-wrap"><label>Recipient</label><input id="facultyShareRecipient" autocomplete="off" placeholder="Type name, ID, Principal, Faculty or Student" oninput="facultyRecipientSearch(this.value)"><div id="facultyRecipientSuggestions" class="recipient-suggestions"></div></div><div><label>Subject</label><input id="facultyShareTitle" placeholder="Document / message subject"></div><div class="full"><label>Message</label><textarea id="facultyShareBody" placeholder="Write a message or description"></textarea></div><div class="full"><label>Document (optional, max 5 MB)</label><input id="facultyShareFile" type="file"></div><div class="full"><button class="primary" onclick="sendFacultyShare()"><i class="fa-solid fa-share-nodes"></i> Share</button></div></div>`;
 }
+const TT_REVIEW_KEY='pius_faculty_timetable_review';
+function timetableReviewState(){return get(TT_REVIEW_KEY,null)}
+function saveTimetableReviewState(v){save(TT_REVIEW_KEY,v)}
+function currentTeacherReview(){
+  const r=timetableReviewState();if(!r||!teacher)return null;
+  const reviews=r.teacherReviews||{};
+  const mine=reviews[String(teacher.empId)]||reviews[teacher.empId]||{status:'Pending'};
+  return {...mine,version:r.version};
+}
+function renderFacultyTimetableReview(){
+  if(!teacher)return;
+  const panel=document.getElementById('facultyTimetableReviewPanel'),badge=document.getElementById('facultyTimetableReviewBadge');
+  if(!panel||!badge)return;
+  const r=timetableReviewState(),mine=currentTeacherReview();
+  const folderStatus=document.getElementById('timetableReviewFolderStatus');
+  if(!r||!(r.teacherIds||[]).map(String).includes(String(teacher.empId))||mine?.status==='Accepted'){
+    panel.innerHTML='<strong>No timetable currently waiting for review.</strong><span>Your accepted timetable is available inside <b>My Accepted Timetable</b>. You will be notified if the Principal issues a new version.</span>';
+    badge.textContent='NONE';badge.className='badge ok';
+    if(folderStatus)folderStatus.textContent='NONE';
+    const actions=panel.parentElement?.querySelector('.actions');if(actions)actions.style.display='none';
+    return;
+  }
+  const status=mine?.status||'Pending';
+  badge.textContent=status.toUpperCase();badge.className='badge '+(status==='Issue'?'bad':'warn');
+  if(folderStatus)folderStatus.textContent=status.toUpperCase();
+  const actions=panel.parentElement?.querySelector('.actions');if(actions)actions.style.display='flex';
+  if(status==='Issue'){
+    panel.innerHTML=`<strong>Timetable V${esc(String(r.version||''))} — issue submitted.</strong><span>The Principal has been notified. The review remains open until a corrected/new version is issued.<br><b>Your issue:</b> ${esc(mine?.reason||'')}</span>`;
+  }else{
+    panel.innerHTML=`<strong>Timetable V${esc(String(r.version||''))} is waiting for your confirmation.</strong><span>Review your personal timetable below. Accept if it is workable, or raise an issue with the exact day/period/reason.</span>`;
+  }
+}
+function renderMyClassPublishReadiness(r){
+  const folders=(r?.folders||timetables()).filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
+  if(!folders.length)return '';
+  return '<div style="margin-top:12px">'+folders.map(folder=>{
+    const ids=(folder.recipientTeacherEmpIds||[]).map(String),reviews=r?.teacherReviews||{};
+    const acceptedIds=ids.filter(id=>String(reviews[id]?.status||'').toLowerCase()==='accepted');
+    const issueIds=ids.filter(id=>String(reviews[id]?.status||'').toLowerCase()==='issue');
+    const pending=ids.filter(id=>!acceptedIds.includes(id)&&!issueIds.includes(id));
+    const ready=ids.length>0&&acceptedIds.length===ids.length;
+    return `<div class="notice"><strong>${esc(folder.className)} — ${esc(folder.division)} · ${acceptedIds.length}/${ids.length} teachers confirmed</strong><span>${folder.published?'Published to Student Portal':ready?'All concerned teachers accepted. Ready for Class Teacher publication.':issueIds.length?`${issueIds.length} issue(s) pending resolution.`:`Waiting for ${pending.length} teacher confirmation(s).`}</span>${!folder.published&&ready?`<button class="primary" style="margin-top:8px" onclick="publishMyClassTimetable('${esc(folder.id)}')"><i class="fa-solid fa-paper-plane"></i> Publish to Students</button>`:''}</div>`
+  }).join('')+'</div>';
+}
+function publishMyClassTimetable(folderId){
+  const r=timetableReviewState();const folder=(r?.folders||timetables()).find(x=>String(x.id)===String(folderId));if(!folder)return alert('Class timetable not found.');
+  const ids=folder.recipientTeacherEmpIds||[],ready=ids.length&&ids.every(id=>r.teacherReviews?.[String(id)]?.status==='Accepted');if(!ready)return alert('All concerned teachers must accept before publication.');
+  if(!confirm(`Publish ${folder.className} — ${folder.division} timetable to the Student Portal?`))return;
+  socketSend('FACULTY_PUBLISH_CLASS',{folderId,teacherId:teacher.empId,teacherName:teacher.name,version:r.version});toast('Publication request sent.');
+}
+function facultyTimetableDecision(status){
+  if(!teacher)return;
+  const r=timetableReviewState();
+  if(!r)return alert('No timetable is waiting for review.');
+  let reason='';
+  if(status==='Issue'){
+    reason=prompt('Describe the exact issue (day, period and reason):','')||'';
+    if(!reason.trim())return alert('Please enter the timetable issue before sending.');
+  }
+  const payload={version:r.version,teacherId:teacher.empId,teacherName:teacher.name,status,reason:reason.trim(),respondedAt:new Date().toISOString()};
+  r.teacherReviews=r.teacherReviews||{};r.teacherReviews[teacher.empId]=payload;saveTimetableReviewState(r);
+  socketSend('FACULTY_TIMETABLE_DECISION',payload);
+  renderFacultyTimetableReview();renderTimetable();
+  if(status==='Accepted'){toast('Timetable accepted. No timetable is currently waiting for review.');setTimeout(()=>closeFacultyFolderModal(),180)}
+  else toast('Timetable issue sent to the Principal.');
+}
+function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4),base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(base64);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
+function facultyNotificationSettings(){
+ const defaults={mobile:teacher?.portalMobile||teacher?.mobile||'',timetable:true,notices:true,approvals:true,leave:true,duties:true,academic:false};
+ let saved={};try{saved=JSON.parse(localStorage.getItem(NOTIFY_PREF_KEY)||'{}')}catch(e){}
+ return {...defaults,...saved,empId:teacher?.empId||saved.empId||''};
+}
+function loadFacultyNotificationSettings(){
+ if(!teacher)return;const p=facultyNotificationSettings(),set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||''},check=(id,v)=>{const e=document.getElementById(id);if(e)e.checked=!!v};
+ set('notifyRegisteredMobile',teacher.portalMobile||teacher.mobile||'');set('notifyAlertMobile',p.mobile||teacher.portalMobile||teacher.mobile||'');
+ check('notifyTimetable',p.timetable);check('notifyNotices',p.notices);check('notifyApprovals',p.approvals);check('notifyLeave',p.leave);check('notifyDuties',p.duties);check('notifyAcademic',p.academic);
+ updateNotificationPermissionStatus();
+}
+function saveFacultyNotificationSettings(){
+ if(!teacher)return;
+ const p={empId:teacher.empId,mobile:(document.getElementById('notifyAlertMobile')?.value||teacher.portalMobile||teacher.mobile||'').trim(),timetable:!!document.getElementById('notifyTimetable')?.checked,notices:!!document.getElementById('notifyNotices')?.checked,approvals:!!document.getElementById('notifyApprovals')?.checked,leave:!!document.getElementById('notifyLeave')?.checked,duties:!!document.getElementById('notifyDuties')?.checked,academic:!!document.getElementById('notifyAcademic')?.checked,updatedAt:new Date().toISOString()};
+ localStorage.setItem(NOTIFY_PREF_KEY,JSON.stringify(p));socketSend('FACULTY_NOTIFICATION_SETTINGS_UPDATE',p);toast('Notification settings saved.');
+ updateNotificationPermissionStatus();
+}
+function updateNotificationPermissionStatus(){
+ const el=document.getElementById('notificationSettingsStatus');if(!el)return;
+ const supported='Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window,permission=supported?Notification.permission:'unsupported';
+ el.innerHTML=`<strong>Browser / Mobile Alerts</strong><span>${permission==='granted'?'Enabled on this browser/device.':permission==='denied'?'Blocked by browser settings.':permission==='default'?'Not enabled yet. Press Enable Browser / Mobile Alerts.':'Not supported by this browser.'}</span>`;
+}
+async function enableWebPush(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return alert('Web Push is not supported in this browser.');
+  if(!teacher)return alert('Please login first.');
+  try{
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted')return alert('Notification permission was not granted.');
+    const reg=await navigator.serviceWorker.register('/sw.js');
+    const cfg=await fetch('/api/push/public-key').then(r=>r.json());
+    if(!cfg.publicKey)throw new Error('VAPID public key is not configured on the server.');
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(cfg.publicKey)});
+    const res=await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empId:teacher.empId,mobile:facultyNotificationSettings().mobile||teacher.portalMobile||teacher.mobile||'',subscription:sub})});
+    if(!res.ok)throw new Error((await res.json()).error||'Subscription failed');
+    toast('Mobile Web Push alerts enabled.');
+  }catch(e){alert('Push notification setup failed: '+e.message)}
+}
+let activeFacultyFolderSource=null,activeFacultyClassFolder=null;
+function openFacultySourceFolder(id,title){
+ const source=document.getElementById(id),body=document.getElementById('facultyFolderModalBody');if(!source||!body)return;
+ if(activeFacultyFolderSource)closeFacultyFolderModal();
+ activeFacultyFolderSource={source,parent:source.parentNode,next:source.nextSibling};
+ document.getElementById('facultyFolderModalTitle').textContent=title||'Faculty Folder';
+ body.innerHTML='';body.appendChild(source);source.classList.remove('faculty-folder-source');
+ const modal=document.getElementById('facultyFolderModal');modal.classList.add('open');modal.setAttribute('aria-hidden','false');
+}
+function openAcceptedTimetableFolder(){
+ const review=currentTeacherReview();
+ if(review&&review.status!=='Accepted')return alert('Please accept the timetable review before opening your active timetable.');
+ const source=document.getElementById('acceptedTimetableSource');
+ if(!source)return;
+ openFacultySourceFolder('acceptedTimetableSource','My Accepted Timetable');
+ renderAcceptedTimetablePopup();
+}
+function renderAcceptedTimetablePopup(){
+ const body=document.getElementById('facultyFolderModalBody');if(!body)return;
+ const mine=myTimetables(),review=currentTeacherReview(),accepted=!review||review.status==='Accepted';
+ if(!accepted){body.innerHTML='<div class="empty">Your accepted timetable will appear here after confirmation.</div>';return}
+ const fullReview=timetableReviewState(),classTeacherFolders=mine.filter(x=>String(x.classTeacherEmpId||'')===String(teacher.empId));
+ const publishReadiness=classTeacherFolders.length?`<div class="notice"><strong>Class Teacher Publication Status</strong><span>These class timetables can be published to students only after all concerned teachers confirm.</span>${renderMyClassPublishReadiness(fullReview)}</div>`:'';
+ const cards=mine.map((f,index)=>{const isCT=String(f.classTeacherEmpId||'')===String(teacher.empId),myPeriods=[];(f.settings?.workingDays||[]).forEach(d=>(f.slots||[]).filter(s=>s.type==='period').forEach(slot=>{const c=f.grid?.[d]?.[slot.index];if(c?.teacherEmpId===teacher.empId)myPeriods.push(c)}));return `<button class="accepted-class-card" onclick="showAcceptedClassDetail(${index})"><strong>${esc(f.className)} — ${esc(f.division)}</strong><small>${isCT?'Class Teacher · complete class timetable':`Subject Teacher · ${myPeriods.length} assigned period${myPeriods.length===1?'':'s'}`}<br>Class Teacher: ${esc(f.classTeacher||'—')}</small></button>`}).join('');
+ body.innerHTML=`<div class="accepted-timetable-shell"><div class="notice"><strong>Confirmed timetable</strong><span>${mine.length} class/division folder${mine.length===1?'':'s'} assigned to you. Select a class to view the schedule.</span></div>${publishReadiness}<div id="acceptedClassGrid" class="accepted-class-grid">${cards||'<div class="empty">No timetable folders assigned.</div>'}</div><div id="acceptedClassDetail" class="accepted-detail"></div></div>`;
+}
+
 function showAcceptedClassDetail(index){
  const mine=myTimetables(),f=mine[index];if(!f)return;
  const isCT=String(f.classTeacherEmpId||'')===String(teacher.empId),rows=[];
