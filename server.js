@@ -986,9 +986,8 @@ wss.on('connection', async (ws) => {
           const folder=timetableFolders.find(x=>String(x.id)===String(r.folderId)||String(x.academicDivisionId)===String(r.divisionId));
           if(!folder)break;
           if(data.type==='FACULTY_PUBLISH_CLASS' && String(folder.classTeacherEmpId||'')!==String(r.teacherId||''))break;
-          const reviewers=folder.recipientTeacherEmpIds||[];
-          const allAccepted=reviewers.length&&reviewers.every(id=>timetableReview?.teacherReviews?.[String(id)]?.status==='Accepted');
-          if(!allAccepted && !r.principalOverride)break;
+          // Faculty concerns do not block publication.
+          // Only the assigned Class Teacher authorization is required here.
           folder.published=true;folder.reviewOnly=false;folder.status='Published to Students';folder.publishedAt=new Date().toISOString();folder.publishedBy=r.teacherName||r.teacherId||'Principal';
           broadcast({type:'TIMETABLE_FOLDERS_UPDATED',payload:timetableFolders});
           broadcast({type:'CLASS_TIMETABLE_PUBLISHED',payload:folder});
