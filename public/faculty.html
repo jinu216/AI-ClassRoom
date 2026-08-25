@@ -194,6 +194,23 @@
 .mailbox-pro-folder.share-folder .mailbox-count{display:none!important}
 .share-compose-only .mailbox-pro-list{display:none!important}
 
+
+/* ===== V40 My Class & Camera Access ===== */
+.my-class-folder-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.my-class-folder{
+ border:1px solid rgba(201,162,75,.18);border-radius:14px;padding:14px;text-align:left;cursor:pointer;
+ background:radial-gradient(circle at 90% 12%,rgba(225,189,104,.10),transparent 30%),linear-gradient(145deg,rgba(17,39,59,.98),rgba(7,21,34,.99));
+ color:var(--text);box-shadow:0 10px 26px rgba(0,0,0,.24);transition:.2s
+}
+.my-class-folder:hover{transform:translateY(-3px);border-color:rgba(225,189,104,.5);box-shadow:0 16px 34px rgba(0,0,0,.32)}
+.my-class-folder i{color:#e6c76e;font-size:18px}.my-class-folder strong{display:block;margin-top:9px;color:#f6efe3}.my-class-folder small{display:block;color:var(--muted);margin-top:4px;line-height:1.45}
+.class-camera-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.class-camera-card{border:1px solid rgba(201,162,75,.16);border-radius:13px;padding:13px;background:rgba(255,255,255,.025)}
+.class-camera-preview{height:150px;border:1px dashed rgba(255,255,255,.12);border-radius:10px;background:#070d14;display:grid;place-items:center;text-align:center;color:var(--muted)}
+.class-camera-preview i{font-size:28px;color:#d9b95f;margin-bottom:7px}
+.class-camera-meta{font-size:10px;color:var(--muted);line-height:1.6;margin-top:8px}
+@media(max-width:760px){.my-class-folder-grid,.class-camera-grid{grid-template-columns:1fr}}
+
 </style></head><body>
 <div id="login" class="login"><div class="login-card">
 <div class="crest"><i class="fa-solid fa-graduation-cap"></i></div><div class="eyebrow">Pope Pius Academy</div><h1>Teacher Portal</h1><p>Secure teacher access using the mobile number registered by the Principal. Your portal permissions are controlled by the school administration.</p>
@@ -220,7 +237,7 @@
       <div class="class-teacher-status"><div class="label">Today's Status</div><div id="todayStatus" class="value">Available</div><div class="sub">Based on approved leave</div></div>
       <div><div class="label">Class Teacher Responsibility</div><div id="classTeacherAssignmentClean"><div class="class-teacher-grade">—</div><div class="class-teacher-division">No class assigned</div></div>
       <div id="classTeacherMetrics" class="class-teacher-metrics" style="display:none"></div>
-      <div id="classTeacherActions" class="class-teacher-actions" style="display:none"><button class="secondary" onclick="showClassTeacherStudents()"><i class="fa-solid fa-users"></i> View Students</button><button class="secondary" onclick="show('studentApprovals')"><i class="fa-solid fa-user-check"></i> Student Approvals</button></div></div>
+      <div id="classTeacherActions" class="class-teacher-actions" style="display:none"><button class="secondary" onclick="openMyClassWorkspace()"><i class="fa-solid fa-school"></i> My Class</button><button class="secondary" onclick="show('studentApprovals')"><i class="fa-solid fa-user-check"></i> Student Approvals</button></div></div>
     </div>
   </div>
   <div class="card kpi academic-kpi"><div class="label">Weekly Teaching</div><div id="dashboardWeeklyPeriods" class="value">0</div><div class="sub" id="dashboardWeeklyMeta">0 classes / subjects</div></div>
@@ -373,6 +390,44 @@ function facultyAcademicActionCount(){
 }
 function normalizeFacultyClass(v){return String(v||'').replace(/^grade\s*/i,'').replace(/^class\s*/i,'').trim()}
 function normalizeFacultyDiv(v){return String(v||'').replace(/^div(ision)?\s*/i,'').trim()}
+const CLASS_CAMERA_KEY='pius_camera_configurations';
+function myClassCameraConfigurations(){
+ const c=currentClassTeacherAssignment();if(!c)return [];
+ const nc=v=>String(v||'').replace(/^Grade\s*/i,'').replace(/^Class\s*/i,'').trim().toLowerCase();
+ const nd=v=>String(v||'').replace(/^Div(ision)?\s*/i,'').trim().toLowerCase();
+ return get(CLASS_CAMERA_KEY,[]).filter(cam=>{
+   const raw=String(cam.classDivision||'');let a='',b='';
+   if(raw.includes('||'))[a,b]=raw.split('||');else if(raw.includes('|||'))[a,b]=raw.split('|||');
+   if(!a&&cam.classLabel){const m=String(cam.classLabel).split(/[—-]/);a=m[0]||'';b=m[1]||''}
+   return nc(a)===nc(c.grade)&&nd(b)===nd(c.division);
+ });
+}
+function renderMyClassWorkspace(){
+ const body=document.getElementById('myClassWorkspaceBody');if(!body)return;
+ const c=currentClassTeacherAssignment();if(!c){body.innerHTML='<div class="empty">You are not currently assigned as a Class Teacher.</div>';return}
+ const students=classTeacherStudents(),att=todayStudentAttendanceForClass(),cams=myClassCameraConfigurations();
+ const grade=`Grade ${normalizeFacultyClass(c.grade)}`,div=`Div ${normalizeFacultyDiv(c.division)}`;
+ body.innerHTML=`<div class="notice"><strong>${esc(grade)}<br>${esc(div)}</strong><span>Assigned Class Teacher responsibility</span></div>
+ <div class="my-class-folder-grid">
+   <button class="my-class-folder" onclick="showMyClassStudentsDetail()"><i class="fa-solid fa-users"></i><strong>Students</strong><small>${students.length} student${students.length===1?'':'s'} in this class. Open full student directory.</small></button>
+   <button class="my-class-folder" onclick="showMyClassAttendanceDetail()"><i class="fa-solid fa-user-check"></i><strong>Today's Attendance</strong><small>${att.present} present • ${att.absent} absent • ${att.marked}/${att.total} marked</small></button>
+   <button class="my-class-folder" onclick="showMyClassCameraDetail()"><i class="fa-solid fa-video"></i><strong>Class Cameras</strong><small>${cams.length} camera${cams.length===1?'':'s'} assigned to ${esc(grade)} ${esc(div)}.</small></button>
+ </div><div id="myClassDetailPanel" style="margin-top:14px"></div>`;
+}
+function openMyClassWorkspace(){if(!currentClassTeacherAssignment())return alert('You are not currently assigned as a Class Teacher.');renderMyClassWorkspace();openFacultySourceFolder('myClassWorkspaceSource','My Class')}
+function showMyClassStudentsDetail(){
+ const el=document.getElementById('myClassDetailPanel'),a=classTeacherStudents();if(!el)return;
+ el.innerHTML=`<div class="section-head"><h3>Student Directory</h3><span>${a.length} students</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>ID</th><th>Gender</th><th>Registered Mobile</th></tr></thead><tbody>${a.map(x=>`<tr><td><strong>${esc(x.name||x.fullName||'Student')}</strong></td><td>${esc(x.rollId||x.admissionNo||x.studentId||'—')}</td><td>${esc(x.gender||'—')}</td><td>${esc(x.phone||x.mobile||x.registeredMobile||'—')}</td></tr>`).join('')||'<tr><td colspan="4">No students found.</td></tr>'}</tbody></table></div>`;
+}
+function showMyClassAttendanceDetail(){
+ const el=document.getElementById('myClassDetailPanel'),a=todayStudentAttendanceForClass();if(!el)return;
+ el.innerHTML=`<div class="section-head"><h3>Today's Attendance</h3><span>${a.marked}/${a.total} marked</span></div><div class="class-teacher-metrics"><div class="class-teacher-metric"><span>Total Strength</span><strong>${a.total}</strong></div><div class="class-teacher-metric"><span>Present</span><strong>${a.present}</strong></div><div class="class-teacher-metric"><span>Absent</span><strong>${a.absent}</strong></div><div class="class-teacher-metric"><span>Not Marked</span><strong>${Math.max(0,a.total-a.marked)}</strong></div></div>`;
+}
+function showMyClassCameraDetail(){
+ const el=document.getElementById('myClassDetailPanel'),cams=myClassCameraConfigurations();if(!el)return;
+ if(!cams.length){el.innerHTML='<div class="notice"><strong>No camera assigned to this class.</strong><span>The Principal can configure classroom cameras from Camera Controls.</span></div>';return}
+ el.innerHTML=`<div class="section-head"><div><h3>Class Camera Access</h3><span>Only cameras assigned to your responsible class are visible here.</span></div><span class="badge warn">Secure Stream Pending</span></div><div class="class-camera-grid">${cams.map(c=>`<div class="class-camera-card"><div class="class-camera-preview"><div><i class="fa-solid fa-video"></i><br><strong>${esc(c.name||c.id||'Camera')}</strong><br><small>${esc(c.configurationStatus||'Configured')}</small></div></div><div class="class-camera-meta"><b>Camera ID:</b> ${esc(c.id||'—')}<br><b>Position:</b> ${esc(c.position||'—')}<br><b>Mode:</b> ${esc(c.mode||'—')}<br><b>Attendance:</b> ${c.attendanceEnabled?'Enabled':'Disabled'}<br><b>Host:</b> ${esc(c.host||'Not configured')}<br><b>Protocol:</b> ${esc(c.protocol||'—')}</div></div>`).join('')}</div><div class="demo-note" style="margin-top:12px">Live RTSP/ONVIF video is not exposed directly in the browser yet. The secure camera-streaming/AI server must be connected before a live feed can be safely shown here.</div>`;
+}
 function currentClassTeacherAssignment(){
  const assignments=get(CLASS_TEACHER_KEY,{}),candidates=[];
  Object.entries(assignments||{}).forEach(([key,val])=>{if(String(val)!==String(teacher?.empId))return;const parts=String(key).split('|||');if(parts.length>=2)candidates.push({grade:parts[0],division:parts[1]})});
@@ -750,5 +805,9 @@ setInterval(()=>{
    else setPortalSyncState('offline','Offline');
  }catch(e){setPortalSyncState('offline','Offline')}
 },15000);
+</script>
+<script>
+window.addEventListener('storage',e=>{if(e.key===CLASS_CAMERA_KEY&&teacher){try{renderMyClassWorkspace()}catch(x){}}});
+window.addEventListener('pius-cloud-message',e=>{if(e.detail?.payload?.key===CLASS_CAMERA_KEY&&teacher){setTimeout(()=>{try{renderMyClassWorkspace()}catch(x){}},50)}});
 </script>
 </body></html>
